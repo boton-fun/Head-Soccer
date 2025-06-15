@@ -1,4 +1,7 @@
 # ToDo :
+# Sound effect when powerup ready
+# Way tp tell if frozen
+#   color filter?
 # Fix Phase through walls
 # FPS
 # Change impulse to gradually changing velocity
@@ -20,8 +23,8 @@
 # pong
 
 # exe
-
-
+import os
+os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
 import pygame
 import pymunk
@@ -33,10 +36,59 @@ import random
 import sys
 import ctypes
 from ctypes import wintypes
-import os
 
 pygame.init()
 pygame.mixer.init()
+
+
+def outline_img(image, postion, color, width):
+    mask = pygame.mask.from_surface(image)
+    mask_outline = mask.outline()
+    n = 0
+    for point in mask_outline:
+        mask_outline[n] = (point[0] + postion[0], point[1] + postion[1])
+        n += 1
+    pygame.draw.polygon(screen, color, mask_outline, width)
+
+
+def outline_text(text, font, middle_color, outline_color, outline_size):
+    circle_cache = {}
+
+    text_surface = font.render(text, True, middle_color).convert_alpha()
+    w = text_surface.get_width() + 2 * outline_size
+    h = font.get_height()
+
+    outline_surface = pygame.Surface((w, h + 2 * outline_size)).convert_alpha()
+    outline_surface.fill((0, 0, 0, 0))
+
+    surf = outline_surface.copy()
+
+    outline_surface.blit(font.render(text, True, outline_color).convert_alpha(), (0, 0))
+
+    r = int(round(outline_size))
+    if r in circle_cache:
+        return circle_cache[r]
+    x, y, e = r, 0, 1 - r
+    circle_cache[r] = points = []
+    while x >= y:
+        points.append((x, y))
+        y += 1
+        if e < 0:
+            e += 2 * y - 1
+        else:
+            x -= 1
+            e += 2 * (y - x) - 1
+
+    points += [(y, x) for x, y in points if x > y]
+    points += [(-x, y) for x, y in points if x]
+    points += [(x, -y) for x, y in points if y]
+    points.sort()
+
+    for dx, dy in points:
+        surf.blit(outline_surface, (dx + outline_size, dy + outline_size))
+
+    surf.blit(text_surface, (outline_size, outline_size))
+    return surf
 
 
 def recenter_window():
@@ -71,8 +123,6 @@ def window_key_control(e):
         current_width += 50
         current_height += 50
 
-    # if event.type == pygame.VIDEORESIZE:
-
 
 def window_fixsize():
     global fake_screen, display_window_width, display_window_height
@@ -87,7 +137,7 @@ def draw_any():
     global current_width, current_height
     window_fixsize()
     # print(fake_screen.get_rect().size)
-    current_width = int(fake_screen.get_rect().size[1] * 16/9)
+    current_width = fake_screen.get_rect().size[0]
     current_height = fake_screen.get_rect().size[1]
     fake_screen.blit(pygame.transform.scale(screen, (current_width, current_height)), (0, 0))
     pygame.display.flip()
@@ -145,7 +195,7 @@ def end_screen(w):
     # return 'home'
 
 
-def play_game(win_score):
+def play_game():
     global scored, score_text
 
     pygame.mixer.music.play()
@@ -154,8 +204,10 @@ def play_game(win_score):
 
         t_end = time.time() + 2
         if scored:
-            p1_boost_timer.pause()
-            p2_boost_timer.pause()
+            game_timer.pause()
+
+            p1_skill_timer.pause()
+            p2_skill_timer.pause()
             player_1.force, player_2.force = 0, 0
             while time.time() < t_end:
                 space.step(dt)
@@ -165,21 +217,28 @@ def play_game(win_score):
                 clock.tick(fps)
             scored = False
             reset()
-            p1_boost_timer.resume()
-            p2_boost_timer.resume()
+            p1_skill_timer.resume()
+            p2_skill_timer.resume()
 
-        if player_1.score >= win_score:
+            game_timer.resume()
+
+        if player_1.score >= end_score:
             player_1.delete()
             player_2.delete()
-            score_text = score_font.render('0 - 0', True, score_text_color)
+            score_text = outline_text("0 - 0", score_font, background_color, score_text_color, score_outline_size)
+            # score_text = score_font.render('0 - 0', True, score_text_color)
             return 'player 1'
-        elif player_2.score >= win_score:
+        elif player_2.score >= end_score:
             player_1.delete()
             player_2.delete()
-            score_text = score_font.render('0 - 0', True, score_text_color)
+            score_text = outline_text("0 - 0", score_font, background_color, score_text_color, score_outline_size)
+            # score_text = score_font.render('0 - 0', True, score_text_color)
             return 'player 2'
 
-        score_text = score_font.render(str(player_2.score) + ' - ' + str(player_1.score), True, score_text_color)
+        score_text = outline_text(str(player_2.score) + ' - ' + str(player_1.score), score_font, background_color, score_text_color, score_outline_size)
+        # score_text = outline_text("TESTING", score_font, pygame.Color('dodgerblue'), (230, 230, 230), 5)
+
+
 
         keys()
 
@@ -189,7 +248,7 @@ def play_game(win_score):
 
 
 def customization_screen(p1_info, p2_info):
-    global player_1_head, player_2_head, player_1_cleat, player_2_cleat, player_1, player_2
+    global player_1_head, player_2_head, player_1_cleat, player_2_cleat, player_1, player_2, p1_skill_delay, p2_skill_delay, p1_skill_duration, p2_skill_duration
     global customize
 
     # hs means head selection
@@ -235,7 +294,7 @@ def customization_screen(p1_info, p2_info):
     while True:
         window_fixsize()
 
-        screen.fill((33, 33, 33))
+        screen.fill(background_color)
 
         title_font = pygame.font.Font(mypath('Font.TTF'), 200)
         title_text = title_font.render('Head Soccer', True, (235, 235, 235))
@@ -279,7 +338,7 @@ def customization_screen(p1_info, p2_info):
                 d = 270
                 for i in range(0, d, 5):
                     if int(original_title_text.get_height() * (d - i) / d) > 0:
-                        screen.fill((33, 33, 33))
+                        screen.fill(background_color)
 
                         pygame.draw.rect(screen, (50, 50, 50), pygame.Rect(width - sw_pos_info[0] - sw_outline_size[0] // 2, sw_pos_info[1] - sw_outline_size[1] // 2 + p1_outline_pos * sw_pos_info[2], sw_outline_size[0], sw_outline_size[1]), 0, sw_outline_rounding)
                         pygame.draw.rect(screen, (50, 50, 50), pygame.Rect(sw_pos_info[0] - sw_outline_size[0] // 2, sw_pos_info[1] - sw_outline_size[1] // 2 + p2_outline_pos * sw_pos_info[2], sw_outline_size[0], sw_outline_size[1]), 0, sw_outline_rounding)
@@ -306,6 +365,9 @@ def customization_screen(p1_info, p2_info):
 
                 player_1_cleat = p1_cs_display[2]
                 player_2_cleat = p2_cs_display[2]
+
+                p1_skill_delay, p2_skill_delay = powers[player_1_head]['Wait'], powers[player_2_head]['Wait']
+                p1_skill_duration, p2_skill_duration = powers[player_1_head]['Duration'], powers[player_2_head]['Duration']
 
                 player_1 = Player(width - player_start_x, player_start_y, 'left')
                 player_2 = Player(player_start_x, player_start_y, 'right')
@@ -451,16 +513,25 @@ def selection_wheel(selection_display, angle, shift, position, wheel_type):
 
 
 def progress_bar(current, place):
+    c = pb_outline_color
     if place == 'left':
-        pygame.draw.rect(screen, (100, 100, 100), pygame.Rect(pb_x - pb_outline_size, pb_y - pb_outline_size, pb_width + 2 * pb_outline_size, pb_height + 2 * pb_outline_size), 0, int(pb_rounding * 1.5))
-        pygame.draw.rect(screen, (100, 190, 100), pygame.Rect(pb_x, pb_y, current * pb_width/boost_delay, pb_height), 0, pb_rounding)
+        if current == p2_skill_delay:
+            c = powers[player_2_head]['Ready Color']
+
+        pygame.draw.rect(screen, c, pygame.Rect(pb_x - pb_outline_size, pb_y - pb_outline_size, pb_width + 2 * pb_outline_size, pb_height + 2 * pb_outline_size), 0, int(pb_rounding * 1.5))
+        if current:
+            pygame.draw.rect(screen, powers[player_2_head]['Color'], pygame.Rect(pb_x, pb_y, current * pb_width/p2_skill_delay, pb_height), 0, pb_rounding)
     else:
-        pygame.draw.rect(screen, (100, 100, 100), pygame.Rect(width - pb_x - pb_width - pb_outline_size, pb_y - pb_outline_size, pb_width + 2 * pb_outline_size, pb_height + 2 * pb_outline_size), 0, int(pb_rounding * 1.5))
-        pygame.draw.rect(screen, (100, 190, 100), pygame.Rect(width - pb_x - pb_width, pb_y, current * pb_width/boost_delay, pb_height), 0, pb_rounding)
+        if current == p1_skill_delay:
+            c = powers[player_2_head]['Ready Color']
+
+        pygame.draw.rect(screen, c, pygame.Rect(width - pb_x - pb_width - pb_outline_size, pb_y - pb_outline_size, pb_width + 2 * pb_outline_size, pb_height + 2 * pb_outline_size), 0, int(pb_rounding * 1.5))
+        if current:
+            pygame.draw.rect(screen, powers[player_1_head]['Color'], pygame.Rect(width - pb_x - pb_width, pb_y, current * pb_width/p1_skill_delay, pb_height), 0, pb_rounding)
 
 
 def update_and_draw():
-    global score_text_rect
+    global score_text_rect, time_left, scored, overtime, p1_skill_length_timer, p2_skill_length_timer
 
     player_1.leg_shape.elasticity = -0.00122807 * player_1.head_body.position.y + 1.67544
     player_2.leg_shape.elasticity = -0.00122807 * player_2.head_body.position.y + 1.67544
@@ -476,7 +547,21 @@ def update_and_draw():
     score_text_rect = score_text.get_rect()
     score_text_rect.center = (width // 2, 100)
 
-    screen.fill((33, 33, 33))
+    try:
+        time_left = max(int(game_timer.get()) + 1, 0)
+    except:
+        pass
+
+    gametime_text = gametime_font.render(str(time_left // 60) + ':' + f'{time_left % 60:02}', True, gametime_text_color)
+    gametime_text_rect = gametime_text.get_rect()
+    gametime_text_rect.center = (width // 2, 170)
+
+    if not time_left:
+        overtime = True
+        scored = True  # Same effect needed
+
+
+    screen.fill(background_color)
 
     draw_borders()
     ball.draw()
@@ -484,17 +569,35 @@ def update_and_draw():
     player_2.draw(player_2_head, player_2_cleat)
 
     try:
-        progress_bar(min(boost_delay - p2_boost_timer.get(), boost_delay), 'left')
-        progress_bar(min(boost_delay - p1_boost_timer.get(), boost_delay), 'right')
+        progress_bar(min(p2_skill_delay - p2_skill_timer.get(), p2_skill_delay), 'left')
+        progress_bar(min(p1_skill_delay - p1_skill_timer.get(), p1_skill_delay), 'right')
     except:
-        pass
+        progress_bar(False, 'left')
+        progress_bar(False, 'right')
 
-    # screen.blit(gametime_text, gametime_text_rect)
+    screen.blit(gametime_text, gametime_text_rect)
 
     screen.blit(score_text, score_text_rect)
     if scored:
-        screen.blit(goal_text, goal_text_rect)
+        if not overtime:
+            screen.blit(goal_text, goal_text_rect)
+        else:
+            screen.blit(overtime_text, overtime_text_rect)
+        player_1.frozen = False
+        player_2.frozen = False
 
+    try:
+        if p1_skill_length_timer.get() < 0:
+            player_2.frozen = False
+            p1_skill_length_timer = Timer(p1_skill_duration)
+    except:
+        pass
+    try:
+        if p2_skill_length_timer.get() < 0:
+            player_1.frozen = False
+            p2_skill_length_timer = Timer(p2_skill_duration)
+    except:
+        pass
 
     # space.debug_draw(draw_options)
     draw_any()
@@ -507,6 +610,9 @@ def reset():
 
     player_1.reset()
     player_2.reset()
+
+    for event in pygame.event.get():
+        pass
 
 
 def create_borders():
@@ -540,6 +646,7 @@ def draw_borders():
     pygame.draw.polygon(screen, (55, 55, 55), floor + [(0, height), (width, height)])
 
 
+# Makes it easier to set motor parameters and update the motors
 class Motor(pymunk.SimpleMotor):
     def __init__(self, body_a, body_b, max_force, max_rate, p_gain):
         super().__init__(body_a, body_b, 0)  # Start with rate = 0
@@ -590,14 +697,14 @@ class Ball:
                 scored = True
 
                 cheer_sound = pygame.mixer.Sound(mypath('Cheer ' + str(cheer_sfx) + '.wav'))
-                cheer_sound.set_volume(0.75)
+                cheer_sound.set_volume(random.random() * 0.1 + 0.2)
                 pygame.mixer.Sound.play(cheer_sound)
                 last_cheer_sfx = cheer_sfx
                 while cheer_sfx == last_cheer_sfx:
                     cheer_sfx = random.randint(1, 4)
 
                 goal_sound = pygame.mixer.Sound(mypath('Goal ' + str(goal_sfx) + '.mp3'))
-                goal_sound.set_volume(0.75)
+                goal_sound.set_volume(0.85)
                 pygame.mixer.Sound.play(goal_sound)
                 last_goal_sfx = goal_sfx
                 while goal_sfx == last_goal_sfx:
@@ -608,14 +715,14 @@ class Ball:
                 scored = True
 
                 cheer_sound = pygame.mixer.Sound(mypath('Cheer ' + str(cheer_sfx) + '.wav'))
-                cheer_sound.set_volume(0.7)
+                cheer_sound.set_volume(random.random() * 0.1 + 0.2)
                 pygame.mixer.Sound.play(cheer_sound)
                 last_cheer_sfx = cheer_sfx
                 while cheer_sfx == last_cheer_sfx:
                     cheer_sfx = random.randint(1, 4)
 
                 goal_sound = pygame.mixer.Sound(mypath('Goal ' + str(goal_sfx) + '.mp3'))
-                goal_sound.set_volume(0.75)
+                goal_sound.set_volume(0.85)
                 pygame.mixer.Sound.play(goal_sound)
                 last_goal_sfx = goal_sfx
                 while goal_sfx == last_goal_sfx:
@@ -670,6 +777,7 @@ class Player:
         self.kicked_ball = False
 
         self.force = 0
+        self.frozen = False
         self.kick = False
         self.start_jump = False
         self.jumping = True
@@ -679,8 +787,14 @@ class Player:
 
     def draw(self, head, cleat):
         if self.d == 'left':
-            screen.blit(head_surfaces[head], head_surfaces[head].get_rect(
-                center=(int(self.head_body.position.x), int(self.head_body.position.y))))
+            if cleat == 8:
+                outline_img(head_surfaces[head], (
+                    int(self.head_body.position.x - head_surfaces[head].get_width() // 2),
+                    int(self.head_body.position.y - head_surfaces[head].get_height() // 2)
+                ), head_outline_color, head_outline_width)
+            else:
+                screen.blit(head_surfaces[head], head_surfaces[head].get_rect(
+                    center=(int(self.head_body.position.x), int(self.head_body.position.y))))
 
             cleat_x = int(
                 self.leg_body.position.x - 0.6 * leg_width * np.sin(self.leg_body.angle - np.deg2rad(300))) + 30
@@ -690,8 +804,15 @@ class Player:
                                                     - 1.2 * (self.leg_body.angle * 180 / math.pi + 70))
 
         else:
-            screen.blit(pygame.transform.flip(head_surfaces[head], True, False), head_surfaces[head].get_rect(
-                center=(int(self.head_body.position.x), int(self.head_body.position.y))))
+            flipped_head = pygame.transform.flip(head_surfaces[head], True, False)
+            if cleat == 8:
+                outline_img(flipped_head, (
+                    int(self.head_body.position.x - flipped_head.get_width() // 2),
+                    int(self.head_body.position.y - flipped_head.get_height() // 2)
+                ), head_outline_color, head_outline_width)
+            else:
+                screen.blit(flipped_head, flipped_head.get_rect(
+                    center=(int(self.head_body.position.x), int(self.head_body.position.y))))
 
             cleat_x = int(
                 self.leg_body.position.x + 0.6 * leg_width * np.cos(self.leg_body.angle - np.deg2rad(150))) - 30
@@ -701,6 +822,19 @@ class Player:
                                                     - 1.15 * (self.leg_body.angle * 180 / math.pi + 110))
 
         screen.blit(cleat_surface, cleat_surface.get_rect(center=(cleat_x, cleat_y)))
+
+        if self.frozen:
+            head_surface = head_surfaces[head]
+            if self.d == 'right':
+                head_surface = pygame.transform.flip(head_surface, True, False)
+
+            mask = pygame.mask.from_surface(head_surface)
+            frozen_surface = mask.to_surface(setcolor=(114, 155, 207, 100), unsetcolor=(0, 0, 0, 0))
+
+            screen.blit(frozen_surface, (
+                int(self.head_body.position.x - head_surface.get_width() // 2),
+                int(self.head_body.position.y - head_surface.get_height() // 2)
+            ))
 
     def update(self):
         self.head_body.angular_velocity = 0
@@ -729,7 +863,7 @@ class Player:
         if self.increase_jump:
             self.head_shape.body.apply_force_at_local_point((0, (300 * self.head_body.velocity[1] - 5000) * fps/60), (0, 0))
 
-        if self.force != 0 and abs(self.head_body.velocity.x) < max_player_speed:
+        if self.force != 0 and abs(self.head_body.velocity.x) < max_player_speed and not self.frozen:
             self.head_shape.body.apply_force_at_local_point(((self.force * 500000) * fps/60, 0), (0, 0))
         else:
             self.head_body.velocity = (self.head_body.velocity.x * 0.9, self.head_body.velocity.y)
@@ -779,7 +913,7 @@ class Player:
 
 
 def keys():
-    global playing, p1_dtap_start, p1_dtap_start, p1_boost_timer, p2_boost_timer
+    global playing, p1_dtap_start, p1_dtap_start, p1_skill_timer, p2_skill_timer
     for event in pygame.event.get():
         window_key_control(event)
 
@@ -794,31 +928,40 @@ def keys():
             player_1.increase_jump = False
         if event.type == pygame.KEYDOWN and event.key == pygame.K_RIGHT:
             player_1.force = 1
-            if p1_dtap_start['right'] and time.time() - p1_dtap_start['right'] < dtap_time and p1_boost_timer.get() < 0:
-                # p1_boost_wait_start
-                print('right double tapped player 1')
+            if p1_dtap_start['right'] and time.time() - p1_dtap_start['right'] < dtap_time and p1_skill_timer.get() < 0 and player_1_head == 'Nuwan':
+                # p1_skill_wait_start
+                # print('right double tapped player 1')
                 player_1.head_shape.body.apply_force_at_local_point((boost_force, 0), (0, 0))
                 p1_dtap_start['right'] = False
-                p1_boost_timer = Timer(boost_delay)
-                p1_boost_timer.start()
+                p1_skill_timer = Timer(p1_skill_delay)
+                p1_skill_timer.start()
             else:
                 p1_dtap_start['right'] = time.time()
         if event.type == pygame.KEYUP and event.key == pygame.K_RIGHT and player_1.force != -1:
             player_1.force = 0
         if event.type == pygame.KEYDOWN and event.key == pygame.K_LEFT:
             player_1.force = -1
-            if p1_dtap_start['left'] and time.time() - p1_dtap_start['left'] < dtap_time and p1_boost_timer.get() < 0:
-                print('left double tapped player 1')
+            if p1_dtap_start['left'] and time.time() - p1_dtap_start['left'] < dtap_time and p1_skill_timer.get() < 0 and player_1_head == 'Nuwan':
+                # print('left double tapped player 1')
                 player_1.head_shape.body.apply_force_at_local_point((-boost_force, 0), (0, 0))
                 p1_dtap_start['left'] = False
-                p1_boost_timer = Timer(boost_delay)
-                p1_boost_timer.start()
+                p1_skill_timer = Timer(p1_skill_delay)
+                p1_skill_timer.start()
             else:
                 p1_dtap_start['left'] = time.time()
         if event.type == pygame.KEYUP and event.key == pygame.K_LEFT and player_1.force != 1:
             player_1.force = 0
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_DOWN and not player_1.frozen:
             player_1.kick = 'up'
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_RSHIFT and p1_skill_timer.get() < 0:
+            if player_1_head == 'Mihir':
+                player_1.head_body.position, player_1.leg_body.position = (width - 200, 825), (width - 200, 825)
+            if player_1_head == 'Dad':
+                player_2.frozen = True
+                p1_skill_length_timer.start()
+            if not player_1_head == 'Nuwan':
+                p1_skill_timer = Timer(p1_skill_delay)
+                p1_skill_timer.start()
 
         if event.type == pygame.KEYDOWN and event.key == pygame.K_w and not player_2.jumping:
             player_2.start_jump = True
@@ -827,37 +970,54 @@ def keys():
             player_2.increase_jump = False
         if event.type == pygame.KEYDOWN and event.key == pygame.K_d:
             player_2.force = 1
-            if p2_dtap_start['right'] and time.time() - p2_dtap_start['right'] < dtap_time and p2_boost_timer.get() < 0:
-                print('right double tapped player 2')
+            if p2_dtap_start['right'] and time.time() - p2_dtap_start['right'] < dtap_time and p2_skill_timer.get() < 0 and player_2_head == 'Nuwan':
+                # print('right double tapped player 2')
                 p2_dtap_start['right'] = False
                 player_2.head_shape.body.apply_force_at_local_point((boost_force, 0), (0, 0))
-                p2_boost_timer = Timer(boost_delay)
-                p2_boost_timer.start()
+                p2_skill_timer = Timer(p2_skill_delay)
+                p2_skill_timer.start()
             else:
                 p2_dtap_start['right'] = time.time()
         if event.type == pygame.KEYUP and event.key == pygame.K_d and player_2.force != -1:
             player_2.force = 0
         if event.type == pygame.KEYDOWN and event.key == pygame.K_a:
             player_2.force = -1
-            if p2_dtap_start['left'] and time.time() - p2_dtap_start['left'] < dtap_time and p2_boost_timer.get() < 0:
-                print('left double tapped player 2')
+            if p2_dtap_start['left'] and time.time() - p2_dtap_start['left'] < dtap_time and p2_skill_timer.get() < 0 and player_2_head == 'Nuwan':
+                # print('left double tapped player 2')
                 p2_dtap_start['left'] = False
                 player_2.head_shape.body.apply_force_at_local_point((-boost_force, 0), (0, 0))
-                p2_boost_timer = Timer(boost_delay)
-                p2_boost_timer.start()
+                p2_skill_timer = Timer(p2_skill_delay)
+                p2_skill_timer.start()
             else:
                 p2_dtap_start['left'] = time.time()
         if event.type == pygame.KEYUP and event.key == pygame.K_a and player_2.force != 1:
             player_2.force = 0
-        if event.type == pygame.KEYDOWN and event.key == pygame.K_s:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_s and not player_2.frozen:
             player_2.kick = 'up'
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_q and p2_skill_timer.get() < 0:
+            if player_2_head == 'Mihir':
+                player_2.head_body.position, player_2.leg_body.position = (200, 825), (200, 825)
+            if player_2_head == 'Dad':
+                player_1.frozen = True
+                p2_skill_length_timer.start()
+            if not player_2_head == 'Nuwan':
+                p2_skill_timer = Timer(p2_skill_delay)
+                p2_skill_timer.start()
 
 
 if __name__ == "__main__":
     mutator = {}
+    powers = {'Nuwan': {'Name': 'Dash', 'Wait': 10, 'Duration': False, 'Color': (214, 195, 73), 'Ready Color': (220, 220, 220)}, 'Mihir': {'Name': 'Back', 'Wait': 22, 'Duration': False, 'Color': (100, 190, 100), 'Ready Color': (220, 220, 220)}, 'Dad': {'Name': 'Freeze Player', 'Wait': 14, 'Duration': 5, 'Color': (114, 155, 207), 'Ready Color': (200, 200, 200)}}
 
     # mutator = {'jump': 500000, 'ball size': 50, 'goal height': 75, 'goal width': 10, 'kick': 2}  # Big (not recommended, still testing)
     # mutator = {'jump': 10000, 'kick': 5, 'speed': 300}  # Speedy
+
+    # powers = {'Nuwan': {'Name': 'Dash', 'Wait': 20}, 'Mihir': {'Name': 'Half Back', 'Wait': 20}, 'Dad': {'Name': 'Freeze Player', 'Wait': 20}}
+
+    # dtap stands for Double Tap
+    dtap_time = 0.3
+    p1_dtap_start, p2_dtap_start = {'right': False, 'left': False}, {'right': False, 'left': False}
+    boost_force = 30000000
 
     num_cleats = 9
     num_heads = 3
@@ -874,10 +1034,8 @@ if __name__ == "__main__":
 
     fullscreen = False
 
+    # Can also be done through Pygame
     screen_size = ctypes.windll.user32.GetSystemMetrics(0), ctypes.windll.user32.GetSystemMetrics(1)
-
-    x, y = 100, 100
-    os.environ['SDL_VIDEO_WINDOW_POS'] = "%d,%d" % (x, y)
 
     width = 1600
     height = 900
@@ -892,21 +1050,33 @@ if __name__ == "__main__":
 
     draw_options = pymunk.pygame_util.DrawOptions(screen)
 
-    goal_text_color = (230, 230, 230)
+    background_color = (33, 33, 33)
+
+    off_white_1 = (230, 230, 230)
+
+    head_outline_color = off_white_1
+    head_outline_width = 5
+
+    goal_text_color = off_white_1
     goal_font = pygame.font.Font(mypath('Font.TTF'), 200)
     goal_text = goal_font.render('Goal!', True, goal_text_color)
     goal_text_rect = goal_text.get_rect()
     goal_text_rect.center = (width // 2, 350)
 
-    score_text_color = (220, 220, 220)
-    score_font = pygame.font.Font(mypath('Squarely.TTF'), 115)
-    score_text = score_font.render('0 - 0', True, score_text_color)
+    score_outline_size = 5
+    score_text_color = off_white_1
+    score_font = pygame.font.Font(mypath('Squarely-R.TTF'), 115)
+    score_text = outline_text("0 - 0", score_font, background_color, score_text_color, score_outline_size)
+    score_text_rect = score_text.get_rect()
 
-    # gametime_text_color = (220, 220, 220)
-    # gametime_font = pygame.font.Font(mypath('Squarely.TTF'), 40)
-    # gametime_text = gametime_font.render('6:59', True, gametime_text_color)
-    # gametime_text_rect = gametime_text.get_rect()
-    # gametime_text_rect.center = (width // 2, 170)
+    overtime_text_color = off_white_1
+    overtime_font = pygame.font.Font(mypath('Font.TTF'), 200)
+    overtime_text = goal_font.render("OVERTIME!", True, overtime_text_color)
+    overtime_text_rect = overtime_text.get_rect()
+    overtime_text_rect.center = (width // 2, 350)
+
+    gametime_text_color = off_white_1
+    gametime_font = pygame.font.Font(mypath('Squarely-R.TTF'), 40)
 
     goal_height = 250 + modify('goal height')
     goal_width = 75 + modify('goal width')
@@ -925,6 +1095,7 @@ if __name__ == "__main__":
     floor_object = border[-2]
 
     # pb stands for progress bar
+    pb_outline_color = (100, 100, 100)
     pb_x, pb_y = 30, 30
     pb_rounding = 10
     pb_width, pb_height = 150, 25
@@ -932,7 +1103,7 @@ if __name__ == "__main__":
 
     ball_size = 45 + modify('ball size')
     max_initial_ball_vel = 275
-    ball_start_x, ball_start_y = width / 2, 200
+    ball_start_x, ball_start_y = width / 2, 220
     ball_image = pygame.image.load(mypath("Soccer Ball.png"))
     ball_surface = pygame.transform.scale(ball_image, (ball_size, ball_size))
     original_ball_surface = ball_surface
@@ -974,7 +1145,7 @@ if __name__ == "__main__":
 
     # playsound.playsound('', False)
     kick_sound = pygame.mixer.Sound(mypath('kick_ball.wav'))
-    kick_sound.set_volume(0.95)
+    kick_sound.set_volume(1)
 
     countdown_sound = pygame.mixer.Sound(mypath('Countdown.mp3'))
     countdown_sound.set_volume(0.75)
@@ -985,8 +1156,11 @@ if __name__ == "__main__":
     start_game_sound = pygame.mixer.Sound(mypath('Start_Game.wav'))
     start_game_sound.set_volume(0.75)
 
+    # overtime_sound = pygame.mixer.Sound(mypath(''))
+    # overtime_sound.set_volume(0.75)
+
     pygame.mixer.music.load(mypath('background_crowd.wav'))
-    pygame.mixer.music.set_volume(0.15)
+    pygame.mixer.music.set_volume(0.1)
 
     goal_sfx = 1
     cheer_sfx = 1
@@ -1006,24 +1180,29 @@ if __name__ == "__main__":
     sw_outline_rounding = 60
     sw_smoothing = 5
 
-    # dtap stands for Double Tap
-    dtap_time = 0.3
-    p1_dtap_start, p2_dtap_start = {'right': False, 'left': False}, {'right': False, 'left': False}
-    boost_delay = 20
-    boost_force = 30000000
-
     scored = False
+    overtime = False
 
     next_screen = 'customize'
 
     # fix customize and playing variables
     # do next what you have to do (next_screen)
 
+    game_info = (10, (5, 0))
+    end_score, end_time = game_info[0], game_info[1][0] * 60 + game_info[1][1]
+
+    time_left = end_time
     while True:
         customization_screen(p1_start_info, p2_start_info)
 
-        p1_boost_timer, p2_boost_timer = Timer(boost_delay), Timer(boost_delay)
-        p1_boost_timer.start()
-        p2_boost_timer.start()
-        winner = play_game(10)
+        p1_skill_timer, p2_skill_timer = Timer(p1_skill_delay), Timer(p2_skill_delay)
+        p1_skill_length_timer, p2_skill_length_timer = Timer(p1_skill_duration), Timer(p2_skill_duration)
+
+        p1_skill_timer.start()
+        p2_skill_timer.start()
+
+        game_timer = Timer(end_time)
+        game_timer.start()
+
+        winner = play_game()
         next_screen = end_screen(winner)
