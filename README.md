@@ -56,7 +56,9 @@ Each player has a powerup indicator in the top corner.
 - Window resizing works during play using keys or by dragging the edges.
 - **Note:** The "What a save!" goal sound effect that happens sometimes is intentional trash talk by the announcer.
 
+## Demo
 
+[HeadSoccerDemo.webm](https://github.com/user-attachments/assets/c4622361-ac44-4430-8afb-5d2d5782d7ca)
 
 ## Requirements
 
