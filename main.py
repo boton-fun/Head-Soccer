@@ -19,6 +19,8 @@
 # pong
 
 # exe
+
+
 import os
 os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 
@@ -30,9 +32,15 @@ import math
 import time
 import random
 import sys
-import ctypes
-from ctypes import wintypes
 from collections import deque, Counter
+
+try:
+    import ctypes
+    from ctypes import wintypes
+    ON_WINDOWS = True
+except:
+    print("ctypes is not available, some Windows-specific features will not work")
+    ON_WINDOWS = False
 
 pygame.init()
 pygame.mixer.init()
@@ -100,7 +108,8 @@ def window_key_control(e):
     global fake_screen, fullscreen, current_width, current_height
 
     if e.type == pygame.KEYDOWN and e.key == pygame.K_u:   # Fullscreen
-        recenter_window()
+        if ON_WINDOWS:
+            recenter_window()
 
         if not fullscreen:
             fake_screen = pygame.display.set_mode(screen_size, pygame.FULLSCREEN)
@@ -110,7 +119,8 @@ def window_key_control(e):
         fullscreen = not fullscreen
 
     if e.type == pygame.KEYDOWN and e.key == pygame.K_p:  # Recenter
-        recenter_window()
+        if ON_WINDOWS:
+            recenter_window()
 
     if e.type == pygame.KEYDOWN and e.key == pygame.K_i:
         current_width -= 50
@@ -1166,16 +1176,22 @@ if __name__ == "__main__":
     fullscreen = False
 
     # Can also be done through Pygame
-    screen_size = ctypes.windll.user32.GetSystemMetrics(0), ctypes.windll.user32.GetSystemMetrics(1)
+    info = pygame.display.Info()
+    screen_size = (info.current_w, info.current_h)
+    print(screen_size)
 
     width = 1600
     height = 900
-    current_width = width
-    current_height = height
-    display_window_width = width
-    display_window_height = height
+    initial_window_scale = screen_size[0]/1920
+    print(initial_window_scale)
+    initial_display_width = int(width * initial_window_scale)
+    initial_display_height = int(height * initial_window_scale)
+    current_width = initial_display_width
+    current_height = initial_display_height
+    display_window_width = initial_display_width
+    display_window_height = initial_display_height
     fake_screen = pygame.display.set_mode((current_width, current_height), pygame.RESIZABLE)
-    screen = fake_screen.copy()
+    screen = pygame.Surface((width, height))
     pygame.display.set_caption('Head Soccer')
     clock = pygame.time.Clock()
 
