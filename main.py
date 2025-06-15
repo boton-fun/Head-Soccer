@@ -1,16 +1,12 @@
-# ToDo :
+# ToDo:
 # Sound effect when powerup ready
-# Way tp tell if frozen
 #   color filter?
 # Fix Phase through walls
 # FPS
-# Change impulse to gradually changing velocity
 # End screen
 # shape filter
 # fix big second jump glitch
-# fix leg starting position glitch
-# Fix other bugs
-# boost cooldown indicator
+# fix leg starting position
 
 # Add freeze power up
 # big jump
@@ -36,6 +32,7 @@ import random
 import sys
 import ctypes
 from ctypes import wintypes
+from collections import deque, Counter
 
 pygame.init()
 pygame.mixer.init()
@@ -141,7 +138,7 @@ def draw_any():
     current_height = fake_screen.get_rect().size[1]
     fake_screen.blit(pygame.transform.scale(screen, (current_width, current_height)), (0, 0))
     pygame.display.flip()
-    
+
 
 class Timer:
     def __init__(self, length):
@@ -177,7 +174,18 @@ def modify(key):
 
 
 def reset_all():
+    global p1_skill_timer, p2_skill_timer, score_text
     print('Reset all')
+
+    del p1_skill_timer
+    del p2_skill_timer
+
+    player_1.delete()
+    player_2.delete()
+    score_text = outline_text("0 - 0", score_font, background_color, score_text_color, score_outline_size)
+
+    background_crowd_sound.set_volume(0)
+
     # player var
     # score
 
@@ -198,7 +206,8 @@ def end_screen(w):
 def play_game():
     global scored, score_text
 
-    pygame.mixer.music.play()
+    # pygame.mixer.music.play()
+    background_crowd_sound.set_volume(0.1)
     while True:
         space.step(dt)
 
@@ -223,16 +232,10 @@ def play_game():
             game_timer.resume()
 
         if player_1.score >= end_score:
-            player_1.delete()
-            player_2.delete()
-            score_text = outline_text("0 - 0", score_font, background_color, score_text_color, score_outline_size)
-            # score_text = score_font.render('0 - 0', True, score_text_color)
+            reset_all()
             return 'player 1'
         elif player_2.score >= end_score:
-            player_1.delete()
-            player_2.delete()
-            score_text = outline_text("0 - 0", score_font, background_color, score_text_color, score_outline_size)
-            # score_text = score_font.render('0 - 0', True, score_text_color)
+            reset_all()
             return 'player 2'
 
         score_text = outline_text(str(player_2.score) + ' - ' + str(player_1.score), score_font, background_color, score_text_color, score_outline_size)
@@ -247,8 +250,8 @@ def play_game():
         clock.tick(fps)
 
 
-def customization_screen(p1_info, p2_info):
-    global player_1_head, player_2_head, player_1_cleat, player_2_cleat, player_1, player_2, p1_skill_delay, p2_skill_delay, p1_skill_duration, p2_skill_duration
+def customization_screen():
+    global player_1_head, player_2_head, player_1_cleat, player_2_cleat, player_1, player_2, p1_skill_delay, p2_skill_delay, p1_skill_duration, p2_skill_duration, p1_info, p2_info
     global customize
 
     # hs means head selection
@@ -296,6 +299,9 @@ def customization_screen(p1_info, p2_info):
 
         screen.fill(background_color)
 
+        update_floating_particles()
+        draw_floating_particles()
+
         title_font = pygame.font.Font(mypath('Font.TTF'), 200)
         title_text = title_font.render('Head Soccer', True, (235, 235, 235))
 
@@ -306,8 +312,19 @@ def customization_screen(p1_info, p2_info):
         title_text_rect.center = (width // 2, 200)
         screen.blit(title_text, title_text_rect)
 
-        pygame.draw.rect(screen, (50, 50, 50), pygame.Rect(width - sw_pos_info[0] - sw_outline_size[0] // 2, sw_pos_info[1] - sw_outline_size[1] // 2 + p1_outline_pos * sw_pos_info[2], sw_outline_size[0], sw_outline_size[1]), 0, sw_outline_rounding)
-        pygame.draw.rect(screen, (50, 50, 50), pygame.Rect(sw_pos_info[0] - sw_outline_size[0] // 2, sw_pos_info[1] - sw_outline_size[1] // 2 + p2_outline_pos * sw_pos_info[2], sw_outline_size[0], sw_outline_size[1]), 0, sw_outline_rounding)
+        box_surface = pygame.Surface((sw_outline_size[0], sw_outline_size[1]), pygame.SRCALPHA)
+        box_surface.fill((0, 0, 0, 0))
+        pygame.draw.rect(box_surface, (50, 50, 50, 180), box_surface.get_rect(), border_radius=sw_outline_rounding)
+        screen.blit(box_surface, (
+            width - sw_pos_info[0] - sw_outline_size[0] // 2,
+            sw_pos_info[1] - sw_outline_size[1] // 2 + p1_outline_pos * sw_pos_info[2]
+        ))
+        screen.blit(box_surface, (
+            sw_pos_info[0] - sw_outline_size[0] // 2,
+            sw_pos_info[1] - sw_outline_size[1] // 2 + p2_outline_pos * sw_pos_info[2]
+        ))
+        # pygame.draw.rect(screen, (50, 50, 50), pygame.Rect(width - sw_pos_info[0] - sw_outline_size[0] // 2, sw_pos_info[1] - sw_outline_size[1] // 2 + p1_outline_pos * sw_pos_info[2], sw_outline_size[0], sw_outline_size[1]), 0, sw_outline_rounding)
+        # pygame.draw.rect(screen, (50, 50, 50), pygame.Rect(sw_pos_info[0] - sw_outline_size[0] // 2, sw_pos_info[1] - sw_outline_size[1] // 2 + p2_outline_pos * sw_pos_info[2], sw_outline_size[0], sw_outline_size[1]), 0, sw_outline_rounding)
 
         selection_wheel(p1_hs_display, p1_hs_angle, p1_hs_shift, p1_hs_pos, 'head')
         selection_wheel(p1_cs_display, p1_cs_angle, p1_cs_shift, p1_cs_pos, 'cleat')
@@ -340,8 +357,23 @@ def customization_screen(p1_info, p2_info):
                     if int(original_title_text.get_height() * (d - i) / d) > 0:
                         screen.fill(background_color)
 
-                        pygame.draw.rect(screen, (50, 50, 50), pygame.Rect(width - sw_pos_info[0] - sw_outline_size[0] // 2, sw_pos_info[1] - sw_outline_size[1] // 2 + p1_outline_pos * sw_pos_info[2], sw_outline_size[0], sw_outline_size[1]), 0, sw_outline_rounding)
-                        pygame.draw.rect(screen, (50, 50, 50), pygame.Rect(sw_pos_info[0] - sw_outline_size[0] // 2, sw_pos_info[1] - sw_outline_size[1] // 2 + p2_outline_pos * sw_pos_info[2], sw_outline_size[0], sw_outline_size[1]), 0, sw_outline_rounding)
+                        update_floating_particles()
+                        draw_floating_particles()
+
+                        box_surface = pygame.Surface((sw_outline_size[0], sw_outline_size[1]), pygame.SRCALPHA)
+                        box_surface.fill((0, 0, 0, 0))
+                        pygame.draw.rect(box_surface, (50, 50, 50, 180), box_surface.get_rect(),
+                                         border_radius=sw_outline_rounding)
+                        screen.blit(box_surface, (
+                            width - sw_pos_info[0] - sw_outline_size[0] // 2,
+                            sw_pos_info[1] - sw_outline_size[1] // 2 + p1_outline_pos * sw_pos_info[2]
+                        ))
+                        screen.blit(box_surface, (
+                            sw_pos_info[0] - sw_outline_size[0] // 2,
+                            sw_pos_info[1] - sw_outline_size[1] // 2 + p2_outline_pos * sw_pos_info[2]
+                        ))
+                        # pygame.draw.rect(screen, (50, 50, 50), pygame.Rect(width - sw_pos_info[0] - sw_outline_size[0] // 2, sw_pos_info[1] - sw_outline_size[1] // 2 + p1_outline_pos * sw_pos_info[2], sw_outline_size[0], sw_outline_size[1]), 0, sw_outline_rounding)
+                        # pygame.draw.rect(screen, (50, 50, 50), pygame.Rect(sw_pos_info[0] - sw_outline_size[0] // 2, sw_pos_info[1] - sw_outline_size[1] // 2 + p2_outline_pos * sw_pos_info[2], sw_outline_size[0], sw_outline_size[1]), 0, sw_outline_rounding)
 
                         selection_wheel(p1_hs_display, p1_hs_angle, p1_hs_shift, p1_hs_pos, 'head')
                         selection_wheel(p1_cs_display, p1_cs_angle, p1_cs_shift, p1_cs_pos, 'cleat')
@@ -365,6 +397,9 @@ def customization_screen(p1_info, p2_info):
 
                 player_1_cleat = p1_cs_display[2]
                 player_2_cleat = p2_cs_display[2]
+
+                p1_info = {'head': p1_hs_display[2], 'cleat': p1_cs_display[2]}
+                p2_info = {'head': p2_hs_display[2], 'cleat': p2_cs_display[2]}
 
                 p1_skill_delay, p2_skill_delay = powers[player_1_head]['Wait'], powers[player_2_head]['Wait']
                 p1_skill_duration, p2_skill_duration = powers[player_1_head]['Duration'], powers[player_2_head]['Duration']
@@ -582,6 +617,7 @@ def update_and_draw():
         if not overtime:
             screen.blit(goal_text, goal_text_rect)
         else:
+            scored = False
             screen.blit(overtime_text, overtime_text_rect)
         player_1.frozen = False
         player_2.frozen = False
@@ -608,10 +644,11 @@ def reset():
     space.remove(ball.body, ball.shape)
     ball = Ball(ball_start_x, ball_start_y)
 
+
     player_1.reset()
     player_2.reset()
 
-    for event in pygame.event.get():
+    for _ in pygame.event.get():
         pass
 
 
@@ -644,6 +681,100 @@ def draw_borders():
     pygame.draw.polygon(screen, (55, 55, 55), left_curve_points + [(0, 0)])
     pygame.draw.polygon(screen, (55, 55, 55), right_curve_points + [(width, 0)])
     pygame.draw.polygon(screen, (55, 55, 55), floor + [(0, height), (width, height)])
+
+
+def update_floating_particles():
+    mouse_trail.append(pygame.mouse.get_pos())
+    for p in particles:
+        p.update(mouse_trail, particles)
+
+
+def draw_floating_particles():
+    line_layer = pygame.Surface((width, height), pygame.SRCALPHA)
+    for i, p1 in enumerate(particles):
+        for p2 in particles[i + 1:]:
+            dx = p1.x - p2.x
+            dy = p1.y - p2.y
+            dist = math.hypot(dx, dy)
+            if dist < max_distance:
+                alpha = int(255 * (1 - dist / max_distance))
+                color = (200, 200, 200, alpha)
+                pygame.draw.aaline(line_layer, color, (p1.x, p1.y), (p2.x, p2.y))
+    screen.blit(line_layer, (0, 0))
+    for p in particles:
+        p.draw(screen)
+
+
+class DotParticle:
+    def __init__(self, width, height):
+        self.screen_width = width
+        self.screen_height = height
+        self.x = random.uniform(0, width)
+        self.y = random.uniform(0, height)
+        angle = random.uniform(0, 2 * math.pi)
+        speed = random.uniform(0.5, 1.2)
+        self.base_dx = math.cos(angle) * speed
+        self.base_dy = math.sin(angle) * speed
+        self.vel_dx = 0
+        self.vel_dy = 0
+        self.radius = random.randint(2, 3)
+        self.color = (200, 200, 200)
+
+    def update(self, mouse_trail, particles):
+        for mx, my in mouse_trail:
+            dx = self.x - mx
+            dy = self.y - my
+            dist = math.hypot(dx, dy)
+            repel_radius = 120
+            if dist < repel_radius and dist > 1:
+                strength = (repel_radius - dist) / repel_radius
+                power = 1.2
+                factor = (strength ** 2) * power
+                self.vel_dx += (dx / dist) * factor
+                self.vel_dy += (dy / dist) * factor
+        self.vel_dx *= 0.9
+        self.vel_dy *= 0.9
+        self.x += self.base_dx + self.vel_dx
+        self.y += self.base_dy + self.vel_dy
+        if self.x < -10 or self.x > self.screen_width + 10 or self.y < -10 or self.y > self.screen_height + 10:
+            self.reenter_from_least_populated_edge(particles)
+
+    def reenter_from_least_populated_edge(self, particles):
+        edge_counts = Counter()
+        margin = 100
+        for p in particles:
+            if p == self:
+                continue
+            if p.x < margin:
+                edge_counts["left"] += 1
+            elif p.x > self.screen_width - margin:
+                edge_counts["right"] += 1
+            if p.y < margin:
+                edge_counts["top"] += 1
+            elif p.y > self.screen_height - margin:
+                edge_counts["bottom"] += 1
+        least = min(["left", "right", "top", "bottom"], key=lambda k: edge_counts[k])
+        if least == "left":
+            self.x = -5
+            self.y = random.uniform(0, self.screen_height)
+            self.base_dx = abs(self.base_dx)
+        elif least == "right":
+            self.x = self.screen_width + 5
+            self.y = random.uniform(0, self.screen_height)
+            self.base_dx = -abs(self.base_dx)
+        elif least == "top":
+            self.x = random.uniform(0, self.screen_width)
+            self.y = -5
+            self.base_dy = abs(self.base_dy)
+        elif least == "bottom":
+            self.x = random.uniform(0, self.screen_width)
+            self.y = self.screen_height + 5
+            self.base_dy = -abs(self.base_dy)
+        self.vel_dx = 0
+        self.vel_dy = 0
+
+    def draw(self, surf):
+        pygame.draw.circle(surf, self.color, (int(self.x), int(self.y)), self.radius)
 
 
 # Makes it easier to set motor parameters and update the motors
@@ -1159,14 +1290,21 @@ if __name__ == "__main__":
     # overtime_sound = pygame.mixer.Sound(mypath(''))
     # overtime_sound.set_volume(0.75)
 
-    pygame.mixer.music.load(mypath('background_crowd.wav'))
-    pygame.mixer.music.set_volume(0.1)
+    # background_cheer = True
+    background_crowd_sound = pygame.mixer.Sound(mypath('background_crowd.wav'))
+    background_crowd_sound.set_volume(0)
+    pygame.mixer.Sound.play(background_crowd_sound)
+    # pygame.mixer.music.load(mypath('background_crowd.wav'))
+    # pygame.mixer.music.set_volume(0.1)
 
     goal_sfx = 1
     cheer_sfx = 1
 
     p1_start_info = {'head': 'Mihir', 'cleat': 8}
     p2_start_info = {'head': 'Nuwan', 'cleat': 3}
+
+    p1_info = p1_start_info
+    p2_info = p2_start_info
 
     # sw stands for Selection Wheel
     sw_pos_info = [500, 500, 200]  # [x, y, y diff to cleat wheel]
@@ -1180,6 +1318,10 @@ if __name__ == "__main__":
     sw_outline_rounding = 60
     sw_smoothing = 5
 
+    particles = [DotParticle(width, height) for _ in range(80)]
+    mouse_trail = deque(maxlen=10)
+    max_distance = 100
+
     scored = False
     overtime = False
 
@@ -1188,12 +1330,12 @@ if __name__ == "__main__":
     # fix customize and playing variables
     # do next what you have to do (next_screen)
 
-    game_info = (10, (5, 0))
+    game_info = (7, (5, 0))
     end_score, end_time = game_info[0], game_info[1][0] * 60 + game_info[1][1]
 
     time_left = end_time
     while True:
-        customization_screen(p1_start_info, p2_start_info)
+        customization_screen()
 
         p1_skill_timer, p2_skill_timer = Timer(p1_skill_delay), Timer(p2_skill_delay)
         p1_skill_length_timer, p2_skill_length_timer = Timer(p1_skill_duration), Timer(p2_skill_duration)
