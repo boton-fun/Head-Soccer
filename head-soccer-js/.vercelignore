@@ -1,0 +1,11 @@
+simple-server.js
+.git
+.gitignore
+*.md
+test-*.html
+.vscode
+.idea
+node_modules
+.claude
+*.log
+.DS_Store

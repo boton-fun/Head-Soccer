@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Head Soccer - Gameplay</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            min-height: 100vh;
+            color: white;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Fullscreen container with space theme */
+        #game-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: linear-gradient(135deg, #0c0c2e 0%, #1a0c3e 25%, #2d1b5e 50%, #0c0c2e 75%, #000 100%);
+            overflow: hidden;
+        }
+
+        /* Canvas for animated background matching other pages */
+        #backgroundCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        #game-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        /* Top UI Bar */
+        #top-ui-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background: linear-gradient(135deg, rgba(0,0,0,0.8), rgba(0,0,0,0.6));
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            z-index: 10;
+            border-bottom: 2px solid rgba(255,255,255,0.1);
+        }
+
+        #top-left-controls {
+            display: flex;
+            gap: 15px;
+        }
+
+        #game-header {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+        }
+
+        #timer-container {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+            z-index: 15;
+        }
+
+        #timer-label {
+            font-size: 14px;
+            color: #ccc;
+            font-weight: bold;
+            letter-spacing: 1px;
+            margin-bottom: 3px;
+        }
+
+        #timer-display {
+            font-size: 32px;
+            color: #fff;
+            font-weight: bold;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.8), 0 0 20px rgba(255,255,255,0.3);
+            font-family: 'Courier New', monospace;
+            background: rgba(0,0,0,0.7);
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+
+        #game-status {
+            font-size: 14px;
+            color: #4CAF50;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Score Container */
+        #score-container {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            background: linear-gradient(135deg, rgba(0,0,0,0.9), rgba(0,0,0,0.7));
+            padding: 15px 30px;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            z-index: 5;
+        }
+
+        .player-section {
+            text-align: center;
+            min-width: 100px;
+        }
+
+        .player-name {
+            font-size: 12px;
+            color: #ccc;
+            font-weight: bold;
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .player-score {
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 0 3px 6px rgba(0,0,0,0.8);
+            font-family: 'Arial Black', sans-serif;
+        }
+
+        #player1-section .player-score {
+            color: #2196F3;
+        }
+
+        #player2-section .player-score {
+            color: #F44336;
+        }
+
+        #score-separator {
+            font-size: 24px;
+            color: #fff;
+            font-weight: bold;
+            margin: 0 10px;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+        }
+        
+        #debug-info {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #00ff00;
+            font-family: monospace;
+            font-size: 14px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        
+        /* Button Styles */
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            backdrop-filter: blur(10px);
+        }
+
+        #back-button {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        #back-button:hover {
+            background: linear-gradient(135deg, #d32f2f, #b71c1c);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+        }
+        
+        #pause-button {
+            background: linear-gradient(135deg, #4CAF50, #388E3C);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        #pause-button:hover {
+            background: linear-gradient(135deg, #388E3C, #2E7D32);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+        }
+        
+        #controls-button {
+            background: linear-gradient(135deg, #FFC107, #FF9800);
+            color: white;
+            border: 1px solid rgba(255,255,255,0.2);
+            font-weight: bold;
+        }
+        
+        #controls-button:hover {
+            background: linear-gradient(135deg, #FFD54F, #FFC107);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 193, 7, 0.4);
+        }
+
+        /* Controls Popup */
+        #controls-popup {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+
+        .controls-content {
+            background: linear-gradient(135deg, rgba(15, 15, 50, 0.95), rgba(30, 30, 80, 0.95));
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 450px;
+            width: 85%;
+            text-align: center;
+            color: white;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.7);
+        }
+
+        .controls-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #FFC107;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .controls-section {
+            margin-bottom: 15px;
+            text-align: left;
+        }
+
+        .controls-section h3 {
+            color: #4CAF50;
+            font-size: 16px;
+            margin-bottom: 8px;
+            border-bottom: 2px solid rgba(76, 175, 80, 0.3);
+            padding-bottom: 3px;
+        }
+
+        .control-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 6px 0;
+            padding: 3px 0;
+        }
+
+        .control-key {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            padding: 4px 8px;
+            font-weight: bold;
+            min-width: 60px;
+            text-align: center;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+
+        .control-action {
+            flex: 1;
+            margin-left: 12px;
+            color: #ccc;
+            font-size: 14px;
+        }
+
+        #close-controls {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        #close-controls:hover {
+            background: linear-gradient(135deg, #d32f2f, #b71c1c);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+        }
+
+        
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <!-- Animated background canvas matching other pages -->
+        <canvas id="backgroundCanvas"></canvas>
+        
+        <!-- Top UI Bar -->
+        <div id="top-ui-bar">
+            <div id="top-left-controls">
+                <button id="back-button" onclick="window.location.href='main-menu.html'">
+                    Menu
+                </button>
+                <button id="pause-button" onclick="toggleGamePause()">
+                    Pause
+                </button>
+            </div>
+            
+            <div id="game-header">
+                <!-- Timer moved to separate container for centering -->
+            </div>
+            
+            <div id="top-right-info">
+                <button id="controls-button" onclick="showControlsPopup()">
+                    Controls
+                </button>
+            </div>
+        </div>
+
+        <!-- Centered Timer -->
+        <div id="timer-container">
+            <div id="timer-label">TIME</div>
+            <div id="timer-display">2:00</div>
+        </div>
+
+        <!-- Score Display -->
+        <div id="score-container">
+            <div id="player1-section" class="player-section">
+                <div id="player1-name" class="player-name">Player 1</div>
+                <div id="player1-score" class="player-score">0</div>
+            </div>
+            
+            <div id="score-separator">VS</div>
+            
+            <div id="player2-section" class="player-section">
+                <div id="player2-name" class="player-name">Player 2</div>
+                <div id="player2-score" class="player-score">0</div>
+            </div>
+        </div>
+
+        
+        <div id="debug-info">
+            <div>FPS: <span id="fps">0</span></div>
+            <div>P1: <span id="p1pos">0,0</span></div>
+            <div>P2: <span id="p2pos">0,0</span></div>
+            <div>Ball: <span id="ballpos">0,0</span></div>
+        </div>
+        
+        <!-- Controls Popup -->
+        <div id="controls-popup">
+            <div class="controls-content">
+                <h2 class="controls-title">Game Controls</h2>
+                
+                <div class="controls-section">
+                    <h3>Player Controls</h3>
+                    <div class="control-item">
+                        <span class="control-key">←</span>
+                        <span class="control-action">Move Left</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">→</span>
+                        <span class="control-action">Move Right</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">↑</span>
+                        <span class="control-action">Jump</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">↓</span>
+                        <span class="control-action">Kick Ball</span>
+                    </div>
+                </div>
+                
+                <div class="controls-section">
+                    <h3>General Controls</h3>
+                    <div class="control-item">
+                        <span class="control-key">P</span>
+                        <span class="control-action">Pause/Resume Game</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">R</span>
+                        <span class="control-action">Restart Game</span>
+                    </div>
+                    <div class="control-item">
+                        <span class="control-key">D</span>
+                        <span class="control-action">Toggle Debug Info</span>
+                    </div>
+                </div>
+                
+                <button id="close-controls" onclick="hideControlsPopup()">Close</button>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- Phaser 3 -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.70.0/dist/phaser.min.js"></script>
+    
+    <!-- Game scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/physics-constants.js"></script>
+    <script src="js/game-scene.js"></script>
+    
+    <script>
+        // Get game settings from sessionStorage
+        const gameSettings = JSON.parse(sessionStorage.getItem('gameSettings') || '{}');
+        
+        // Update player names if available
+        if (gameSettings.player1Name) {
+            document.getElementById('player1-name').textContent = gameSettings.player1Name;
+        } else {
+            // Default to AI for Player 1
+            document.getElementById('player1-name').textContent = 'AI';
+        }
+        if (gameSettings.player2Name) {
+            document.getElementById('player2-name').textContent = gameSettings.player2Name;
+        }
+        
+        // Initialize Phaser game
+        const config = {
+            type: Phaser.WEBGL,
+            width: window.innerWidth,
+            height: window.innerHeight,
+            parent: 'game-container',
+            scale: {
+                mode: Phaser.Scale.RESIZE,
+                autoCenter: Phaser.Scale.CENTER_BOTH
+            },
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    gravity: { y: 0 }, // We handle gravity manually
+                    debug: false
+                }
+            },
+            scene: GameScene,
+            fps: {
+                target: 60,
+                forceSetTimeOut: true
+            }
+        };
+        
+        const game = new Phaser.Game(config);
+        
+        // Initialize particle background (matching other pages)
+        initializeParticleBackground();
+        
+        // Timer functionality
+        let timeRemaining = 120; // 2 minutes
+        let timerInterval = null;
+        let timerPaused = false;
+        
+        function updateTimer() {
+            if (!timerPaused) {
+                const minutes = Math.floor(timeRemaining / 60);
+                const seconds = timeRemaining % 60;
+                document.getElementById('timer-display').textContent = 
+                    `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    // Notify game scene of time expiry
+                    if (window.gameScene) {
+                        window.gameScene.onTimeExpired();
+                    }
+                    return;
+                }
+                timeRemaining--;
+            }
+        }
+        
+        // Timer control functions
+        window.pauseGameTimer = function() {
+            timerPaused = true;
+            console.log('Timer paused');
+        };
+        
+        window.resumeGameTimer = function() {
+            timerPaused = false;
+            console.log('Timer resumed');
+        };
+        
+        window.resetGameTimer = function() {
+            timeRemaining = 120; // Reset to 2 minutes
+            timerPaused = false;
+            console.log('Timer reset to 2:00');
+        };
+        
+        // Controls popup functions
+        window.showControlsPopup = function() {
+            const popup = document.getElementById('controls-popup');
+            popup.style.display = 'flex';
+            // Pause the game silently (without showing pause screen)
+            if (window.gameScene && !window.gameScene.isPaused) {
+                window.gameScene.isPaused = true;
+                window.pauseGameTimer();
+            }
+        };
+        
+        window.hideControlsPopup = function() {
+            const popup = document.getElementById('controls-popup');
+            popup.style.display = 'none';
+            // Resume the game silently
+            if (window.gameScene && window.gameScene.isPaused) {
+                window.gameScene.isPaused = false;
+                window.resumeGameTimer();
+            }
+        };
+        
+        // Start timer
+        timerInterval = setInterval(updateTimer, 1000);
+        
+        // Pause button functionality
+        window.toggleGamePause = function() {
+            if (window.gameScene) {
+                window.gameScene.togglePause();
+                updatePauseButton();
+            }
+        };
+        
+        window.updatePauseButton = function() {
+            const pauseBtn = document.getElementById('pause-button');
+            if (pauseBtn && window.gameScene) {
+                if (window.gameScene.isPaused) {
+                    pauseBtn.textContent = 'Resume';
+                    pauseBtn.style.background = '#FF9800';
+                } else {
+                    pauseBtn.textContent = 'Pause';
+                    pauseBtn.style.background = '#4CAF50';
+                }
+            }
+        };
+        
+        // Toggle debug info with D key and handle ESC for controls popup
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'd' || e.key === 'D') {
+                const debugInfo = document.getElementById('debug-info');
+                debugInfo.style.display = debugInfo.style.display === 'none' ? 'block' : 'none';
+            } else if (e.key === 'Escape') {
+                const popup = document.getElementById('controls-popup');
+                if (popup.style.display === 'flex') {
+                    hideControlsPopup();
+                }
+            }
+        });
+        
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+            }
+        });
+
+        // Particle background system (matching main menu style)
+        function initializeParticleBackground() {
+            const canvas = document.getElementById('backgroundCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            function resizeCanvas() {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Simple particle system
+            const particles = [];
+            const numParticles = 50;
+            
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.vx = (Math.random() - 0.5) * 1;
+                    this.vy = (Math.random() - 0.5) * 1;
+                    this.size = Math.random() * 3 + 0.5;
+                    this.opacity = Math.random() * 0.8 + 0.2;
+                    this.color = this.getRandomSpaceColor();
+                    this.twinkle = Math.random() * Math.PI * 2;
+                }
+                
+                getRandomSpaceColor() {
+                    const colors = ['#ffffff', '#66ccff', '#ff6699', '#ffcc66', '#66ff99'];
+                    return colors[Math.floor(Math.random() * colors.length)];
+                }
+                
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.twinkle += 0.05;
+                    
+                    if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                    if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+                }
+                
+                draw() {
+                    ctx.save();
+                    const twinkleOpacity = this.opacity * (0.5 + 0.5 * Math.sin(this.twinkle));
+                    ctx.globalAlpha = twinkleOpacity;
+                    ctx.fillStyle = this.color;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+            
+            // Initialize particles
+            for (let i = 0; i < numParticles; i++) {
+                particles.push(new Particle());
+            }
+            
+            // Animation loop
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                particles.forEach(particle => {
+                    particle.update();
+                    particle.draw();
+                });
+                
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }
+    </script>
+</body>
+</html>

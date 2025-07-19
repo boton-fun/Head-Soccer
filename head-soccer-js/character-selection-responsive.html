@@ -1,0 +1,1260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Head Soccer - Character Selection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            min-height: 100vh;
+            color: white;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Main container - same as main menu */
+        .main-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #0c0c2e 0%, #1a0c3e 25%, #2d1b5e 50%, #0c0c2e 75%, #000 100%);
+        }
+        
+        /* Canvas for animated background - same as main menu */
+        #backgroundCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        /* Content wrapper */
+        .content-wrapper {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            animation: fadeIn 1.5s ease-out;
+            width: 90%;
+            max-width: 1200px;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Game title styling */
+        .game-title {
+            font-size: 3rem;
+            font-weight: bold;
+            letter-spacing: 5px;
+            margin-bottom: 1.5rem;
+            color: white;
+            text-shadow: 
+                0 0 10px rgba(255, 255, 255, 0.5),
+                0 0 20px rgba(255, 255, 255, 0.3),
+                0 0 30px rgba(255, 255, 255, 0.1);
+            text-transform: uppercase;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 1; }
+        }
+        
+        /* Canvas container - better responsive fit */
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            max-width: 1200px;
+            height: auto;
+            border-radius: 20px;
+            cursor: default;
+            margin: 0 auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Player section containers */
+        .player-section {
+            position: absolute;
+            background: rgba(26, 26, 46, 0.8);
+            border-radius: 25px;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+        
+        .player-section:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.7);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .player-section.player-1 {
+            left: 50px;
+            top: 120px;
+            width: 480px;
+            height: 400px;
+        }
+        
+        .player-section.player-2 {
+            right: 50px;
+            top: 120px;
+            width: 480px;
+            height: 400px;
+        }
+        
+        /* Selection area styling */
+        .selection-area {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .selection-area:hover {
+            background: rgba(0, 0, 0, 0.4);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+        
+        .selection-area.head-selection {
+            border-left: 4px solid #00ff88;
+        }
+        
+        .selection-area.cleat-selection {
+            border-left: 4px solid #FFD700;
+        }
+        
+        /* Enhanced button styling */
+        .game-button {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #4A90E2 0%, #2E5BBA 100%);
+            border: 4px solid #1E3A8A;
+            border-radius: 25px;
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+            padding: 1.5rem 3rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        .game-button:hover {
+            transform: translateX(-50%) translateY(-5px) scale(1.05);
+            background: linear-gradient(135deg, #5BA3F5 0%, #3A6CCD 100%);
+            border-color: #2563EB;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+        }
+        
+        .game-button:active {
+            transform: translateX(-50%) translateY(-2px) scale(1.02);
+        }
+        
+        /* Loading screen */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #1a1a2e 0%, #000 100%);
+            color: white;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .loading-screen h1 {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(45deg, #00ff88, #007bff, #00ff88);
+            background-size: 200% 200%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: gradientShift 3s ease-in-out infinite;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        .loading-progress {
+            margin-top: 20px;
+            font-size: 1.2rem;
+            color: #ccc;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .content-wrapper {
+                width: 95%;
+                padding: 1rem;
+            }
+            
+            .game-title {
+                font-size: 2rem;
+                letter-spacing: 2px;
+                margin-bottom: 1rem;
+            }
+            
+            #gameCanvas {
+                border-radius: 15px;
+            }
+            
+            .loading-screen h1 {
+                font-size: 2rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .content-wrapper {
+                width: 98%;
+                padding: 0.5rem;
+            }
+            
+            .game-title {
+                font-size: 1.8rem;
+                letter-spacing: 1px;
+                margin-bottom: 1rem;
+            }
+            
+            #gameCanvas {
+                border-radius: 10px;
+            }
+            
+            .loading-screen h1 {
+                font-size: 1.5rem;
+            }
+        }
+        
+        @font-face {
+            font-family: 'Font';
+            src: url('./assets/Font.TTF') format('truetype');
+            font-display: swap;
+        }
+        
+        @font-face {
+            font-family: 'Font2';
+            src: url('./assets/Font 2.TTF') format('truetype');
+            font-display: swap;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <canvas id="backgroundCanvas"></canvas>
+        
+        <div class="content-wrapper">
+            <h1 class="game-title">Character Selection</h1>
+            
+            <div class="loading-screen" id="loadingScreen">
+                <h1>HEAD SOCCER</h1>
+                <div class="loading-progress" id="loadingProgress">Loading Assets... 0/38</div>
+            </div>
+            
+            <canvas id="gameCanvas" width="1200" height="675"></canvas>
+        </div>
+    </div>
+
+    <!-- Load configuration and utilities first -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    
+    <!-- Load asset loader -->
+    <script src="js/assetLoader.js"></script>
+    
+    <!-- Load particle system -->
+    <script src="js/classes/DotParticle.js"></script>
+    
+    <!-- Enhanced Character Selection Game Script -->
+    <script>
+        class ResponsiveCharacterSelection {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // Background canvas for particle animation
+                this.backgroundCanvas = document.getElementById('backgroundCanvas');
+                this.backgroundCtx = this.backgroundCanvas.getContext('2d');
+                
+                // Make canvas responsive
+                this.setupResponsiveCanvas();
+                
+                // Particle system for starfield background
+                this.particles = [];
+                this.initParticles();
+                
+                // Character selection state
+                this.player1SelectedHead = 0;
+                this.player2SelectedHead = 1;
+                this.player1SelectedCleat = 0;
+                this.player2SelectedCleat = 1;
+                
+                // Animation and interaction
+                this.headCarouselRotation = 0;
+                this.cleatCarouselRotation = 0;
+                this.carouselSpeed = 0.015; // Smoother animation
+                
+                // Responsive positioning
+                this.updateLayout();
+                
+                // Mouse interaction
+                this.mouseX = 0;
+                this.mouseY = 0;
+                this.isMouseOverButton = false;
+                
+                // Input handling
+                this.keys = {};
+                this.setupInput();
+                this.setupMouseInput();
+                
+                // Animation loop
+                this.lastTime = 0;
+                this.animate = this.animate.bind(this);
+                
+                // Handle window resize
+                window.addEventListener('resize', () => {
+                    this.setupResponsiveCanvas();
+                    this.updateLayout();
+                    this.initParticles();
+                });
+                
+                // Start game
+                this.startGame();
+            }
+            
+            setupResponsiveCanvas() {
+                const container = this.canvas.parentElement;
+                const containerWidth = container.clientWidth - 32; // Account for padding
+                const aspectRatio = 16 / 9; // 16:9 aspect ratio
+                
+                // Calculate available height (subtract title height)
+                const titleElement = document.querySelector('.game-title');
+                const titleHeight = titleElement ? titleElement.offsetHeight + 40 : 120; // Include margin
+                const availableHeight = window.innerHeight - titleHeight - 40; // Extra padding
+                
+                // Calculate optimal canvas size
+                let canvasWidth = Math.min(containerWidth, 1200);
+                let canvasHeight = canvasWidth / aspectRatio;
+                
+                // Ensure canvas doesn't exceed available height
+                if (canvasHeight > availableHeight) {
+                    canvasHeight = availableHeight;
+                    canvasWidth = canvasHeight * aspectRatio;
+                }
+                
+                // Set canvas display size
+                this.canvas.style.width = canvasWidth + 'px';
+                this.canvas.style.height = canvasHeight + 'px';
+                
+                // Set internal resolution
+                this.canvas.width = 1200;
+                this.canvas.height = 675;
+                
+                // Set background canvas size
+                this.backgroundCanvas.width = window.innerWidth;
+                this.backgroundCanvas.height = window.innerHeight;
+                
+                // Scale factor for responsive positioning
+                this.scale = canvasWidth / 1200;
+            }
+            
+            updateLayout() {
+                // Responsive positioning based on canvas size
+                this.player1X = 300;
+                this.player2X = 900;
+                this.headSelectionY = 280; // Adjusted for title space
+                this.cleatSelectionY = 440; // Adjusted for title space
+                this.itemSpacing = 120; // Space between items in horizontal line
+                this.itemSize = 100;
+                
+                // Play button properties
+                this.playButtonX = 600; // Center of canvas
+                this.playButtonY = 580; // Adjusted for title space
+                this.playButtonWidth = 250;
+                this.playButtonHeight = 70;
+            }
+            
+            initParticles() {
+                const numParticles = Math.min(80, Math.floor((this.backgroundCanvas.width * this.backgroundCanvas.height) / 15000));
+                this.particles = [];
+                
+                for (let i = 0; i < numParticles; i++) {
+                    this.particles.push(new DotParticle(this.backgroundCanvas.width, this.backgroundCanvas.height));
+                }
+            }
+            
+            setupInput() {
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+                    
+                    switch(e.code) {
+                        case 'KeyA':
+                            this.player1SelectedHead = (this.player1SelectedHead - 1 + CONFIG.CHARACTER_HEADS.length) % CONFIG.CHARACTER_HEADS.length;
+                            this.playSelectionSound();
+                            break;
+                        case 'KeyD':
+                            this.player1SelectedHead = (this.player1SelectedHead + 1) % CONFIG.CHARACTER_HEADS.length;
+                            this.playSelectionSound();
+                            break;
+                        case 'KeyS':
+                            this.player1SelectedCleat = (this.player1SelectedCleat + 1) % CONFIG.CLEAT_TYPES.length;
+                            this.playSelectionSound();
+                            break;
+                            
+                        case 'ArrowLeft':
+                            this.player2SelectedHead = (this.player2SelectedHead - 1 + CONFIG.CHARACTER_HEADS.length) % CONFIG.CHARACTER_HEADS.length;
+                            this.playSelectionSound();
+                            break;
+                        case 'ArrowRight':
+                            this.player2SelectedHead = (this.player2SelectedHead + 1) % CONFIG.CHARACTER_HEADS.length;
+                            this.playSelectionSound();
+                            break;
+                        case 'ArrowDown':
+                            this.player2SelectedCleat = (this.player2SelectedCleat + 1) % CONFIG.CLEAT_TYPES.length;
+                            this.playSelectionSound();
+                            break;
+                            
+                        case 'Space':
+                            e.preventDefault();
+                            this.startMatch();
+                            break;
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.code] = false;
+                });
+            }
+            
+            setupMouseInput() {
+                // Get canvas position for accurate mouse coordinates
+                const getCanvasCoordinates = (event) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const scaleX = this.canvas.width / rect.width;
+                    const scaleY = this.canvas.height / rect.height;
+                    
+                    return {
+                        x: (event.clientX - rect.left) * scaleX,
+                        y: (event.clientY - rect.top) * scaleY
+                    };
+                };
+                
+                // Mouse move handler for hover effects and particle system
+                document.addEventListener('mousemove', (event) => {
+                    // Update mouse position for particle system
+                    this.mouseX = event.clientX;
+                    this.mouseY = event.clientY;
+                    
+                    // Check canvas interactions
+                    const coords = getCanvasCoordinates(event);
+                    
+                    // Check if mouse is over play button
+                    this.isMouseOverButton = this.isPointInButton(coords.x, coords.y);
+                    
+                    // Check if mouse is over any clickable item
+                    const isOverClickable = this.isMouseOverButton || 
+                                          this.isMouseOverHead(coords.x, coords.y) ||
+                                          this.isMouseOverCleat(coords.x, coords.y);
+                    
+                    // Change cursor
+                    this.canvas.style.cursor = isOverClickable ? 'pointer' : 'default';
+                });
+                
+                // Mouse click handler
+                this.canvas.addEventListener('click', (event) => {
+                    const coords = getCanvasCoordinates(event);
+                    
+                    // Check if click is on play button
+                    if (this.isPointInButton(coords.x, coords.y)) {
+                        this.startMatch();
+                        return;
+                    }
+                    
+                    // Check clicks on heads and cleats
+                    this.checkHeadClicks(coords.x, coords.y);
+                    this.checkCleatClicks(coords.x, coords.y);
+                });
+            }
+            
+            isPointInButton(x, y) {
+                const buttonWidth = 280;
+                const buttonHeight = 80;
+                const buttonX = 600;
+                const buttonY = 580;
+                
+                return x >= buttonX - buttonWidth / 2 &&
+                       x <= buttonX + buttonWidth / 2 &&
+                       y >= buttonY - buttonHeight / 2 &&
+                       y <= buttonY + buttonHeight / 2;
+            }
+            
+            checkHeadClicks(x, y) {
+                // Check Player 1 heads
+                const numHeads = CONFIG.CHARACTER_HEADS.length;
+                const startX1 = this.player1X - (numHeads - 1) * this.itemSpacing / 2;
+                
+                for (let i = 0; i < numHeads; i++) {
+                    const headX = startX1 + i * this.itemSpacing;
+                    const headY = this.headSelectionY;
+                    const clickRadius = this.itemSize / 2 + 10; // Extra margin for easier clicking
+                    
+                    if (Math.sqrt((x - headX) ** 2 + (y - headY) ** 2) < clickRadius) {
+                        this.player1SelectedHead = i;
+                        this.playSelectionSound();
+                        return;
+                    }
+                }
+                
+                // Check Player 2 heads
+                const startX2 = this.player2X - (numHeads - 1) * this.itemSpacing / 2;
+                
+                for (let i = 0; i < numHeads; i++) {
+                    const headX = startX2 + i * this.itemSpacing;
+                    const headY = this.headSelectionY;
+                    const clickRadius = this.itemSize / 2 + 10;
+                    
+                    if (Math.sqrt((x - headX) ** 2 + (y - headY) ** 2) < clickRadius) {
+                        this.player2SelectedHead = i;
+                        this.playSelectionSound();
+                        return;
+                    }
+                }
+            }
+            
+            checkCleatClicks(x, y) {
+                // Check Player 1 cleats
+                this.checkPlayerCleatClicks(x, y, this.player1X, 'player1');
+                
+                // Check Player 2 cleats
+                this.checkPlayerCleatClicks(x, y, this.player2X, 'player2');
+            }
+            
+            checkPlayerCleatClicks(x, y, playerX, player) {
+                const selectedIndex = player === 'player1' ? this.player1SelectedCleat : this.player2SelectedCleat;
+                const numCleats = Math.min(CONFIG.CLEAT_TYPES.length, 5);
+                const totalCleats = CONFIG.CLEAT_TYPES.length;
+                
+                let startIndex = Math.max(0, selectedIndex - Math.floor(numCleats / 2));
+                if (startIndex + numCleats > totalCleats) {
+                    startIndex = totalCleats - numCleats;
+                }
+                
+                const startX = playerX - (numCleats - 1) * (this.itemSpacing * 0.7) / 2;
+                
+                for (let i = 0; i < numCleats; i++) {
+                    const cleatIndex = startIndex + i;
+                    if (cleatIndex >= totalCleats) break;
+                    
+                    const cleatX = startX + i * (this.itemSpacing * 0.7);
+                    const cleatY = this.cleatSelectionY;
+                    const clickRadius = (this.itemSize * 0.7) / 2 + 10;
+                    
+                    if (Math.sqrt((x - cleatX) ** 2 + (y - cleatY) ** 2) < clickRadius) {
+                        if (player === 'player1') {
+                            this.player1SelectedCleat = cleatIndex;
+                        } else {
+                            this.player2SelectedCleat = cleatIndex;
+                        }
+                        this.playSelectionSound();
+                        return;
+                    }
+                }
+            }
+            
+            isMouseOverHead(x, y) {
+                const numHeads = CONFIG.CHARACTER_HEADS.length;
+                const clickRadius = this.itemSize / 2 + 10;
+                
+                // Check Player 1 heads
+                const startX1 = this.player1X - (numHeads - 1) * this.itemSpacing / 2;
+                for (let i = 0; i < numHeads; i++) {
+                    const headX = startX1 + i * this.itemSpacing;
+                    const headY = this.headSelectionY;
+                    if (Math.sqrt((x - headX) ** 2 + (y - headY) ** 2) < clickRadius) {
+                        return true;
+                    }
+                }
+                
+                // Check Player 2 heads
+                const startX2 = this.player2X - (numHeads - 1) * this.itemSpacing / 2;
+                for (let i = 0; i < numHeads; i++) {
+                    const headX = startX2 + i * this.itemSpacing;
+                    const headY = this.headSelectionY;
+                    if (Math.sqrt((x - headX) ** 2 + (y - headY) ** 2) < clickRadius) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            
+            isMouseOverCleat(x, y) {
+                return this.isMouseOverPlayerCleat(x, y, this.player1X) || 
+                       this.isMouseOverPlayerCleat(x, y, this.player2X);
+            }
+            
+            isMouseOverPlayerCleat(x, y, playerX) {
+                const numCleats = Math.min(CONFIG.CLEAT_TYPES.length, 5);
+                const clickRadius = (this.itemSize * 0.7) / 2 + 10;
+                const startX = playerX - (numCleats - 1) * (this.itemSpacing * 0.7) / 2;
+                
+                for (let i = 0; i < numCleats; i++) {
+                    const cleatX = startX + i * (this.itemSpacing * 0.7);
+                    const cleatY = this.cleatSelectionY;
+                    
+                    if (Math.sqrt((x - cleatX) ** 2 + (y - cleatY) ** 2) < clickRadius) {
+                        return true;
+                    }
+                }
+                
+                return false;
+            }
+            
+            playSelectionSound() {
+                // Add subtle selection sound feedback
+                if (window.AudioContext || window.webkitAudioContext) {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.1);
+                    } catch (e) {
+                        // Ignore audio errors
+                    }
+                }
+            }
+            
+            async startGame() {
+                try {
+                    console.log('Starting responsive character selection...');
+                    
+                    // Start animation immediately without loading screen
+                    requestAnimationFrame(this.animate);
+                    
+                    // Load assets in background
+                    await assetLoader.loadAllAssets((progress, total) => {
+                        console.log(`Loading progress: ${progress}/${total}`);
+                    });
+                    
+                    console.log('Assets loaded successfully!');
+                } catch (error) {
+                    console.error('Failed to load assets:', error);
+                    console.log('Starting without assets...');
+                }
+            }
+            
+            animate(currentTime) {
+                const deltaTime = (currentTime - this.lastTime) / 1000;
+                this.lastTime = currentTime;
+                
+                this.update(deltaTime);
+                this.drawBackground();
+                this.draw();
+                
+                requestAnimationFrame(this.animate);
+            }
+            
+            update(deltaTime) {
+                // Update particles with mouse trail for background animation
+                const mouseTrail = [[this.mouseX, this.mouseY]];
+                this.particles.forEach(particle => particle.update(mouseTrail, this.particles));
+                
+                this.headCarouselRotation += this.carouselSpeed;
+                this.cleatCarouselRotation += this.carouselSpeed * 0.8;
+            }
+            
+            drawBackground() {
+                // Clear background canvas
+                this.backgroundCtx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+                this.backgroundCtx.fillRect(0, 0, this.backgroundCanvas.width, this.backgroundCanvas.height);
+                
+                // Draw particle connections
+                this.backgroundCtx.strokeStyle = 'rgba(0, 255, 136, 0.1)';
+                this.backgroundCtx.lineWidth = 1;
+                
+                for (let i = 0; i < this.particles.length; i++) {
+                    for (let j = i + 1; j < this.particles.length; j++) {
+                        const p1 = this.particles[i];
+                        const p2 = this.particles[j];
+                        const distance = Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+                        
+                        if (distance < 100) {
+                            const opacity = (1 - distance / 100) * 0.2;
+                            this.backgroundCtx.strokeStyle = `rgba(0, 255, 136, ${opacity})`;
+                            this.backgroundCtx.beginPath();
+                            this.backgroundCtx.moveTo(p1.x, p1.y);
+                            this.backgroundCtx.lineTo(p2.x, p2.y);
+                            this.backgroundCtx.stroke();
+                        }
+                    }
+                }
+                
+                // Draw particles
+                this.particles.forEach(particle => particle.draw(this.backgroundCtx));
+            }
+            
+            draw() {
+                // Clear with gradient background
+                const gradient = this.ctx.createRadialGradient(600, 337, 0, 600, 337, 600);
+                gradient.addColorStop(0, 'rgba(26, 26, 46, 0.8)');
+                gradient.addColorStop(1, 'rgba(10, 10, 10, 0.8)');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(0, 0, 1200, 675);
+                
+                this.drawPlayerContainers();
+                this.drawTitle();
+                this.drawHeadSelection('left', this.player1X);
+                this.drawHeadSelection('right', this.player2X);
+                this.drawCleatSelection('left', this.player1X);
+                this.drawCleatSelection('right', this.player2X);
+                this.drawPlayButton();
+            }
+            
+            
+            drawPlayerContainers() {
+                this.ctx.save();
+                
+                // Player 1 Container
+                const p1ContainerX = 50;
+                const p1ContainerY = 120;
+                const containerWidth = 480;
+                const containerHeight = 400;
+                
+                this.drawModernContainer(p1ContainerX, p1ContainerY, containerWidth, containerHeight, 'rgba(26, 26, 46, 0.9)', 'rgba(0, 255, 136, 0.3)');
+                
+                // Player 2 Container
+                const p2ContainerX = 1200 - 50 - containerWidth;
+                const p2ContainerY = 120;
+                
+                this.drawModernContainer(p2ContainerX, p2ContainerY, containerWidth, containerHeight, 'rgba(26, 26, 46, 0.9)', 'rgba(74, 144, 226, 0.3)');
+                
+                this.ctx.restore();
+            }
+            
+            drawModernContainer(x, y, width, height, fillColor, borderColor) {
+                this.ctx.save();
+                
+                // Shadow
+                this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                this.ctx.shadowBlur = 20;
+                this.ctx.shadowOffsetX = 0;
+                this.ctx.shadowOffsetY = 10;
+                
+                // Background
+                this.ctx.fillStyle = fillColor;
+                this.drawRoundedRect(x, y, width, height, 25);
+                this.ctx.fill();
+                
+                // Border
+                this.ctx.shadowBlur = 0;
+                this.ctx.strokeStyle = borderColor;
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+                
+                // Inner glow
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                this.ctx.lineWidth = 1;
+                this.drawRoundedRect(x + 3, y + 3, width - 6, height - 6, 22);
+                this.ctx.stroke();
+                
+                this.ctx.restore();
+            }
+            
+            drawTitle() {
+                // Title removed - no longer drawing any title text
+                return;
+            }
+            
+            drawHeadSelection(side, centerX) {
+                const selectedIndex = side === 'left' ? this.player1SelectedHead : this.player2SelectedHead;
+                
+                this.ctx.save();
+                
+                // Draw modern selection container
+                const containerWidth = 400;
+                const containerHeight = 140;
+                const containerX = centerX - containerWidth / 2;
+                const containerY = this.headSelectionY - containerHeight / 2;
+                
+                // Selection area background
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                this.drawRoundedRect(containerX, containerY, containerWidth, containerHeight, 15);
+                this.ctx.fill();
+                
+                // Selection area border with theme color
+                const themeColor = side === 'left' ? 'rgba(0, 255, 136, 0.6)' : 'rgba(74, 144, 226, 0.6)';
+                this.ctx.strokeStyle = themeColor;
+                this.ctx.lineWidth = 2;
+                this.ctx.stroke();
+                
+                // Left accent bar
+                this.ctx.fillStyle = side === 'left' ? '#00ff88' : '#4A90E2';
+                this.ctx.fillRect(containerX, containerY, 4, containerHeight);
+                
+                // Draw character heads in horizontal line
+                const numHeads = CONFIG.CHARACTER_HEADS.length;
+                const startX = centerX - (numHeads - 1) * this.itemSpacing / 2;
+                
+                for (let i = 0; i < numHeads; i++) {
+                    const headX = startX + i * this.itemSpacing;
+                    const headY = this.headSelectionY;
+                    
+                    const headName = CONFIG.CHARACTER_HEADS[i];
+                    const headImage = assetLoader.getImage(headName + '_Head.png');
+                    
+                    const isSelected = i === selectedIndex;
+                    const scale = isSelected ? 1.2 : 0.8;
+                    const alpha = isSelected ? 1.0 : 0.7;
+                    
+                    this.ctx.save();
+                    this.ctx.globalAlpha = alpha;
+                    
+                    const size = this.itemSize * scale;
+                    
+                    // Selection highlight
+                    if (isSelected) {
+                        this.ctx.shadowColor = '#00ff88';
+                        this.ctx.shadowBlur = 20;
+                        this.ctx.strokeStyle = '#00ff88';
+                        this.ctx.lineWidth = 4;
+                        this.ctx.beginPath();
+                        this.ctx.arc(headX, headY, size / 2 + 10, 0, Math.PI * 2);
+                        this.ctx.stroke();
+                        this.ctx.shadowBlur = 0;
+                    }
+                    
+                    // Draw head
+                    if (headImage) {
+                        const headScale = CONFIG.HEAD_SCALE[headName] || [1, 1];
+                        const finalWidth = size * headScale[0];
+                        const finalHeight = size * headScale[1];
+                        
+                        this.ctx.drawImage(headImage, 
+                            headX - finalWidth/2, 
+                            headY - finalHeight/2, 
+                            finalWidth, 
+                            finalHeight
+                        );
+                    } else {
+                        // Fallback colored circle
+                        const colors = ['#4CAF50', '#2196F3', '#FF9800'];
+                        this.ctx.fillStyle = colors[i % colors.length];
+                        this.ctx.beginPath();
+                        this.ctx.arc(headX, headY, size / 2, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        
+                        this.ctx.fillStyle = '#fff';
+                        this.ctx.font = '12px Arial';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.fillText(headName, headX, headY);
+                    }
+                    
+                    this.ctx.restore();
+                }
+                
+                // Player label
+                this.ctx.font = 'bold 30px Font, Arial';
+                this.ctx.fillStyle = '#fff';
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 3;
+                this.ctx.textAlign = 'center';
+                this.ctx.shadowColor = '#000';
+                this.ctx.shadowBlur = 5;
+                this.ctx.shadowOffsetX = 2;
+                this.ctx.shadowOffsetY = 2;
+                const labelText = side === 'left' ? 'PLAYER 1 (AI)' : 'PLAYER 2';
+                this.ctx.strokeText(labelText, centerX, this.headSelectionY - this.itemSize/2 - 40);
+                this.ctx.fillText(labelText, centerX, this.headSelectionY - this.itemSize/2 - 40);
+                this.ctx.shadowBlur = 0;
+                
+                // Selected character name
+                const selectedName = CONFIG.CHARACTER_HEADS[selectedIndex];
+                this.ctx.font = 'bold 22px Font, Arial';
+                this.ctx.fillStyle = '#fff';
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 2;
+                this.ctx.shadowColor = '#00ff88';
+                this.ctx.shadowBlur = 10;
+                this.ctx.strokeText(selectedName.toUpperCase(), centerX, this.headSelectionY + this.itemSize/2 + 25);
+                this.ctx.fillText(selectedName.toUpperCase(), centerX, this.headSelectionY + this.itemSize/2 + 25);
+                this.ctx.shadowBlur = 0;
+                
+                this.ctx.restore();
+            }
+            
+            drawCleatSelection(side, centerX) {
+                const selectedIndex = side === 'left' ? this.player1SelectedCleat : this.player2SelectedCleat;
+                
+                this.ctx.save();
+                
+                // Draw selection line background for cleats
+                const numCleats = Math.min(CONFIG.CLEAT_TYPES.length, 5); // Show max 5 cleats at once
+                const lineWidth = (numCleats - 1) * (this.itemSpacing * 0.7) + (this.itemSize * 0.7);
+                const lineHeight = (this.itemSize * 0.7) + 15;
+                const lineX = centerX - lineWidth / 2;
+                const lineY = this.cleatSelectionY - lineHeight / 2;
+                
+                // Background for cleat selection area
+                const gradient = this.ctx.createLinearGradient(lineX, lineY, lineX + lineWidth, lineY);
+                gradient.addColorStop(0, 'rgba(139, 69, 19, 0.1)');
+                gradient.addColorStop(0.5, 'rgba(139, 69, 19, 0.2)');
+                gradient.addColorStop(1, 'rgba(139, 69, 19, 0.1)');
+                this.ctx.fillStyle = gradient;
+                this.ctx.fillRect(lineX, lineY, lineWidth, lineHeight);
+                
+                // Animated border
+                this.ctx.strokeStyle = `rgba(255, 215, 0, ${0.3 + 0.2 * Math.sin(Date.now() * 0.004)})`;
+                this.ctx.lineWidth = 2;
+                this.ctx.strokeRect(lineX, lineY, lineWidth, lineHeight);
+                
+                // Calculate which cleats to show (sliding window around selected)
+                const totalCleats = CONFIG.CLEAT_TYPES.length;
+                let startIndex = Math.max(0, selectedIndex - Math.floor(numCleats / 2));
+                if (startIndex + numCleats > totalCleats) {
+                    startIndex = totalCleats - numCleats;
+                }
+                
+                // Draw cleats in horizontal line
+                const startX = centerX - (numCleats - 1) * (this.itemSpacing * 0.7) / 2;
+                
+                for (let i = 0; i < numCleats; i++) {
+                    const cleatIndex = startIndex + i;
+                    if (cleatIndex >= totalCleats) break;
+                    
+                    const cleatX = startX + i * (this.itemSpacing * 0.7);
+                    const cleatY = this.cleatSelectionY;
+                    
+                    const cleatType = CONFIG.CLEAT_TYPES[cleatIndex];
+                    const cleatImage = assetLoader.getImage('Cleat ' + cleatType + '.png');
+                    
+                    const isSelected = cleatIndex === selectedIndex;
+                    const scale = isSelected ? 1.1 : 0.7;
+                    const alpha = isSelected ? 1.0 : 0.6;
+                    
+                    this.ctx.save();
+                    this.ctx.globalAlpha = alpha;
+                    
+                    const size = (this.itemSize * 0.7) * scale;
+                    
+                    // Selection highlight
+                    if (isSelected) {
+                        this.ctx.shadowColor = '#FFD700';
+                        this.ctx.shadowBlur = 15;
+                        this.ctx.strokeStyle = '#FFD700';
+                        this.ctx.lineWidth = 3;
+                        this.ctx.beginPath();
+                        this.ctx.arc(cleatX, cleatY, size / 2 + 8, 0, Math.PI * 2);
+                        this.ctx.stroke();
+                        this.ctx.shadowBlur = 0;
+                    }
+                    
+                    // Draw cleat
+                    if (cleatImage) {
+                        this.ctx.drawImage(cleatImage, cleatX - size/2, cleatY - size/2, size, size);
+                    } else {
+                        // Fallback colored rectangle (shoe shape)
+                        this.ctx.fillStyle = '#8B4513';
+                        this.ctx.fillRect(cleatX - size/2, cleatY - size/3, size, size*2/3);
+                        
+                        this.ctx.fillStyle = '#fff';
+                        this.ctx.font = '10px Arial';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.fillText(cleatType.toString(), cleatX, cleatY);
+                    }
+                    
+                    this.ctx.restore();
+                }
+                
+                // Show selected cleat info
+                const selectedCleat = CONFIG.CLEAT_TYPES[selectedIndex];
+                this.ctx.font = 'bold 18px Font, Arial';
+                this.ctx.fillStyle = '#fff';
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 2;
+                this.ctx.textAlign = 'center';
+                this.ctx.shadowColor = '#FFD700';
+                this.ctx.shadowBlur = 8;
+                this.ctx.strokeText(`CLEAT ${selectedCleat}`, centerX, this.cleatSelectionY + (this.itemSize * 0.7)/2 + 20);
+                this.ctx.fillText(`CLEAT ${selectedCleat}`, centerX, this.cleatSelectionY + (this.itemSize * 0.7)/2 + 20);
+                this.ctx.shadowBlur = 0;
+                
+                // Add navigation indicators if there are more cleats
+                if (startIndex > 0) {
+                    // Left arrow
+                    this.ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
+                    this.ctx.font = 'bold 16px Arial';
+                    this.ctx.fillText('◀', lineX - 20, this.cleatSelectionY);
+                }
+                if (startIndex + numCleats < totalCleats) {
+                    // Right arrow
+                    this.ctx.fillStyle = 'rgba(255, 215, 0, 0.8)';
+                    this.ctx.font = 'bold 16px Arial';
+                    this.ctx.fillText('▶', lineX + lineWidth + 20, this.cleatSelectionY);
+                }
+                
+                this.ctx.restore();
+            }
+            
+            drawPlayButton() {
+                this.ctx.save();
+                
+                // Button dimensions and position
+                const buttonWidth = 280;
+                const buttonHeight = 80;
+                const buttonX = 600;
+                const buttonY = 580;
+                
+                const isHovered = this.isMouseOverButton;
+                const pulseEffect = 0.15 * Math.sin(Date.now() * 0.005);
+                
+                // Button shadow
+                this.ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+                this.ctx.shadowBlur = 25;
+                this.ctx.shadowOffsetX = 0;
+                this.ctx.shadowOffsetY = 10;
+                
+                // Button background gradient
+                const gradient = this.ctx.createLinearGradient(
+                    buttonX - buttonWidth / 2, buttonY - buttonHeight / 2,
+                    buttonX + buttonWidth / 2, buttonY + buttonHeight / 2
+                );
+                
+                if (isHovered) {
+                    gradient.addColorStop(0, '#5BA3F5');
+                    gradient.addColorStop(0.5, '#3A6CCD');
+                    gradient.addColorStop(1, '#4A90E2');
+                } else {
+                    gradient.addColorStop(0, '#4A90E2');
+                    gradient.addColorStop(1, '#2E5BBA');
+                }
+                
+                // Draw button background
+                this.ctx.fillStyle = gradient;
+                this.drawRoundedRect(
+                    buttonX - buttonWidth / 2,
+                    buttonY - buttonHeight / 2,
+                    buttonWidth,
+                    buttonHeight,
+                    25
+                );
+                this.ctx.fill();
+                
+                // Button border
+                this.ctx.shadowBlur = 0;
+                this.ctx.strokeStyle = isHovered ? '#2563EB' : '#1E3A8A';
+                this.ctx.lineWidth = 4;
+                this.ctx.stroke();
+                
+                // Inner highlight
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                this.ctx.lineWidth = 2;
+                this.drawRoundedRect(
+                    buttonX - buttonWidth / 2 + 4,
+                    buttonY - buttonHeight / 2 + 4,
+                    buttonWidth - 8,
+                    buttonHeight - 8,
+                    20
+                );
+                this.ctx.stroke();
+                
+                // Button text
+                this.ctx.font = 'bold 28px Font, Arial';
+                this.ctx.fillStyle = '#fff';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+                this.ctx.lineWidth = 2;
+                
+                const buttonText = 'START GAME';
+                this.ctx.strokeText(buttonText, buttonX, buttonY);
+                this.ctx.fillText(buttonText, buttonX, buttonY);
+                
+                // Subtle glow effect when hovered
+                if (isHovered) {
+                    this.ctx.globalAlpha = 0.2;
+                    this.ctx.fillStyle = '#fff';
+                    this.drawRoundedRect(
+                        buttonX - buttonWidth / 2,
+                        buttonY - buttonHeight / 2,
+                        buttonWidth,
+                        buttonHeight,
+                        25
+                    );
+                    this.ctx.fill();
+                }
+                
+                this.ctx.restore();
+            }
+            
+            drawRoundedRect(x, y, width, height, radius) {
+                this.ctx.beginPath();
+                this.ctx.moveTo(x + radius, y);
+                this.ctx.lineTo(x + width - radius, y);
+                this.ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+                this.ctx.lineTo(x + width, y + height - radius);
+                this.ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+                this.ctx.lineTo(x + radius, y + height);
+                this.ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+                this.ctx.lineTo(x, y + radius);
+                this.ctx.quadraticCurveTo(x, y, x + radius, y);
+                this.ctx.closePath();
+            }
+            
+            startMatch() {
+                const gameSettings = {
+                    player1Head: CONFIG.CHARACTER_HEADS[this.player1SelectedHead],
+                    player2Head: CONFIG.CHARACTER_HEADS[this.player2SelectedHead],
+                    player1Cleat: CONFIG.CLEAT_TYPES[this.player1SelectedCleat],
+                    player2Cleat: CONFIG.CLEAT_TYPES[this.player2SelectedCleat]
+                };
+                
+                localStorage.setItem('headSoccerSettings', JSON.stringify(gameSettings));
+                
+                // Smooth transition to main game
+                document.body.style.opacity = '0';
+                document.body.style.transition = 'opacity 0.5s ease-in-out';
+                
+                setTimeout(() => {
+                    window.location.href = 'gameplay.html';
+                }, 500);
+            }
+        }
+        
+        // Start responsive character selection when page loads
+        window.addEventListener('load', () => {
+            new ResponsiveCharacterSelection();
+            // Initialize particle background (matching gameplay.html)
+            initializeParticleBackground();
+        });
+
+        // Particle background system (matching gameplay.html exactly)
+        function initializeParticleBackground() {
+            const canvas = document.getElementById('backgroundCanvas');
+            const ctx = canvas.getContext('2d');
+            
+            // Set canvas size
+            function resizeCanvas() {
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+            }
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Simple particle system
+            const particles = [];
+            const numParticles = 50;
+            
+            class Particle {
+                constructor() {
+                    this.x = Math.random() * canvas.width;
+                    this.y = Math.random() * canvas.height;
+                    this.vx = (Math.random() - 0.5) * 1;
+                    this.vy = (Math.random() - 0.5) * 1;
+                    this.size = Math.random() * 3 + 0.5;
+                    this.opacity = Math.random() * 0.8 + 0.2;
+                    this.color = this.getRandomSpaceColor();
+                    this.twinkle = Math.random() * Math.PI * 2;
+                }
+                
+                getRandomSpaceColor() {
+                    const colors = ['#ffffff', '#66ccff', '#ff6699', '#ffcc66', '#66ff99'];
+                    return colors[Math.floor(Math.random() * colors.length)];
+                }
+                
+                update() {
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.twinkle += 0.05;
+                    
+                    if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                    if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+                }
+                
+                draw() {
+                    ctx.save();
+                    const twinkleOpacity = this.opacity * (0.5 + 0.5 * Math.sin(this.twinkle));
+                    ctx.globalAlpha = twinkleOpacity;
+                    ctx.fillStyle = this.color;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = this.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+            }
+            
+            // Initialize particles
+            for (let i = 0; i < numParticles; i++) {
+                particles.push(new Particle());
+            }
+            
+            // Animation loop
+            function animate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                particles.forEach(particle => {
+                    particle.update();
+                    particle.draw();
+                });
+                
+                requestAnimationFrame(animate);
+            }
+            
+            animate();
+        }
+    </script>
+</body>
+</html>

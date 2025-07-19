@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Head Soccer - Character Selection</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #000;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            cursor: none;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 100%);
+        }
+        
+        .loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        .loading-progress {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+        
+        @font-face {
+            font-family: 'Font';
+            src: url('./assets/Font.TTF') format('truetype');
+        }
+        
+        @font-face {
+            font-family: 'Font2';
+            src: url('./assets/Font 2.TTF') format('truetype');
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-screen" id="loadingScreen">
+        <h1>HEAD SOCCER</h1>
+        <div class="loading-progress" id="loadingProgress">Loading Assets... 0/38</div>
+    </div>
+    
+    <canvas id="gameCanvas" width="1600" height="900"></canvas>
+
+    <!-- Load configuration and utilities first -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    
+    <!-- Load asset loader -->
+    <script src="js/assetLoader.js"></script>
+    
+    <!-- Load particle system -->
+    <script src="js/classes/DotParticle.js"></script>
+    
+    <!-- Character Selection Game Script -->
+    <script>
+        class CharacterSelection {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // Particle system for starfield background
+                this.particles = [];
+                this.initParticles();
+                
+                // Character selection state
+                this.player1SelectedHead = 0; // Index in CHARACTER_HEADS array
+                this.player2SelectedHead = 1;
+                this.player1SelectedCleat = 0; // Index in CLEAT_TYPES array
+                this.player2SelectedCleat = 1;
+                
+                // Carousel rotation
+                this.headCarouselRotation = 0;
+                this.cleatCarouselRotation = 0;
+                this.carouselSpeed = 0.02;
+                
+                // UI positioning - exact from original
+                this.titleY = 150;
+                this.player1CarouselX = 400;
+                this.player2CarouselX = 1200;
+                this.carouselY = 450;
+                this.carouselRadius = 150;
+                this.cleatY = 650;
+                this.cleatRadius = 80;
+                
+                // Input handling
+                this.keys = {};
+                this.setupInput();
+                
+                // Animation loop
+                this.lastTime = 0;
+                this.animate = this.animate.bind(this);
+                
+                // Start game loop once assets loaded
+                this.startGame();
+            }
+            
+            initParticles() {
+                // Create starfield particles - exact from original
+                for (let i = 0; i < CONFIG.NUM_PARTICLES; i++) {
+                    this.particles.push(new DotParticle(CONFIG.WIDTH, CONFIG.HEIGHT));
+                }
+            }
+            
+            setupInput() {
+                // Keyboard controls for character selection
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+                    
+                    switch(e.code) {
+                        // Player 1 controls
+                        case 'KeyA': // Previous head
+                            this.player1SelectedHead = (this.player1SelectedHead - 1 + CONFIG.CHARACTER_HEADS.length) % CONFIG.CHARACTER_HEADS.length;
+                            break;
+                        case 'KeyD': // Next head
+                            this.player1SelectedHead = (this.player1SelectedHead + 1) % CONFIG.CHARACTER_HEADS.length;
+                            break;
+                        case 'KeyS': // Next cleat
+                            this.player1SelectedCleat = (this.player1SelectedCleat + 1) % CONFIG.CLEAT_TYPES.length;
+                            break;
+                            
+                        // Player 2 controls
+                        case 'ArrowLeft': // Previous head
+                            this.player2SelectedHead = (this.player2SelectedHead - 1 + CONFIG.CHARACTER_HEADS.length) % CONFIG.CHARACTER_HEADS.length;
+                            break;
+                        case 'ArrowRight': // Next head
+                            this.player2SelectedHead = (this.player2SelectedHead + 1) % CONFIG.CHARACTER_HEADS.length;
+                            break;
+                        case 'ArrowDown': // Next cleat
+                            this.player2SelectedCleat = (this.player2SelectedCleat + 1) % CONFIG.CLEAT_TYPES.length;
+                            break;
+                            
+                        // Start game
+                        case 'Space':
+                            this.startMatch();
+                            break;
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.code] = false;
+                });
+            }
+            
+            async startGame() {
+                try {
+                    console.log('Starting character selection...');
+                    console.log('AssetLoader available:', !!assetLoader);
+                    console.log('CONFIG available:', !!CONFIG);
+                    
+                    // Show loading progress
+                    document.getElementById('loadingProgress').textContent = 'Initializing...';
+                    
+                    // Load assets with progress tracking
+                    await assetLoader.loadAllAssets((progress, total) => {
+                        console.log(`Loading progress: ${progress}/${total}`);
+                        document.getElementById('loadingProgress').textContent = 
+                            `Loading Assets... ${progress}/${total}`;
+                    });
+                    
+                    console.log('Assets loaded successfully!');
+                    document.getElementById('loadingScreen').style.display = 'none';
+                    requestAnimationFrame(this.animate);
+                } catch (error) {
+                    console.error('Failed to load assets:', error);
+                    document.getElementById('loadingProgress').textContent = 
+                        `Error: ${error.message}. Starting without assets...`;
+                    
+                    // Start anyway after 2 seconds to show the UI
+                    setTimeout(() => {
+                        document.getElementById('loadingScreen').style.display = 'none';
+                        requestAnimationFrame(this.animate);
+                    }, 2000);
+                }
+            }
+            
+            animate(currentTime) {
+                const deltaTime = (currentTime - this.lastTime) / 1000;
+                this.lastTime = currentTime;
+                
+                this.update(deltaTime);
+                this.draw();
+                
+                requestAnimationFrame(this.animate);
+            }
+            
+            update(deltaTime) {
+                // Update particles
+                this.particles.forEach(particle => particle.update([], this.particles));
+                
+                // Update carousel rotation
+                this.headCarouselRotation += this.carouselSpeed;
+                this.cleatCarouselRotation += this.carouselSpeed * 0.7; // Slightly different speed
+            }
+            
+            draw() {
+                // Clear canvas
+                this.ctx.fillStyle = '#000';
+                this.ctx.fillRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+                
+                // Draw particles and connections
+                this.drawParticleSystem();
+                
+                // Draw title
+                this.drawTitle();
+                
+                // Draw character selection carousels
+                this.drawHeadCarousel('left', this.player1CarouselX);
+                this.drawHeadCarousel('right', this.player2CarouselX);
+                
+                // Draw cleat selection
+                this.drawCleatSelection('left', this.player1CarouselX);
+                this.drawCleatSelection('right', this.player2CarouselX);
+                
+                // Draw controls info
+                this.drawControlsInfo();
+            }
+            
+            drawParticleSystem() {
+                // Draw connections between nearby particles
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                this.ctx.lineWidth = 1;
+                
+                for (let i = 0; i < this.particles.length; i++) {
+                    for (let j = i + 1; j < this.particles.length; j++) {
+                        const p1 = this.particles[i];
+                        const p2 = this.particles[j];
+                        const distance = Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+                        
+                        if (distance < CONFIG.CONNECTION_DISTANCE) {
+                            this.ctx.beginPath();
+                            this.ctx.moveTo(p1.x, p1.y);
+                            this.ctx.lineTo(p2.x, p2.y);
+                            this.ctx.stroke();
+                        }
+                    }
+                }
+                
+                // Draw particles
+                this.particles.forEach(particle => particle.draw(this.ctx));
+            }
+            
+            drawTitle() {
+                // Draw "HEAD SOCCER" title with exact styling from original
+                this.ctx.save();
+                
+                // Use custom font
+                this.ctx.font = 'bold 80px Font, Arial';
+                this.ctx.textAlign = 'center';
+                this.ctx.textBaseline = 'middle';
+                
+                // Black outline
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 8;
+                this.ctx.strokeText('HEAD SOCCER', CONFIG.WIDTH / 2, this.titleY);
+                
+                // White fill
+                this.ctx.fillStyle = '#fff';
+                this.ctx.fillText('HEAD SOCCER', CONFIG.WIDTH / 2, this.titleY);
+                
+                this.ctx.restore();
+            }
+            
+            drawHeadCarousel(side, centerX) {
+                const selectedIndex = side === 'left' ? this.player1SelectedHead : this.player2SelectedHead;
+                
+                this.ctx.save();
+                
+                // Draw carousel background - dark elliptical background like original
+                this.ctx.fillStyle = 'rgba(20, 20, 20, 0.8)';
+                this.ctx.beginPath();
+                this.ctx.ellipse(centerX, this.carouselY, this.carouselRadius, this.carouselRadius * 0.6, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                // Draw carousel border
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.ellipse(centerX, this.carouselY, this.carouselRadius, this.carouselRadius * 0.6, 0, 0, Math.PI * 2);
+                this.ctx.stroke();
+                
+                // Draw character heads in circular positions with exact spacing from original
+                const numHeads = CONFIG.CHARACTER_HEADS.length;
+                for (let i = 0; i < numHeads; i++) {
+                    // Calculate position with selected head always in front
+                    const relativeIndex = (i - selectedIndex + numHeads) % numHeads;
+                    const angle = (relativeIndex / numHeads) * Math.PI * 2;
+                    
+                    // Create elliptical motion like original game
+                    const radiusX = this.carouselRadius * 0.7;
+                    const radiusY = this.carouselRadius * 0.4;
+                    const headX = centerX + Math.cos(angle) * radiusX;
+                    const headY = this.carouselY + Math.sin(angle) * radiusY;
+                    
+                    const headName = CONFIG.CHARACTER_HEADS[i];
+                    const headImage = assetLoader.getImage(headName + '_Head.png');
+                    
+                    if (headImage) {
+                        const isSelected = i === selectedIndex;
+                        const depth = Math.sin(angle); // Depth perception
+                        const scale = isSelected ? 1.0 : (0.6 + 0.2 * (depth + 1)); // Scale based on depth
+                        const alpha = isSelected ? 1.0 : (0.4 + 0.3 * (depth + 1)); // Alpha based on depth
+                        
+                        this.ctx.save();
+                        this.ctx.globalAlpha = alpha;
+                        
+                        const size = 90 * scale;
+                        
+                        // Selected head highlighting
+                        if (isSelected) {
+                            // Glowing border around selected head
+                            this.ctx.shadowColor = '#fff';
+                            this.ctx.shadowBlur = 15;
+                            this.ctx.strokeStyle = '#fff';
+                            this.ctx.lineWidth = 3;
+                            this.ctx.beginPath();
+                            this.ctx.arc(headX, headY, size / 2 + 8, 0, Math.PI * 2);
+                            this.ctx.stroke();
+                            this.ctx.shadowBlur = 0;
+                        }
+                        
+                        // Draw head with scaling based on character
+                        const headScale = CONFIG.HEAD_SCALE[headName] || [1, 1];
+                        const finalWidth = size * headScale[0];
+                        const finalHeight = size * headScale[1];
+                        
+                        this.ctx.drawImage(headImage, 
+                            headX - finalWidth/2, 
+                            headY - finalHeight/2, 
+                            finalWidth, 
+                            finalHeight
+                        );
+                    } else {
+                        // Fallback: Draw colored circle with character name
+                        const isSelected = i === selectedIndex;
+                        const depth = Math.sin(angle);
+                        const scale = isSelected ? 1.0 : (0.6 + 0.2 * (depth + 1));
+                        const alpha = isSelected ? 1.0 : (0.4 + 0.3 * (depth + 1));
+                        
+                        this.ctx.save();
+                        this.ctx.globalAlpha = alpha;
+                        
+                        const size = 90 * scale;
+                        
+                        // Draw colored circle
+                        const colors = ['#4CAF50', '#2196F3', '#FF9800']; // Green, Blue, Orange
+                        this.ctx.fillStyle = colors[i % colors.length];
+                        this.ctx.beginPath();
+                        this.ctx.arc(headX, headY, size / 2, 0, Math.PI * 2);
+                        this.ctx.fill();
+                        
+                        // Draw character name
+                        this.ctx.fillStyle = '#fff';
+                        this.ctx.font = '12px Arial';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.fillText(headName, headX, headY);
+                        
+                        if (isSelected) {
+                            this.ctx.strokeStyle = '#fff';
+                            this.ctx.lineWidth = 3;
+                            this.ctx.beginPath();
+                            this.ctx.arc(headX, headY, size / 2 + 5, 0, Math.PI * 2);
+                            this.ctx.stroke();
+                        }
+                        
+                        this.ctx.restore();
+                    }
+                }
+                
+                // Draw player label with better styling
+                this.ctx.font = 'bold 28px Font, Arial';
+                this.ctx.fillStyle = '#fff';
+                this.ctx.strokeStyle = '#000';
+                this.ctx.lineWidth = 2;
+                this.ctx.textAlign = 'center';
+                const labelText = side === 'left' ? 'PLAYER 1' : 'PLAYER 2';
+                this.ctx.strokeText(labelText, centerX, this.carouselY - this.carouselRadius - 50);
+                this.ctx.fillText(labelText, centerX, this.carouselY - this.carouselRadius - 50);
+                
+                // Show selected character name
+                const selectedName = CONFIG.CHARACTER_HEADS[selectedIndex];
+                this.ctx.font = 'bold 20px Font, Arial';
+                this.ctx.fillStyle = '#ccc';
+                this.ctx.fillText(selectedName.toUpperCase(), centerX, this.carouselY + this.carouselRadius + 30);
+                
+                this.ctx.restore();
+            }
+            
+            drawCleatSelection(side, centerX) {
+                const selectedIndex = side === 'left' ? this.player1SelectedCleat : this.player2SelectedCleat;
+                
+                this.ctx.save();
+                
+                // Draw cleat carousel background - smaller ellipse below heads
+                this.ctx.fillStyle = 'rgba(15, 15, 15, 0.6)';
+                this.ctx.beginPath();
+                this.ctx.ellipse(centerX, this.cleatY, this.cleatRadius, this.cleatRadius * 0.4, 0, 0, Math.PI * 2);
+                this.ctx.fill();
+                
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                this.ctx.lineWidth = 1;
+                this.ctx.beginPath();
+                this.ctx.ellipse(centerX, this.cleatY, this.cleatRadius, this.cleatRadius * 0.4, 0, 0, Math.PI * 2);
+                this.ctx.stroke();
+                
+                // Draw cleat carousel with better positioning
+                const numCleats = CONFIG.CLEAT_TYPES.length;
+                for (let i = 0; i < numCleats; i++) {
+                    // Position with selected cleat in front
+                    const relativeIndex = (i - selectedIndex + numCleats) % numCleats;
+                    const angle = (relativeIndex / numCleats) * Math.PI * 2;
+                    
+                    const radiusX = this.cleatRadius * 0.8;
+                    const radiusY = this.cleatRadius * 0.3;
+                    const cleatX = centerX + Math.cos(angle) * radiusX;
+                    const cleatY = this.cleatY + Math.sin(angle) * radiusY;
+                    
+                    const cleatType = CONFIG.CLEAT_TYPES[i];
+                    const cleatImage = assetLoader.getImage('Cleat ' + cleatType + '.png');
+                    
+                    if (cleatImage) {
+                        const isSelected = i === selectedIndex;
+                        const depth = Math.sin(angle);
+                        const scale = isSelected ? 0.8 : (0.4 + 0.2 * (depth + 1));
+                        const alpha = isSelected ? 1.0 : (0.5 + 0.3 * (depth + 1));
+                        
+                        this.ctx.save();
+                        this.ctx.globalAlpha = alpha;
+                        
+                        const size = 60 * scale;
+                        
+                        // Highlight selected cleat
+                        if (isSelected) {
+                            this.ctx.shadowColor = '#fff';
+                            this.ctx.shadowBlur = 10;
+                            this.ctx.strokeStyle = '#fff';
+                            this.ctx.lineWidth = 2;
+                            this.ctx.beginPath();
+                            this.ctx.arc(cleatX, cleatY, size / 2 + 5, 0, Math.PI * 2);
+                            this.ctx.stroke();
+                            this.ctx.shadowBlur = 0;
+                        }
+                        
+                        this.ctx.drawImage(cleatImage, cleatX - size/2, cleatY - size/2, size, size);
+                        this.ctx.restore();
+                    } else {
+                        // Fallback: Draw colored rectangle with cleat number
+                        const isSelected = i === selectedIndex;
+                        const depth = Math.sin(angle);
+                        const scale = isSelected ? 0.8 : (0.4 + 0.2 * (depth + 1));
+                        const alpha = isSelected ? 1.0 : (0.5 + 0.3 * (depth + 1));
+                        
+                        this.ctx.save();
+                        this.ctx.globalAlpha = alpha;
+                        
+                        const size = 60 * scale;
+                        
+                        // Draw colored rectangle (shoe shape)
+                        this.ctx.fillStyle = '#8B4513'; // Brown color for shoe
+                        this.ctx.fillRect(cleatX - size/2, cleatY - size/3, size, size*2/3);
+                        
+                        // Draw cleat number
+                        this.ctx.fillStyle = '#fff';
+                        this.ctx.font = '12px Arial';
+                        this.ctx.textAlign = 'center';
+                        this.ctx.fillText(cleatType.toString(), cleatX, cleatY);
+                        
+                        if (isSelected) {
+                            this.ctx.strokeStyle = '#fff';
+                            this.ctx.lineWidth = 2;
+                            this.ctx.strokeRect(cleatX - size/2 - 3, cleatY - size/3 - 3, size + 6, size*2/3 + 6);
+                        }
+                        
+                        this.ctx.restore();
+                    }
+                }
+                
+                // Show selected cleat number
+                const selectedCleat = CONFIG.CLEAT_TYPES[selectedIndex];
+                this.ctx.font = 'bold 16px Font, Arial';
+                this.ctx.fillStyle = '#aaa';
+                this.ctx.textAlign = 'center';
+                this.ctx.fillText(`CLEAT ${selectedCleat}`, centerX, this.cleatY + this.cleatRadius + 20);
+                
+                this.ctx.restore();
+            }
+            
+            drawControlsInfo() {
+                // Draw control instructions
+                this.ctx.font = '18px Font, Arial';
+                this.ctx.fillStyle = '#ccc';
+                this.ctx.textAlign = 'center';
+                
+                // Player 1 controls
+                this.ctx.fillText('A/D - Change Head', this.player1CarouselX, 780);
+                this.ctx.fillText('S - Change Cleat', this.player1CarouselX, 800);
+                
+                // Player 2 controls
+                this.ctx.fillText('←/→ - Change Head', this.player2CarouselX, 780);
+                this.ctx.fillText('↓ - Change Cleat', this.player2CarouselX, 800);
+                
+                // Start game
+                this.ctx.font = '24px Font, Arial';
+                this.ctx.fillStyle = '#fff';
+                this.ctx.fillText('PRESS SPACE TO START', CONFIG.WIDTH / 2, 850);
+            }
+            
+            startMatch() {
+                // Store selected characters and game settings
+                const gameSettings = {
+                    player1Head: CONFIG.CHARACTER_HEADS[this.player1SelectedHead],
+                    player2Head: CONFIG.CHARACTER_HEADS[this.player2SelectedHead],
+                    player1Cleat: CONFIG.CLEAT_TYPES[this.player1SelectedCleat],
+                    player2Cleat: CONFIG.CLEAT_TYPES[this.player2SelectedCleat],
+                    player1Name: CONFIG.CHARACTER_HEADS[this.player1SelectedHead],
+                    player2Name: CONFIG.CHARACTER_HEADS[this.player2SelectedHead],
+                    gameMode: 'versus', // Can be expanded for different modes
+                    timeLimit: 120 // 2 minutes
+                };
+                
+                // Store in sessionStorage for gameplay page
+                sessionStorage.setItem('gameSettings', JSON.stringify(gameSettings));
+                
+                // Also keep localStorage for backward compatibility
+                localStorage.setItem('headSoccerSettings', JSON.stringify(gameSettings));
+                
+                console.log('Starting match with settings:', gameSettings);
+                
+                // Transition to gameplay
+                window.location.href = 'gameplay.html';
+            }
+        }
+        
+        // Start character selection when page loads
+        window.addEventListener('load', () => {
+            new CharacterSelection();
+        });
+    </script>
+</body>
+</html>

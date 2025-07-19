@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Gameplay - Head Soccer</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #333;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        
+        .test-button {
+            display: inline-block;
+            padding: 15px 30px;
+            margin: 10px;
+            background: #4CAF50;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 18px;
+        }
+        
+        .test-button:hover {
+            background: #45a049;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #444;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Head Soccer - Integration Test</h1>
+    
+    <div class="test-section">
+        <h2>Test Complete Flow</h2>
+        <p>Test the complete game flow from menu to gameplay:</p>
+        <a href="index.html" class="test-button">Start from Main Menu</a>
+        <a href="character-selection.html" class="test-button">Character Selection</a>
+        <a href="gameplay.html" class="test-button">Direct to Gameplay</a>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test Gameplay with Sample Data</h2>
+        <p>Start gameplay with predefined character selections:</p>
+        <button class="test-button" onclick="testWithSampleData()">Test Gameplay (Dad vs Mihir)</button>
+        <button class="test-button" onclick="testWithRandomData()">Test Gameplay (Random)</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>Physics Test</h2>
+        <p>Test individual components:</p>
+        <button class="test-button" onclick="showPhysicsConstants()">Show Physics Constants</button>
+        <button class="test-button" onclick="testCollisionDetection()">Test Collision Detection</button>
+    </div>
+    
+    <div id="test-output" class="test-section">
+        <h3>Test Output:</h3>
+        <pre id="output"></pre>
+    </div>
+
+    <script>
+        function testWithSampleData() {
+            const gameSettings = {
+                player1Head: 'Dad_Head',
+                player2Head: 'Mihir_Head', 
+                player1Cleat: 'Cleat 1',
+                player2Cleat: 'Cleat 2',
+                player1Name: 'Dad',
+                player2Name: 'Mihir',
+                gameMode: 'versus',
+                timeLimit: 120
+            };
+            
+            sessionStorage.setItem('gameSettings', JSON.stringify(gameSettings));
+            log('Sample game settings stored');
+            log(JSON.stringify(gameSettings, null, 2));
+            
+            setTimeout(() => {
+                window.location.href = 'gameplay.html';
+            }, 1000);
+        }
+        
+        function testWithRandomData() {
+            const heads = ['Dad_Head', 'Mihir_Head', 'Nuwan_Head'];
+            const cleats = ['Cleat 1', 'Cleat 2', 'Cleat 3', 'Cleat 4', 'Cleat 5'];
+            
+            const gameSettings = {
+                player1Head: heads[Math.floor(Math.random() * heads.length)],
+                player2Head: heads[Math.floor(Math.random() * heads.length)],
+                player1Cleat: cleats[Math.floor(Math.random() * cleats.length)],
+                player2Cleat: cleats[Math.floor(Math.random() * cleats.length)],
+                player1Name: 'Player 1',
+                player2Name: 'Player 2',
+                gameMode: 'versus',
+                timeLimit: 120
+            };
+            
+            sessionStorage.setItem('gameSettings', JSON.stringify(gameSettings));
+            log('Random game settings stored');
+            log(JSON.stringify(gameSettings, null, 2));
+            
+            setTimeout(() => {
+                window.location.href = 'gameplay.html';
+            }, 1000);
+        }
+        
+        function showPhysicsConstants() {
+            // Load physics constants
+            fetch('js/physics-constants.js')
+                .then(response => response.text())
+                .then(text => {
+                    eval(text);
+                    log('Physics Constants Loaded:');
+                    log(JSON.stringify(PHYSICS_CONSTANTS, null, 2));
+                })
+                .catch(err => {
+                    log('Error loading physics constants: ' + err.message);
+                });
+        }
+        
+        function testCollisionDetection() {
+            // Simple collision test
+            const objectA = { x: 10, y: 10, width: 50, height: 50 };
+            const objectB = { x: 30, y: 30, width: 50, height: 50 };
+            const objectC = { x: 100, y: 100, width: 50, height: 50 };
+            
+            // Load collision utils
+            fetch('js/physics-constants.js')
+                .then(response => response.text())
+                .then(text => {
+                    eval(text);
+                    
+                    const collision1 = PHYSICS_CONSTANTS.UTILS.isCollide(objectA, objectB);
+                    const collision2 = PHYSICS_CONSTANTS.UTILS.isCollide(objectA, objectC);
+                    
+                    log('Collision Test Results:');
+                    log(`A vs B (should collide): ${collision1}`);
+                    log(`A vs C (should not collide): ${collision2}`);
+                    
+                    const side = PHYSICS_CONSTANTS.UTILS.collidedSide(objectA, objectB);
+                    log(`Collision side A vs B: ${side}`);
+                })
+                .catch(err => {
+                    log('Error testing collision: ' + err.message);
+                });
+        }
+        
+        function log(message) {
+            const output = document.getElementById('output');
+            output.textContent += message + '\\n';
+            console.log(message);
+        }
+        
+        // Clear output on load
+        document.getElementById('output').textContent = 'Ready for testing...\\n';
+    </script>
+</body>
+</html>
