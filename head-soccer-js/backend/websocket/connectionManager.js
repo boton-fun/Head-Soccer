@@ -96,11 +96,20 @@ class ConnectionManager extends EventEmitter {
     this.setupSocketHandlers(socket, connection);
     
     // Emit connection event (with socket for internal use)
-    this.emit('connection', {
+    const eventData = {
       socketId: socket.id,
       socket: socket,
       connection: connection
+    };
+    
+    console.log('🔍 ConnectionManager emitting connection event with:', {
+      socketId: eventData.socketId,
+      hasSocket: !!eventData.socket,
+      socketType: typeof eventData.socket,
+      hasConnection: !!eventData.connection
     });
+    
+    this.emit('connection', eventData);
     
     // Send welcome message
     socket.emit('connected', {

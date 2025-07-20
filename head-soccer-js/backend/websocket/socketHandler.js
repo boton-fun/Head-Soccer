@@ -136,10 +136,24 @@ class SocketHandler extends EventEmitter {
    * @param {Object} data - Connection data
    */
   handleNewConnection(data) {
+    console.log('🔍 handleNewConnection called with data:', {
+      hasSocketId: !!data.socketId,
+      hasSocket: !!data.socket,
+      hasConnection: !!data.connection,
+      socketType: typeof data.socket,
+      dataKeys: Object.keys(data)
+    });
+    
     const { socketId, socket, connection } = data;
     
     if (!socket) {
       console.error(`❌ No socket provided for connection ${socketId}`);
+      console.error('❌ Full data object:', data);
+      return;
+    }
+    
+    if (!socketId) {
+      console.error('❌ No socketId provided');
       return;
     }
     
@@ -157,6 +171,19 @@ class SocketHandler extends EventEmitter {
    * @param {Socket} socket - Socket.IO socket
    */
   setupGameEventHandlers(socket) {
+    if (!socket) {
+      console.error('❌ setupGameEventHandlers: socket is undefined or null');
+      return;
+    }
+    
+    if (typeof socket.on !== 'function') {
+      console.error('❌ setupGameEventHandlers: socket.on is not a function', typeof socket.on);
+      console.error('Socket object:', socket);
+      return;
+    }
+    
+    console.log(`🔧 Setting up event handlers for socket ${socket.id}`);
+    
     // Authentication events
     socket.on('authenticate', (data) => {
       this.handleEvent(socket, 'authenticate', data, this.handleAuthenticate.bind(this));
