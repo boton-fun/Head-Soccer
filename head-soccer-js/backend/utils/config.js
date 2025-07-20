@@ -8,6 +8,9 @@ if (process.env.NODE_ENV !== 'production') {
 const validateEnvVar = (name, defaultValue = null, required = true) => {
   const value = process.env[name] || defaultValue;
   
+  // Debug logging
+  console.log(`Env var ${name}: ${value ? 'Set' : 'Not set'}`);
+  
   if (required && !value) {
     throw new Error(`Required environment variable ${name} is not set`);
   }
@@ -67,10 +70,17 @@ const config = {
 };
 
 // Production-specific validations
+console.log('=== Environment Debug ===');
+console.log('NODE_ENV:', process.env.NODE_ENV);
+console.log('All env vars:', Object.keys(process.env).filter(key => !key.includes('npm_')).sort());
+
 if (config.isProduction()) {
   // Debug logging
+  console.log('=== Production Validation ===');
   console.log('JWT_SECRET from env:', process.env.JWT_SECRET ? 'Set' : 'Not set');
-  console.log('JWT secret config value:', config.jwt.secret.substring(0, 10) + '...');
+  console.log('JWT_SECRET actual value:', process.env.JWT_SECRET);
+  console.log('JWT secret config value:', config.jwt.secret);
+  console.log('Checking if equals default:', config.jwt.secret === 'default-jwt-secret-change-in-production');
   
   // Validate critical production environment variables
   if (config.jwt.secret === 'default-jwt-secret-change-in-production') {
