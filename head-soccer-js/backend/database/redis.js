@@ -24,9 +24,14 @@ async function connectRedis() {
         url: config.redis.url,
         socket: {
           connectTimeout: 15000,
+          commandTimeout: 10000,
+          keepAlive: 30000,
+          reconnectDelay: 1000,
           lazyConnect: true,
           tls: config.redis.url.startsWith('rediss://') ? {} : false
-        }
+        },
+        retryDelayOnFailover: 1000,
+        maxRetriesPerRequest: 3
       };
     } else if (config.redis.url.includes(':')) {
       // Railway internal hostname format (redis:6379 or host:port)
@@ -36,8 +41,13 @@ async function connectRedis() {
           host: host || 'redis',
           port: parseInt(port) || 6379,
           connectTimeout: 15000,
+          commandTimeout: 10000,
+          keepAlive: 30000,
+          reconnectDelay: 1000,
           lazyConnect: true
-        }
+        },
+        retryDelayOnFailover: 1000,
+        maxRetriesPerRequest: 3
       };
       
       if (config.redis.password) {
@@ -50,8 +60,13 @@ async function connectRedis() {
           host: config.redis.url,
           port: 6379,
           connectTimeout: 15000,
+          commandTimeout: 10000,
+          keepAlive: 30000,
+          reconnectDelay: 1000,
           lazyConnect: true
-        }
+        },
+        retryDelayOnFailover: 1000,
+        maxRetriesPerRequest: 3
       };
       
       if (config.redis.password) {
@@ -64,7 +79,20 @@ async function connectRedis() {
     redisClient.on('error', (err) => {
       console.error('❌ Redis connection error:', err.message);
       isConnected = false;
-      // Don't crash the app, just continue without Redis
+      
+      // Attempt reconnection for connection issues
+      if (err.message.includes('Socket closed') || 
+          err.message.includes('connect ECONNREFUSED') ||
+          err.message.includes('timeout')) {
+        console.log('🔄 Attempting Redis reconnection in 5 seconds...');
+        setTimeout(() => {
+          if (!isConnected && redisClient && !redisClient.isOpen) {
+            redisClient.connect().catch(reconnectErr => {
+              console.error('Reconnection failed:', reconnectErr.message);
+            });
+          }
+        }, 5000);
+      }
     });
 
     redisClient.on('connect', () => {
@@ -93,6 +121,19 @@ async function connectRedis() {
     await redisClient.ping();
     console.log('✅ Redis ping successful');
     isConnected = true;
+    
+    // Set up periodic heartbeat to keep connection alive
+    const heartbeat = setInterval(async () => {
+      if (isRedisAvailable()) {
+        try {
+          await redisClient.ping();
+        } catch (err) {
+          console.warn('⚠️ Redis heartbeat failed:', err.message);
+        }
+      } else {
+        clearInterval(heartbeat);
+      }
+    }, 30000); // Ping every 30 seconds
     
     return redisClient;
   } catch (error) {

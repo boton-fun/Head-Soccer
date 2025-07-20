@@ -37,7 +37,9 @@
       "Bash(git commit:*)",
       "Bash(mv:*)",
       "WebFetch(domain:head-soccer-production.up.railway.app)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(NODE_ENV=development node test/websocket.test.js)",
+      "Bash(pkill:*)"
     ],
     "deny": []
   }

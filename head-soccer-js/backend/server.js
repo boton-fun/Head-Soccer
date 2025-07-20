@@ -69,7 +69,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: config.frontendUrl,
+    origin: [config.frontendUrl, "http://localhost:3001", "http://127.0.0.1:3001"],
     methods: ["GET", "POST"],
     credentials: true
   }
