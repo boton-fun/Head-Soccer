@@ -6,49 +6,59 @@ const cors = require('cors');
 // Load config after ensuring env vars are available
 const config = require('./utils/config');
 
-// Simple in-memory cache fallback for immediate deployment
-const cacheService = {
-  cache: new Map(),
+// Import cache service with Redis support
+let cacheService;
+try {
+  cacheService = require('./utils/cache-service');
+  console.log('✅ Cache service loaded successfully');
+} catch (error) {
+  console.error('❌ Failed to load cache service:', error.message);
+  console.log('⚠️  Falling back to simple in-memory cache');
   
-  async initialize() {
-    console.log('⚠️  Using simple in-memory cache (Redis disabled for now)');
-    return Promise.resolve();
-  },
-  
-  getStatus() {
-    return { 
-      redis: false, 
-      fallback: true, 
-      mode: 'simple-memory',
-      note: 'Redis temporarily disabled to fix deployment'
-    };
-  },
-  
-  async setEx(key, ttl, value) {
-    this.cache.set(key, { value, expires: Date.now() + (ttl * 1000) });
-    return true;
-  },
-  
-  async get(key) {
-    const item = this.cache.get(key);
-    if (!item) return null;
-    if (Date.now() > item.expires) {
-      this.cache.delete(key);
-      return null;
-    }
-    return item.value;
-  },
-  
-  async del(key) {
-    return this.cache.delete(key);
-  },
-  
-  // Queue operations for matchmaking
-  async zAdd(key, members) { return true; },
-  async zRange(key, start, stop) { return []; },
-  async zRem(key, ...members) { return 0; },
-  async zCard(key) { return 0; }
-};
+  // Simple fallback cache
+  cacheService = {
+    cache: new Map(),
+    
+    async initialize() {
+      console.log('⚠️  Using simple in-memory cache fallback');
+      return Promise.resolve();
+    },
+    
+    getStatus() {
+      return { 
+        redis: false, 
+        fallback: true, 
+        mode: 'simple-memory-fallback',
+        error: 'Cache service failed to load'
+      };
+    },
+    
+    async setEx(key, ttl, value) {
+      this.cache.set(key, { value, expires: Date.now() + (ttl * 1000) });
+      return true;
+    },
+    
+    async get(key) {
+      const item = this.cache.get(key);
+      if (!item) return null;
+      if (Date.now() > item.expires) {
+        this.cache.delete(key);
+        return null;
+      }
+      return item.value;
+    },
+    
+    async del(key) {
+      return this.cache.delete(key);
+    },
+    
+    // Queue operations for matchmaking
+    async zAdd(key, members) { return true; },
+    async zRange(key, start, stop) { return []; },
+    async zRem(key, ...members) { return 0; },
+    async zCard(key) { return 0; }
+  };
+}
 
 const app = express();
 const server = http.createServer(app);
