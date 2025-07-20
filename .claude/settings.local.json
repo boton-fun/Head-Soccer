@@ -39,7 +39,8 @@
       "WebFetch(domain:head-soccer-production.up.railway.app)",
       "Bash(timeout:*)",
       "Bash(NODE_ENV=development node test/websocket.test.js)",
-      "Bash(pkill:*)"
+      "Bash(pkill:*)",
+      "Bash(NODE_ENV=production node test/websocket.test.js)"
     ],
     "deny": []
   }
