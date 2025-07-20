@@ -36,7 +36,8 @@
       "Bash(git remote add:*)",
       "Bash(git commit:*)",
       "Bash(mv:*)",
-      "WebFetch(domain:head-soccer-production.up.railway.app)"
+      "WebFetch(domain:head-soccer-production.up.railway.app)",
+      "Bash(timeout:*)"
     ],
     "deny": []
   }

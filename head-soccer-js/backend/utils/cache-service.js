@@ -36,8 +36,8 @@ class CacheService {
         redisConfig = {
           url: config.redis.url,
           socket: {
-            connectTimeout: 10000,
-            lazyConnect: false
+            connectTimeout: 5000,  // Reduced timeout
+            lazyConnect: true      // Changed to lazy connect
           }
         };
       } else {
@@ -47,8 +47,8 @@ class CacheService {
           socket: {
             host: host || 'redis',
             port: parseInt(port) || 6379,
-            connectTimeout: 10000,
-            lazyConnect: false
+            connectTimeout: 5000,  // Reduced timeout
+            lazyConnect: true      // Changed to lazy connect
           }
         };
         
