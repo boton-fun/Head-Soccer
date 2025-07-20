@@ -36,8 +36,44 @@ app.get('/health', (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: config.nodeEnv,
-    version: require('./package.json').version
+    version: require('./package.json').version,
+    services: {
+      database: config.supabase.url ? 'configured' : 'not configured',
+      redis: config.redis.url ? 'configured' : 'not configured'
+    }
   });
+});
+
+// Add Redis test endpoint
+app.get('/test-redis', async (req, res) => {
+  try {
+    const { testRedisInProduction } = require('./test-redis-production');
+    
+    // Capture console output
+    const originalLog = console.log;
+    const logs = [];
+    console.log = (...args) => {
+      logs.push(args.join(' '));
+      originalLog(...args);
+    };
+    
+    await testRedisInProduction();
+    
+    // Restore console.log
+    console.log = originalLog;
+    
+    res.json({
+      status: 'Redis test completed',
+      timestamp: new Date().toISOString(),
+      output: logs
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'Redis test failed',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 app.get('/', (req, res) => {
