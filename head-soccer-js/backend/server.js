@@ -10,6 +10,10 @@ const config = require('./utils/config');
 const ConnectionManager = require('./websocket/connectionManager');
 const SocketHandler = require('./websocket/socketHandler');
 
+// Import infrastructure optimization utilities
+const InfrastructureOptimizer = require('./utils/infrastructure-optimizer');
+const ResourceMonitor = require('./utils/resource-monitor');
+
 // Import cache service with Redis support
 let cacheService;
 try {
@@ -72,6 +76,22 @@ const io = new Server(server, {
     origin: [config.frontendUrl, "http://localhost:3001", "http://127.0.0.1:3001"],
     methods: ["GET", "POST"],
     credentials: true
+  },
+  // Railway-optimized Socket.IO configuration
+  pingTimeout: 25000, // Reduced from default 60000
+  pingInterval: 20000, // Reduced from default 25000
+  maxHttpBufferSize: 1e6, // 1MB limit for Railway
+  transports: ['polling', 'websocket'], // Polling first for stability
+  allowEIO3: true, // Backward compatibility
+  upgradeTimeout: 10000, // Reduced upgrade timeout
+  connectTimeout: 15000, // Reduced connection timeout
+  // Memory optimization
+  serveClient: false, // Don't serve client files
+  allowRequest: (req, callback) => {
+    // Basic rate limiting at Socket.IO level
+    const clientIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+    // Could implement IP-based rate limiting here
+    callback(null, true);
   }
 });
 
@@ -183,6 +203,51 @@ app.get('/websocket/connections', (req, res) => {
   });
 });
 
+// Infrastructure monitoring endpoints
+app.get('/infrastructure/status', (req, res) => {
+  try {
+    const resourceStatus = resourceMonitor.getResourceStatus();
+    const infrastructureHealth = infrastructureOptimizer.getInfrastructureHealth();
+    const memoryUsage = infrastructureOptimizer.optimizeMemoryUsage();
+    
+    res.json({
+      status: 'Infrastructure monitoring active',
+      timestamp: new Date().toISOString(),
+      resources: resourceStatus,
+      infrastructure: infrastructureHealth,
+      memory: memoryUsage,
+      recommendations: resourceStatus.recommendations || []
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Infrastructure monitoring error',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
+app.get('/infrastructure/optimize', (req, res) => {
+  try {
+    const suggestions = resourceMonitor.getOptimizationSuggestions();
+    const wsConfig = infrastructureOptimizer.optimizeWebSocketConnections();
+    
+    res.json({
+      status: 'Infrastructure optimization suggestions',
+      timestamp: new Date().toISOString(),
+      suggestions,
+      optimizedWebSocketConfig: wsConfig,
+      currentMetrics: resourceMonitor.exportMetrics().summary
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: 'Infrastructure optimization error',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Head Soccer Multiplayer Server',
@@ -191,7 +256,9 @@ app.get('/', (req, res) => {
       '/health - Server health check',
       '/test-redis - Redis functionality test',
       '/websocket/stats - WebSocket statistics',
-      '/websocket/connections - Active connections'
+      '/websocket/connections - Active connections',
+      '/infrastructure/status - Infrastructure monitoring',
+      '/infrastructure/optimize - Optimization suggestions'
     ]
   });
 });
@@ -199,6 +266,15 @@ app.get('/', (req, res) => {
 // Initialize WebSocket components
 let connectionManager;
 let socketHandler;
+
+// Initialize infrastructure optimization
+const infrastructureOptimizer = new InfrastructureOptimizer();
+const resourceMonitor = new ResourceMonitor({
+  monitoringInterval: 10000, // 10 seconds
+  memoryThreshold: 80, // 80% for Railway free tier
+  cpuThreshold: 70,
+  connectionThreshold: 50
+});
 
 // WebSocket initialization will happen after server starts
 
@@ -287,6 +363,10 @@ if (require.main === module) {
       console.log(`Environment: ${config.nodeEnv}`);
       console.log(`Frontend URL: ${config.frontendUrl}`);
       console.log(`Cache status:`, cacheService.getStatus());
+      
+      // Start infrastructure monitoring
+      resourceMonitor.startMonitoring();
+      console.log('📊 Infrastructure monitoring started');
       
       // Initialize WebSocket components after server is running
       try {
