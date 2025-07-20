@@ -6,6 +6,10 @@ const cors = require('cors');
 // Load config after ensuring env vars are available
 const config = require('./utils/config');
 
+// Import WebSocket components
+const ConnectionManager = require('./websocket/connectionManager');
+const SocketHandler = require('./websocket/socketHandler');
+
 // Import cache service with Redis support
 let cacheService;
 try {
@@ -149,24 +153,54 @@ app.get('/test-redis', async (req, res) => {
   }
 });
 
+// WebSocket status endpoints
+app.get('/websocket/stats', (req, res) => {
+  if (!connectionManager || !socketHandler) {
+    return res.status(503).json({ error: 'WebSocket components not initialized' });
+  }
+  
+  res.json({
+    connectionManager: connectionManager.getStats(),
+    socketHandler: socketHandler.getStats(),
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/websocket/connections', (req, res) => {
+  if (!connectionManager) {
+    return res.status(503).json({ error: 'Connection manager not initialized' });
+  }
+  
+  const connections = [];
+  for (const [socketId, connection] of connectionManager.connections.entries()) {
+    connections.push(connectionManager.getPublicConnectionInfo(connection));
+  }
+  
+  res.json({
+    totalConnections: connections.length,
+    connections: connections.slice(0, 100), // Limit to first 100 for performance
+    timestamp: new Date().toISOString()
+  });
+});
+
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Head Soccer Multiplayer Server',
     version: require('./package.json').version,
     endpoints: [
       '/health - Server health check',
-      '/test-redis - Redis functionality test'
+      '/test-redis - Redis functionality test',
+      '/websocket/stats - WebSocket statistics',
+      '/websocket/connections - Active connections'
     ]
   });
 });
 
-io.on('connection', (socket) => {
-  console.log(`Player connected: ${socket.id}`);
-  
-  socket.on('disconnect', () => {
-    console.log(`Player disconnected: ${socket.id}`);
-  });
-});
+// Initialize WebSocket components
+let connectionManager;
+let socketHandler;
+
+// WebSocket initialization will happen after server starts
 
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
@@ -191,6 +225,14 @@ const gracefulShutdown = (signal) => {
     }
     
     console.log('HTTP server closed.');
+    
+    // Cleanup WebSocket components
+    if (connectionManager) {
+      connectionManager.shutdown();
+    }
+    if (socketHandler) {
+      socketHandler.shutdown();
+    }
     
     // Close Socket.IO connections
     io.close(() => {
@@ -245,6 +287,20 @@ if (require.main === module) {
       console.log(`Environment: ${config.nodeEnv}`);
       console.log(`Frontend URL: ${config.frontendUrl}`);
       console.log(`Cache status:`, cacheService.getStatus());
+      
+      // Initialize WebSocket components after server is running
+      try {
+        connectionManager = new ConnectionManager(io);
+        socketHandler = new SocketHandler(connectionManager);
+        
+        // Start monitoring
+        connectionManager.startMonitoring();
+        
+        console.log('🔗 WebSocket components initialized');
+      } catch (error) {
+        console.error('❌ Failed to initialize WebSocket components:', error);
+      }
+      
       console.log('🚀 Head Soccer Multiplayer Server is ready!');
     });
 
