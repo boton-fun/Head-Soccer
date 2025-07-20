@@ -2,6 +2,8 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
+
+// Load config after ensuring env vars are available
 const config = require('./utils/config');
 
 const app = express();

@@ -1,5 +1,9 @@
 const path = require('path');
-require('dotenv').config();
+
+// Only load .env in development
+if (process.env.NODE_ENV !== 'production') {
+  require('dotenv').config();
+}
 
 const validateEnvVar = (name, defaultValue = null, required = true) => {
   const value = process.env[name] || defaultValue;
