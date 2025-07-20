@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(python:*)",
+      "Bash(del:*)",
+      "Bash(rm:*)",
+      "Bash(pygbag:*)",
+      "Bash(dir:*)",
+      "Bash(ls:*)",
+      "Bash(mkdir:*)",
+      "Bash(cp:*)",
+      "Bash(start pymunk-test.html)",
+      "Bash(taskkill:*)",
+      "Bash(node:*)",
+      "Bash(copy \"D:\\Boton AI - Projects\\head-soccer\\assets\\*\" \"D:\\Boton AI - Projects\\head-soccer\\head-soccer-js\\assets\"\")",
+      "Bash(copy:*)",
+      "Bash(curl:*)",
+      "Bash(ren:*)",
+      "Bash(powershell:*)",
+      "Bash(npm install:*)",
+      "Bash(touch:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout 5 npm run dev)",
+      "Bash(PORT=3002 timeout 5 npm run dev)",
+      "Bash(PORT=3003 timeout 8 npm start)",
+      "Bash(timeout 5 npm start)",
+      "Bash(PORT=3005 timeout 5 npm start)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(git push:*)",
+      "Bash(git config:*)",
+      "Bash(ssh-keygen:*)",
+      "Bash(cat:*)",
+      "Bash(ssh:*)",
+      "Bash(git remote add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": []
+  }
+}

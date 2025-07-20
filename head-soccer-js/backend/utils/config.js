@@ -64,6 +64,10 @@ const config = {
 
 // Production-specific validations
 if (config.isProduction()) {
+  // Debug logging
+  console.log('JWT_SECRET from env:', process.env.JWT_SECRET ? 'Set' : 'Not set');
+  console.log('JWT secret config value:', config.jwt.secret.substring(0, 10) + '...');
+  
   // Validate critical production environment variables
   if (config.jwt.secret === 'default-jwt-secret-change-in-production') {
     throw new Error('JWT_SECRET must be set to a secure value in production');
