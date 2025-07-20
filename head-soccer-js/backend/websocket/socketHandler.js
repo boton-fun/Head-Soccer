@@ -8,6 +8,7 @@ const Player = require('../modules/Player');
 const GameRoom = require('../modules/GameRoom');
 const Matchmaker = require('../modules/Matchmaker');
 const GameStateValidator = require('../modules/GameStateValidator');
+const GameEventSystem = require('./gameEventSystem');
 
 class SocketHandler extends EventEmitter {
   constructor(connectionManager, options = {}) {
@@ -16,6 +17,7 @@ class SocketHandler extends EventEmitter {
     this.connectionManager = connectionManager;
     this.matchmaker = new Matchmaker();
     this.gameStateValidator = new GameStateValidator();
+    this.gameEventSystem = new GameEventSystem(connectionManager, options.gameEvents);
     
     // Active games and players
     this.activePlayers = new Map(); // playerId -> Player object
@@ -107,7 +109,10 @@ class SocketHandler extends EventEmitter {
     // Setup event handlers
     this.setupEventHandlers();
     
-    console.log('<� Socket Event Handler initialized');
+    // Setup Game Event System handlers
+    this.setupGameEventHandlers();
+    
+    console.log('🎮 Socket Event Handler initialized');
   }
   
   /**
@@ -810,13 +815,63 @@ class SocketHandler extends EventEmitter {
   }
   
   /**
+   * Setup Game Event System handlers
+   */
+  setupGameEventHandlers() {
+    // Handle game event processing errors
+    this.gameEventSystem.on('error', (errorData) => {
+      console.error('🎮 Game Event System error:', errorData.error.message);
+      this.emit('gameEventError', errorData);
+    });
+    
+    // Handle validation errors
+    this.gameEventSystem.on('validationError', (errorData) => {
+      console.warn('🎮 Game event validation error:', errorData.eventType, errorData.errors);
+      this.emit('gameEventValidationError', errorData);
+    });
+    
+    // Handle rate limiting
+    this.gameEventSystem.on('rateLimitExceeded', (data) => {
+      console.warn(`🎮 Rate limit exceeded for ${data.playerId}: ${data.eventType}`);
+      this.emit('gameEventRateLimit', data);
+    });
+    
+    // Track processed events
+    this.gameEventSystem.on('eventProcessed', (event) => {
+      this.metrics.eventsProcessed++;
+      this.emit('gameEventProcessed', event);
+    });
+  }
+  
+  /**
+   * Queue a game event through the Game Event System
+   */
+  queueGameEvent(eventType, eventData, metadata) {
+    return this.gameEventSystem.queueEvent(eventType, eventData, metadata);
+  }
+  
+  /**
+   * Update player latency for lag compensation
+   */
+  updatePlayerLatency(playerId, latency) {
+    this.gameEventSystem.updatePlayerLatency(playerId, latency);
+  }
+  
+  /**
+   * Get Game Event System statistics
+   */
+  getGameEventStats() {
+    return this.gameEventSystem.getStats();
+  }
+  
+  /**
    * Get handler statistics
    * @returns {Object} Statistics
    */
   getStats() {
     const uptime = Date.now() - this.metrics.startTime;
     
-    return {
+    const baseStats = {
       ...this.metrics,
       uptime: uptime,
       activePlayers: this.activePlayers.size,
@@ -825,13 +880,25 @@ class SocketHandler extends EventEmitter {
       errorRate: this.metrics.eventsRejected / Math.max(1, this.metrics.eventsProcessed),
       rateLimitViolationRate: this.metrics.rateLimitViolations / Math.max(1, this.metrics.eventsProcessed)
     };
+    
+    // Include Game Event System stats if available
+    if (this.gameEventSystem) {
+      baseStats.gameEventSystem = this.gameEventSystem.getStats();
+    }
+    
+    return baseStats;
   }
   
   /**
    * Cleanup resources
    */
   shutdown() {
-    console.log('<� Socket Event Handler shutting down...');
+    console.log('🎮 Socket Event Handler shutting down...');
+    
+    // Shutdown Game Event System
+    if (this.gameEventSystem) {
+      this.gameEventSystem.shutdown();
+    }
     
     // Clear all data
     this.activePlayers.clear();
