@@ -95,10 +95,11 @@ class ConnectionManager extends EventEmitter {
     // Setup socket event handlers
     this.setupSocketHandlers(socket, connection);
     
-    // Emit connection event
+    // Emit connection event (with socket for internal use)
     this.emit('connection', {
       socketId: socket.id,
-      connection: this.getPublicConnectionInfo(connection)
+      socket: socket,
+      connection: connection
     });
     
     // Send welcome message
@@ -303,7 +304,7 @@ class ConnectionManager extends EventEmitter {
       }
       this.roomConnections.get(roomId).add(socket.id);
       
-      console.log(`<à Player ${connection.playerId} joined room ${roomId}`);
+      console.log(`<ï¿½ Player ${connection.playerId} joined room ${roomId}`);
       
       socket.emit('room_joined', {
         roomId: roomId,
@@ -352,7 +353,7 @@ class ConnectionManager extends EventEmitter {
       
       connection.roomId = null;
       
-      console.log(`=ª Player ${connection.playerId} left room ${roomId}`);
+      console.log(`=ï¿½ Player ${connection.playerId} left room ${roomId}`);
       
       socket.emit('room_left', { roomId: roomId });
       
@@ -416,7 +417,7 @@ class ConnectionManager extends EventEmitter {
    */
   broadcastToAll(event, data) {
     this.io.emit(event, data);
-    console.log(`=á Broadcast to all: ${event}`);
+    console.log(`=ï¿½ Broadcast to all: ${event}`);
   }
   
   /**
@@ -428,7 +429,7 @@ class ConnectionManager extends EventEmitter {
   broadcastToRoom(roomId, event, data) {
     this.io.to(roomId).emit(event, data);
     const roomSize = this.roomConnections.get(roomId)?.size || 0;
-    console.log(`=á Broadcast to room ${roomId} (${roomSize} players): ${event}`);
+    console.log(`=ï¿½ Broadcast to room ${roomId} (${roomSize} players): ${event}`);
   }
   
   /**
@@ -444,7 +445,7 @@ class ConnectionManager extends EventEmitter {
       if (connection && connection.socket) {
         connection.socket.emit(event, data);
         connection.stats.messagesSent++;
-        console.log(`=á Send to player ${playerId}: ${event}`);
+        console.log(`=ï¿½ Send to player ${playerId}: ${event}`);
       }
     }
   }
@@ -469,7 +470,7 @@ class ConnectionManager extends EventEmitter {
    * Start health monitoring
    */
   startMonitoring() {
-    console.log('=“ Starting connection health monitoring');
+    console.log('=ï¿½ Starting connection health monitoring');
     
     // Heartbeat monitoring
     this.heartbeatIntervalId = setInterval(() => {
@@ -486,7 +487,7 @@ class ConnectionManager extends EventEmitter {
    * Stop health monitoring
    */
   stopMonitoring() {
-    console.log('=” Stopping connection health monitoring');
+    console.log('=ï¿½ Stopping connection health monitoring');
     
     if (this.heartbeatIntervalId) {
       clearInterval(this.heartbeatIntervalId);
@@ -524,7 +525,7 @@ class ConnectionManager extends EventEmitter {
     staleConnections.forEach(socketId => {
       const connection = this.connections.get(socketId);
       if (connection) {
-        console.log(`ð Timing out stale connection: ${socketId}`);
+        console.log(`ï¿½ Timing out stale connection: ${socketId}`);
         this.stats.timeouts++;
         
         if (connection.socket && connection.socket.connected) {
@@ -554,7 +555,7 @@ class ConnectionManager extends EventEmitter {
     });
     
     if (disconnectedConnections.length > 0) {
-      console.log(`>ù Cleaned up ${disconnectedConnections.length} stale connections`);
+      console.log(`>ï¿½ Cleaned up ${disconnectedConnections.length} stale connections`);
     }
   }
   
@@ -570,6 +571,15 @@ class ConnectionManager extends EventEmitter {
   getPlayerConnection(playerId) {
     const socketId = this.playerConnections.get(playerId);
     return socketId ? this.connections.get(socketId) : null;
+  }
+  
+  /**
+   * Get connection info by socket ID
+   * @param {string} socketId - Socket ID
+   * @returns {Object|null} Connection info
+   */
+  getConnectionBySocketId(socketId) {
+    return this.connections.get(socketId) || null;
   }
   
   /**

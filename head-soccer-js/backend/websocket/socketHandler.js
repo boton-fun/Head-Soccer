@@ -107,7 +107,7 @@ class SocketHandler extends EventEmitter {
     // Setup event handlers
     this.setupEventHandlers();
     
-    console.log('<¯ Socket Event Handler initialized');
+    console.log('<ï¿½ Socket Event Handler initialized');
   }
   
   /**
@@ -136,10 +136,14 @@ class SocketHandler extends EventEmitter {
    * @param {Object} data - Connection data
    */
   handleNewConnection(data) {
-    const { socketId, connection } = data;
-    const socket = connection.socket;
+    const { socketId, socket, connection } = data;
     
-    console.log(`<¯ Setting up event handlers for ${socketId}`);
+    if (!socket) {
+      console.error(`âŒ No socket provided for connection ${socketId}`);
+      return;
+    }
+    
+    console.log(`<ï¿½ Setting up event handlers for ${socketId}`);
     
     // Setup all game event handlers
     this.setupGameEventHandlers(socket);
@@ -259,7 +263,7 @@ class SocketHandler extends EventEmitter {
       // Log event processing time for performance monitoring
       const processingTime = Date.now() - startTime;
       if (processingTime > 100) { // Log slow events
-        console.warn(`  Slow event processing: ${eventName} took ${processingTime}ms`);
+        console.warn(`ï¿½ Slow event processing: ${eventName} took ${processingTime}ms`);
       }
       
     } catch (error) {
@@ -467,7 +471,7 @@ class SocketHandler extends EventEmitter {
     // This is handled by ConnectionManager, but we can add game-specific logic here
     const { playerId, username } = data;
     
-    console.log(`<¯ Game authentication for ${username} (${playerId})`);
+    console.log(`<ï¿½ Game authentication for ${username} (${playerId})`);
     
     // Additional game-specific authentication logic can go here
     this.emit('player_game_authenticated', {
@@ -497,7 +501,7 @@ class SocketHandler extends EventEmitter {
    * @param {Object} data - Matchmaking data
    */
   handleJoinMatchmaking(socket, data) {
-    const connection = this.connectionManager.getPlayerConnection(socket.id);
+    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
     if (!connection || !connection.isAuthenticated) {
       socket.emit('matchmaking_error', { reason: 'Not authenticated' });
       return;
@@ -518,7 +522,7 @@ class SocketHandler extends EventEmitter {
         gameMode: data.gameMode
       });
       
-      console.log(`<¯ Player ${player.username} joined matchmaking: ${data.gameMode}`);
+      console.log(`<ï¿½ Player ${player.username} joined matchmaking: ${data.gameMode}`);
     } else {
       socket.emit('matchmaking_error', { reason: result.reason });
     }
@@ -530,14 +534,14 @@ class SocketHandler extends EventEmitter {
    * @param {Object} data - Data
    */
   handleLeaveMatchmaking(socket, data) {
-    const connection = this.connectionManager.getPlayerConnection(socket.id);
+    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
     if (!connection || !connection.playerId) return;
     
     const result = this.matchmaker.removeFromQueue(connection.playerId);
     
     if (result.success) {
       socket.emit('matchmaking_left', { reason: 'Player request' });
-      console.log(`<¯ Player ${connection.playerId} left matchmaking`);
+      console.log(`<ï¿½ Player ${connection.playerId} left matchmaking`);
     }
   }
   
@@ -547,7 +551,7 @@ class SocketHandler extends EventEmitter {
    * @param {Object} data - Ready data
    */
   handleReadyUp(socket, data) {
-    const connection = this.connectionManager.getPlayerConnection(socket.id);
+    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
     if (!connection || !connection.playerId) return;
     
     const player = this.activePlayers.get(connection.playerId);
@@ -568,7 +572,7 @@ class SocketHandler extends EventEmitter {
       }
       
       socket.emit('ready_state_changed', { ready: ready });
-      console.log(`<¯ Player ${player.username} ready state: ${ready}`);
+      console.log(`<ï¿½ Player ${player.username} ready state: ${ready}`);
       
     } catch (error) {
       socket.emit('ready_error', { reason: error.message });
@@ -581,7 +585,7 @@ class SocketHandler extends EventEmitter {
    * @param {Object} data - Movement data
    */
   handlePlayerMovement(socket, data) {
-    const connection = this.connectionManager.getPlayerConnection(socket.id);
+    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
     if (!connection || !connection.playerId) return;
     
     // Validate movement with game state validator
@@ -615,7 +619,7 @@ class SocketHandler extends EventEmitter {
    * @param {Object} data - Ball data
    */
   handleBallUpdate(socket, data) {
-    const connection = this.connectionManager.getPlayerConnection(socket.id);
+    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
     if (!connection || !connection.roomId) return;
     
     // Validate ball physics
@@ -644,7 +648,7 @@ class SocketHandler extends EventEmitter {
    * @param {Object} data - Goal data
    */
   handleGoalAttempt(socket, data) {
-    const connection = this.connectionManager.getPlayerConnection(socket.id);
+    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
     if (!connection || !connection.playerId || !connection.roomId) return;
     
     // Validate goal
@@ -666,7 +670,7 @@ class SocketHandler extends EventEmitter {
       timestamp: data.timestamp
     });
     
-    console.log(`½ Goal attempt by ${connection.playerId} in room ${connection.roomId}`);
+    console.log(`ï¿½ Goal attempt by ${connection.playerId} in room ${connection.roomId}`);
   }
   
   /**
@@ -675,7 +679,7 @@ class SocketHandler extends EventEmitter {
    * @param {Object} data - Chat data
    */
   handleChatMessage(socket, data) {
-    const connection = this.connectionManager.getPlayerConnection(socket.id);
+    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
     if (!connection || !connection.playerId) return;
     
     const player = this.activePlayers.get(connection.playerId);
@@ -697,7 +701,7 @@ class SocketHandler extends EventEmitter {
       socket.emit('chat_sent', chatData);
     }
     
-    console.log(`=¬ Chat from ${player.username}: ${data.message}`);
+    console.log(`=ï¿½ Chat from ${player.username}: ${data.message}`);
   }
   
   /**
@@ -714,7 +718,7 @@ class SocketHandler extends EventEmitter {
       // Clean up player data
       this.activePlayers.delete(playerId);
       
-      console.log(`<¯ Player ${playerId} cleaned up from game systems`);
+      console.log(`<ï¿½ Player ${playerId} cleaned up from game systems`);
     }
     
     // Clean up rate limiting data
@@ -731,13 +735,13 @@ class SocketHandler extends EventEmitter {
     // Restore player if needed
     if (!this.activePlayers.has(playerId)) {
       // Player data might need to be restored from database
-      console.log(`<¯ Player ${playerId} reconnected, restoring data...`);
+      console.log(`<ï¿½ Player ${playerId} reconnected, restoring data...`);
     }
     
     // Send current game state if in room
     if (roomId) {
       const connection = this.connectionManager.connections.get(newSocketId);
-      if (connection) {
+      if (connection && connection.socket) {
         connection.socket.emit('game_state_sync', {
           roomId: roomId,
           // Game state data would go here
@@ -752,15 +756,15 @@ class SocketHandler extends EventEmitter {
   
   handleStartGame(socket, data) {
     // Game start logic
-    console.log(`<¯ Start game request from ${socket.id}`);
+    console.log(`<ï¿½ Start game request from ${socket.id}`);
   }
   
   handlePauseRequest(socket, data) {
-    console.log(`ø Pause request: ${data.reason}`);
+    console.log(`ï¿½ Pause request: ${data.reason}`);
   }
   
   handleResumeRequest(socket, data) {
-    console.log(`¶ Resume request from ${socket.id}`);
+    console.log(`ï¿½ Resume request from ${socket.id}`);
   }
   
   handleGetGameState(socket, data) {
@@ -800,7 +804,7 @@ class SocketHandler extends EventEmitter {
    * Cleanup resources
    */
   shutdown() {
-    console.log('<¯ Socket Event Handler shutting down...');
+    console.log('<ï¿½ Socket Event Handler shutting down...');
     
     // Clear all data
     this.activePlayers.clear();
