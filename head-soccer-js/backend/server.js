@@ -77,7 +77,14 @@ app.get('/test-redis', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.json({ message: 'Head Soccer Multiplayer Server' });
+  res.json({ 
+    message: 'Head Soccer Multiplayer Server',
+    version: require('./package.json').version,
+    endpoints: [
+      '/health - Server health check',
+      '/test-redis - Redis functionality test'
+    ]
+  });
 });
 
 io.on('connection', (socket) => {
