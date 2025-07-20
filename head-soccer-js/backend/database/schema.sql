@@ -45,8 +45,71 @@ CREATE TABLE public.player_stats (
     win_streak INTEGER DEFAULT 0,
     best_win_streak INTEGER DEFAULT 0,
     total_play_time_seconds INTEGER DEFAULT 0,
+    average_game_duration INTEGER DEFAULT 0,
+    fastest_goal_seconds INTEGER,
+    goals_per_game DECIMAL(4,2) DEFAULT 0.0,
+    clean_sheets INTEGER DEFAULT 0,
     last_played_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Game events table for detailed match tracking
+CREATE TABLE public.game_events (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    game_id UUID NOT NULL REFERENCES public.games(id) ON DELETE CASCADE,
+    event_type VARCHAR(20) NOT NULL, -- goal, start, end, pause, resume
+    player_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    event_data JSONB, -- Additional event-specific data
+    timestamp_seconds INTEGER NOT NULL, -- Time in game when event occurred
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    CONSTRAINT check_valid_event_type CHECK (event_type IN ('goal', 'start', 'end', 'pause', 'resume', 'disconnect', 'reconnect'))
+);
+
+-- Active game sessions table for real-time tracking
+CREATE TABLE public.active_sessions (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID UNIQUE NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    socket_id VARCHAR(255) NOT NULL,
+    status VARCHAR(20) DEFAULT 'online', -- online, in_queue, in_game, disconnected
+    current_game_id UUID REFERENCES public.games(id) ON DELETE SET NULL,
+    queue_position INTEGER,
+    last_ping TIMESTAMPTZ DEFAULT NOW(),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    CONSTRAINT check_valid_session_status CHECK (status IN ('online', 'in_queue', 'in_game', 'disconnected'))
+);
+
+-- Tournament system tables
+CREATE TABLE public.tournaments (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    max_participants INTEGER DEFAULT 8,
+    current_participants INTEGER DEFAULT 0,
+    status VARCHAR(20) DEFAULT 'registration', -- registration, in_progress, completed, cancelled
+    prize_pool INTEGER DEFAULT 0,
+    entry_fee INTEGER DEFAULT 0,
+    start_time TIMESTAMPTZ,
+    end_time TIMESTAMPTZ,
+    created_by UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    winner_id UUID REFERENCES public.users(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    CONSTRAINT check_valid_tournament_status CHECK (status IN ('registration', 'in_progress', 'completed', 'cancelled'))
+);
+
+CREATE TABLE public.tournament_participants (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    tournament_id UUID NOT NULL REFERENCES public.tournaments(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+    seed_position INTEGER,
+    current_round INTEGER DEFAULT 1,
+    eliminated_at TIMESTAMPTZ,
+    prize_won INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    
+    UNIQUE(tournament_id, user_id)
 );
 
 -- Leaderboard view for easy querying
@@ -64,23 +127,66 @@ SELECT
     ps.games_drawn,
     ps.goals_scored,
     ps.goals_conceded,
+    ps.goals_per_game,
+    ps.clean_sheets,
+    ps.best_win_streak,
+    ps.win_streak,
+    ps.fastest_goal_seconds,
+    ps.average_game_duration,
     CASE 
         WHEN ps.games_played > 0 
         THEN ROUND((ps.games_won::DECIMAL / ps.games_played) * 100, 2)
         ELSE 0 
     END as win_rate,
-    ps.best_win_streak
+    CASE 
+        WHEN ps.goals_conceded > 0 
+        THEN ROUND((ps.goals_scored::DECIMAL / ps.goals_conceded), 2)
+        ELSE ps.goals_scored::DECIMAL
+    END as goal_ratio,
+    ps.last_played_at,
+    ROW_NUMBER() OVER (ORDER BY u.elo_rating DESC) as rank
 FROM public.users u
 LEFT JOIN public.player_stats ps ON u.id = ps.user_id
 ORDER BY u.elo_rating DESC;
+
+-- Online players view for quick access
+CREATE OR REPLACE VIEW public.online_players AS
+SELECT 
+    u.id,
+    u.username,
+    u.display_name,
+    u.character_id,
+    u.elo_rating,
+    s.status,
+    s.current_game_id,
+    s.queue_position,
+    s.last_ping
+FROM public.users u
+INNER JOIN public.active_sessions s ON u.id = s.user_id
+WHERE s.status IN ('online', 'in_queue', 'in_game')
+    AND s.last_ping > NOW() - INTERVAL '5 minutes'
+ORDER BY s.last_ping DESC;
 
 -- Indexes for performance
 CREATE INDEX idx_games_player1_id ON public.games(player1_id);
 CREATE INDEX idx_games_player2_id ON public.games(player2_id);
 CREATE INDEX idx_games_status ON public.games(status);
 CREATE INDEX idx_games_created_at ON public.games(created_at DESC);
+CREATE INDEX idx_games_winner_id ON public.games(winner_id);
 CREATE INDEX idx_users_username ON public.users(username);
 CREATE INDEX idx_users_elo_rating ON public.users(elo_rating DESC);
+
+-- New table indexes
+CREATE INDEX idx_game_events_game_id ON public.game_events(game_id);
+CREATE INDEX idx_game_events_type ON public.game_events(event_type);
+CREATE INDEX idx_game_events_player_id ON public.game_events(player_id);
+CREATE INDEX idx_active_sessions_user_id ON public.active_sessions(user_id);
+CREATE INDEX idx_active_sessions_status ON public.active_sessions(status);
+CREATE INDEX idx_active_sessions_socket_id ON public.active_sessions(socket_id);
+CREATE INDEX idx_tournaments_status ON public.tournaments(status);
+CREATE INDEX idx_tournaments_start_time ON public.tournaments(start_time);
+CREATE INDEX idx_tournament_participants_tournament_id ON public.tournament_participants(tournament_id);
+CREATE INDEX idx_tournament_participants_user_id ON public.tournament_participants(user_id);
 
 -- Triggers for automatic timestamp updates
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -115,6 +221,10 @@ CREATE TRIGGER create_player_stats_on_user_create
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.games ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.player_stats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.game_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.active_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tournaments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.tournament_participants ENABLE ROW LEVEL SECURITY;
 
 -- Users can read all user profiles
 CREATE POLICY "Users can view all profiles" ON public.users
@@ -138,4 +248,38 @@ CREATE POLICY "Anyone can view stats" ON public.player_stats
 
 -- Only server can update stats
 CREATE POLICY "Service role can manage stats" ON public.player_stats
+    FOR ALL USING (auth.role() = 'service_role');
+
+-- Game events policies
+CREATE POLICY "Anyone can view game events" ON public.game_events
+    FOR SELECT USING (true);
+
+CREATE POLICY "Service role can manage game events" ON public.game_events
+    FOR ALL USING (auth.role() = 'service_role');
+
+-- Active sessions policies
+CREATE POLICY "Users can view their own session" ON public.active_sessions
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Service role can manage sessions" ON public.active_sessions
+    FOR ALL USING (auth.role() = 'service_role');
+
+-- Tournament policies
+CREATE POLICY "Anyone can view tournaments" ON public.tournaments
+    FOR SELECT USING (true);
+
+CREATE POLICY "Users can create tournaments" ON public.tournaments
+    FOR INSERT WITH CHECK (auth.uid() = created_by);
+
+CREATE POLICY "Service role can manage tournaments" ON public.tournaments
+    FOR ALL USING (auth.role() = 'service_role');
+
+-- Tournament participants policies
+CREATE POLICY "Anyone can view tournament participants" ON public.tournament_participants
+    FOR SELECT USING (true);
+
+CREATE POLICY "Users can join tournaments" ON public.tournament_participants
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Service role can manage participants" ON public.tournament_participants
     FOR ALL USING (auth.role() = 'service_role');

@@ -5,6 +5,7 @@ const cors = require('cors');
 
 // Load config after ensuring env vars are available
 const config = require('./utils/config');
+const cacheService = require('./utils/cache-service');
 
 const app = express();
 const server = http.createServer(app);
@@ -31,6 +32,7 @@ app.use((req, res, next) => {
 });
 
 app.get('/health', (req, res) => {
+  const cacheStatus = cacheService.getStatus();
   res.status(200).json({
     status: 'OK',
     timestamp: new Date().toISOString(),
@@ -39,39 +41,57 @@ app.get('/health', (req, res) => {
     version: require('./package.json').version,
     services: {
       database: config.supabase.url ? 'configured' : 'not configured',
-      redis: config.redis.url ? 'configured' : 'not configured'
+      redis: config.redis.url ? 'configured' : 'not configured',
+      cache: cacheStatus
     }
   });
 });
 
-// Add Redis test endpoint
+// Add Cache test endpoint
 app.get('/test-redis', async (req, res) => {
   try {
-    const { testRedisInProduction } = require('./test-redis-production');
+    // First check if getStatus method exists
+    if (typeof cacheService.getStatus !== 'function') {
+      return res.status(500).json({
+        status: 'Cache service not properly initialized',
+        error: 'getStatus method not available',
+        timestamp: new Date().toISOString(),
+        availableMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(cacheService))
+      });
+    }
+
+    const cacheStatus = cacheService.getStatus();
     
-    // Capture console output
-    const originalLog = console.log;
-    const logs = [];
-    console.log = (...args) => {
-      logs.push(args.join(' '));
-      originalLog(...args);
-    };
+    // Test cache operations
+    const testKey = 'test:' + Date.now();
+    const testValue = 'test-value-' + Date.now();
     
-    await testRedisInProduction();
+    // Test setEx
+    await cacheService.setEx(testKey, 60, testValue);
     
-    // Restore console.log
-    console.log = originalLog;
+    // Test get
+    const retrievedValue = await cacheService.get(testKey);
+    
+    // Test del
+    await cacheService.del(testKey);
     
     res.json({
-      status: 'Redis test completed',
+      status: 'Cache test completed',
       timestamp: new Date().toISOString(),
-      output: logs
+      cacheStatus,
+      testResults: {
+        setValue: testValue,
+        retrievedValue,
+        testPassed: retrievedValue === testValue
+      }
     });
   } catch (error) {
     res.status(500).json({
-      status: 'Redis test failed',
+      status: 'Cache test failed',
       error: error.message,
-      timestamp: new Date().toISOString()
+      stack: error.stack,
+      timestamp: new Date().toISOString(),
+      cacheStatus: typeof cacheService.getStatus === 'function' ? cacheService.getStatus() : 'getStatus not available'
     });
   }
 });
@@ -140,10 +160,26 @@ process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
 if (require.main === module) {
-  server.listen(config.port, () => {
-    console.log(`Server running on port ${config.port}`);
-    console.log(`Environment: ${config.nodeEnv}`);
-    console.log(`Frontend URL: ${config.frontendUrl}`);
+  // Initialize cache service before starting server
+  cacheService.initialize().then(() => {
+    console.log('Cache service initialized');
+    
+    server.listen(config.port, () => {
+      console.log(`Server running on port ${config.port}`);
+      console.log(`Environment: ${config.nodeEnv}`);
+      console.log(`Frontend URL: ${config.frontendUrl}`);
+      console.log(`Cache status:`, cacheService.getStatus());
+    });
+  }).catch((error) => {
+    console.error('Failed to initialize cache service:', error.message);
+    console.log('Starting server without Redis caching...');
+    
+    server.listen(config.port, () => {
+      console.log(`Server running on port ${config.port}`);
+      console.log(`Environment: ${config.nodeEnv}`);
+      console.log(`Frontend URL: ${config.frontendUrl}`);
+      console.log(`Cache status:`, cacheService.getStatus());
+    });
   });
 }
 

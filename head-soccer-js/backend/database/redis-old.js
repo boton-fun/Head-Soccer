@@ -1,111 +1,38 @@
 const { createClient } = require('redis');
 const config = require('../utils/config');
 
-let redisClient = null;
-let isConnected = false;
+let redisClient;
 
 async function connectRedis() {
   try {
-    // Check if Redis is configured
     if (!config.redis.url) {
-      console.log('⚠️  Redis not configured - running without cache (features will be limited)');
+      console.log('Redis not configured, skipping connection');
       return null;
     }
 
-    console.log('🔄 Attempting to connect to Redis...');
-    console.log('Redis URL format:', config.redis.url.substring(0, 10) + '...');
-
-    // Parse Redis URL for Railway compatibility
-    let redisConfig;
-    
-    if (config.redis.url.startsWith('redis://') || config.redis.url.startsWith('rediss://')) {
-      // Standard Redis URL format
-      redisConfig = {
-        url: config.redis.url,
-        socket: {
-          connectTimeout: 15000,
-          lazyConnect: true,
-          tls: config.redis.url.startsWith('rediss://') ? {} : false
-        }
-      };
-    } else if (config.redis.url.includes(':')) {
-      // Railway internal hostname format (redis:6379 or host:port)
-      const [host, port] = config.redis.url.split(':');
-      redisConfig = {
-        socket: {
-          host: host || 'redis',
-          port: parseInt(port) || 6379,
-          connectTimeout: 15000,
-          lazyConnect: true
-        }
-      };
-      
-      if (config.redis.password) {
-        redisConfig.password = config.redis.password;
+    redisClient = createClient({
+      url: config.redis.url,
+      password: config.redis.password || undefined,
+      socket: {
+        connectTimeout: 10000,
+        lazyConnect: true
       }
-    } else {
-      // Just hostname
-      redisConfig = {
-        socket: {
-          host: config.redis.url,
-          port: 6379,
-          connectTimeout: 15000,
-          lazyConnect: true
-        }
-      };
-      
-      if (config.redis.password) {
-        redisConfig.password = config.redis.password;
-      }
-    }
-
-    redisClient = createClient(redisConfig);
+    });
 
     redisClient.on('error', (err) => {
-      console.error('❌ Redis connection error:', err.message);
-      isConnected = false;
-      // Don't crash the app, just continue without Redis
+      console.error('Redis connection error:', err.message);
     });
 
     redisClient.on('connect', () => {
-      console.log('✅ Redis connected successfully');
-      isConnected = true;
-    });
-
-    redisClient.on('ready', () => {
-      console.log('✅ Redis ready for operations');
-      isConnected = true;
-    });
-
-    redisClient.on('reconnecting', () => {
-      console.log('🔄 Redis reconnecting...');
-      isConnected = false;
-    });
-
-    redisClient.on('end', () => {
-      console.log('Redis connection ended');
-      isConnected = false;
+      console.log(' Redis connected successfully');
     });
 
     await redisClient.connect();
-    
-    // Test the connection
-    await redisClient.ping();
-    console.log('✅ Redis ping successful');
-    isConnected = true;
-    
     return redisClient;
   } catch (error) {
-    console.error('❌ Failed to connect to Redis:', error.message);
-    console.log('⚠️  Continuing without Redis - some features will be disabled');
-    isConnected = false;
+    console.error('Failed to connect to Redis:', error.message);
     return null;
   }
-}
-
-// Helper function to check if Redis is available
-function isRedisAvailable() {
-  return redisClient && isConnected && redisClient.isOpen;
 }
 
 // Cache operations for game sessions
@@ -113,10 +40,7 @@ const gameCache = {
   // Store active game room data
   async setGameRoom(roomId, roomData, ttl = 3600) {
     try {
-      if (!isRedisAvailable()) {
-        console.log('Redis not available, skipping game room cache');
-        return false;
-      }
+      if (!redisClient?.isOpen) return false;
       
       await redisClient.setEx(
         `game:room:${roomId}`, 
@@ -133,9 +57,7 @@ const gameCache = {
   // Get active game room data
   async getGameRoom(roomId) {
     try {
-      if (!isRedisAvailable()) {
-        return null;
-      }
+      if (!redisClient?.isOpen) return null;
       
       const data = await redisClient.get(`game:room:${roomId}`);
       return data ? JSON.parse(data) : null;
@@ -148,9 +70,7 @@ const gameCache = {
   // Remove game room from cache
   async deleteGameRoom(roomId) {
     try {
-      if (!isRedisAvailable()) {
-        return false;
-      }
+      if (!redisClient?.isOpen) return false;
       
       await redisClient.del(`game:room:${roomId}`);
       return true;
@@ -163,9 +83,7 @@ const gameCache = {
   // Store player's current room
   async setPlayerRoom(playerId, roomId, ttl = 3600) {
     try {
-      if (!isRedisAvailable()) {
-        return false;
-      }
+      if (!redisClient?.isOpen) return false;
       
       await redisClient.setEx(
         `player:room:${playerId}`, 
@@ -182,9 +100,7 @@ const gameCache = {
   // Get player's current room
   async getPlayerRoom(playerId) {
     try {
-      if (!isRedisAvailable()) {
-        return null;
-      }
+      if (!redisClient?.isOpen) return null;
       
       return await redisClient.get(`player:room:${playerId}`);
     } catch (error) {
@@ -196,9 +112,7 @@ const gameCache = {
   // Remove player from room cache
   async removePlayerFromRoom(playerId) {
     try {
-      if (!isRedisAvailable()) {
-        return false;
-      }
+      if (!redisClient?.isOpen) return false;
       
       await redisClient.del(`player:room:${playerId}`);
       return true;
@@ -214,10 +128,7 @@ const queueCache = {
   // Add player to matchmaking queue
   async addToQueue(playerId, playerData) {
     try {
-      if (!isRedisAvailable()) {
-        console.log('Redis not available, using in-memory queue fallback');
-        return false;
-      }
+      if (!redisClient?.isOpen) return false;
       
       // Add to sorted set with timestamp as score
       const score = Date.now();
@@ -243,22 +154,16 @@ const queueCache = {
   // Remove player from queue
   async removeFromQueue(playerId) {
     try {
-      if (!isRedisAvailable()) {
-        return false;
-      }
+      if (!redisClient?.isOpen) return false;
       
       // Remove from sorted set (need to find by player ID)
       const queueMembers = await redisClient.zRange('matchmaking:queue', 0, -1);
       
       for (const member of queueMembers) {
-        try {
-          const data = JSON.parse(member);
-          if (data.playerId === playerId) {
-            await redisClient.zRem('matchmaking:queue', member);
-            break;
-          }
-        } catch (parseError) {
-          console.error('Error parsing queue member:', parseError.message);
+        const data = JSON.parse(member);
+        if (data.playerId === playerId) {
+          await redisClient.zRem('matchmaking:queue', member);
+          break;
         }
       }
       
@@ -274,9 +179,7 @@ const queueCache = {
   // Get queue length
   async getQueueLength() {
     try {
-      if (!isRedisAvailable()) {
-        return 0;
-      }
+      if (!redisClient?.isOpen) return 0;
       
       return await redisClient.zCard('matchmaking:queue');
     } catch (error) {
@@ -288,9 +191,7 @@ const queueCache = {
   // Get next two players for matching
   async getNextMatch() {
     try {
-      if (!isRedisAvailable()) {
-        return null;
-      }
+      if (!redisClient?.isOpen) return null;
       
       const players = await redisClient.zRange('matchmaking:queue', 0, 1);
       
@@ -319,9 +220,7 @@ const sessionCache = {
   // Store temporary session data
   async setSession(sessionId, data, ttl = 1800) {
     try {
-      if (!isRedisAvailable()) {
-        return false;
-      }
+      if (!redisClient?.isOpen) return false;
       
       await redisClient.setEx(
         `session:${sessionId}`, 
@@ -338,9 +237,7 @@ const sessionCache = {
   // Get session data
   async getSession(sessionId) {
     try {
-      if (!isRedisAvailable()) {
-        return null;
-      }
+      if (!redisClient?.isOpen) return null;
       
       const data = await redisClient.get(`session:${sessionId}`);
       return data ? JSON.parse(data) : null;
@@ -353,9 +250,7 @@ const sessionCache = {
   // Delete session
   async deleteSession(sessionId) {
     try {
-      if (!isRedisAvailable()) {
-        return false;
-      }
+      if (!redisClient?.isOpen) return false;
       
       await redisClient.del(`session:${sessionId}`);
       return true;
@@ -366,16 +261,12 @@ const sessionCache = {
   }
 };
 
-// Initialize Redis connection with graceful fallback
-connectRedis().catch((error) => {
-  console.error('Redis initialization failed:', error.message);
-  console.log('Application will continue without Redis caching');
-});
+// Initialize Redis connection
+connectRedis().catch(console.error);
 
 module.exports = {
   redisClient,
   connectRedis,
-  isRedisAvailable,
   gameCache,
   queueCache,
   sessionCache
