@@ -50,6 +50,9 @@
             z-index: 10;
             text-align: center;
             animation: fadeIn 1.5s ease-out;
+            max-width: 1200px;
+            width: 100%;
+            padding: 0 2rem;
         }
         
         @keyframes fadeIn {
@@ -206,6 +209,236 @@
             }
         }
         
+        /* Authentication Panel */
+        .auth-panel {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid rgba(74, 144, 226, 0.5);
+            border-radius: 15px;
+            padding: 1.5rem;
+            min-width: 300px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 20;
+            transition: all 0.3s ease;
+        }
+
+        .auth-panel:hover {
+            border-color: rgba(74, 144, 226, 0.8);
+            transform: translateY(-2px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+        }
+
+        .auth-title {
+            color: #4A90E2;
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-family: 'Font', Arial, sans-serif;
+        }
+
+        .auth-form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .auth-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .auth-input:focus {
+            outline: none;
+            border-color: #4A90E2;
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 0 10px rgba(74, 144, 226, 0.3);
+        }
+
+        .auth-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .auth-button {
+            background: linear-gradient(135deg, #4A90E2 0%, #2E5BBA 100%);
+            border: 2px solid #1E3A8A;
+            border-radius: 8px;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            padding: 0.8rem 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Font', Arial, sans-serif;
+        }
+
+        .auth-button:hover {
+            background: linear-gradient(135deg, #5BA3F5 0%, #3A6CCD 100%);
+            border-color: #2563EB;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 144, 226, 0.4);
+        }
+
+        .auth-button:active {
+            transform: translateY(0);
+        }
+
+        .auth-button:disabled {
+            background: rgba(74, 144, 226, 0.3);
+            border-color: rgba(30, 58, 138, 0.3);
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .auth-toggle {
+            text-align: center;
+            margin-top: 1rem;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+
+        .auth-toggle button {
+            background: none;
+            border: none;
+            color: #4A90E2;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: inherit;
+            font-family: inherit;
+        }
+
+        .auth-toggle button:hover {
+            color: #5BA3F5;
+        }
+
+        .auth-error {
+            background: rgba(220, 38, 38, 0.2);
+            border: 1px solid rgba(220, 38, 38, 0.5);
+            border-radius: 6px;
+            padding: 0.8rem;
+            color: #FCA5A5;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        .auth-success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.5);
+            border-radius: 6px;
+            padding: 0.8rem;
+            color: #86EFAC;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        .user-info {
+            text-align: center;
+            padding: 1rem;
+        }
+
+        .user-welcome {
+            color: #4A90E2;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            font-family: 'Font', Arial, sans-serif;
+        }
+
+        .user-details {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            line-height: 1.4;
+        }
+
+        .user-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.8rem;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.5rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.6);
+            display: block;
+        }
+
+        .stat-value {
+            color: #4A90E2;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .logout-button {
+            background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+            border: 2px solid #991B1B;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: bold;
+            padding: 0.6rem 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            width: 100%;
+        }
+
+        .logout-button:hover {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 38, 38, 0.4);
+        }
+
+        /* Loading animation */
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #4A90E2;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive auth panel */
+        @media (max-width: 768px) {
+            .auth-panel {
+                position: fixed;
+                top: 1rem;
+                right: 1rem;
+                left: 1rem;
+                min-width: auto;
+                max-width: 400px;
+                margin: 0 auto;
+            }
+        }
+
         /* Loading fonts */
         @font-face {
             font-family: 'Font';
@@ -224,6 +457,48 @@
     <div class="main-container">
         <canvas id="backgroundCanvas"></canvas>
         
+        <!-- Authentication Panel -->
+        <div class="auth-panel" id="authPanel">
+            <!-- Login/Register Form (shown when not authenticated) -->
+            <div id="authForm" class="auth-form-container">
+                <h3 class="auth-title" id="authTitle">PLAYER LOGIN</h3>
+                <form class="auth-form" id="loginForm">
+                    <input type="text" id="usernameInput" class="auth-input" placeholder="Username" required>
+                    <input type="password" id="passwordInput" class="auth-input" placeholder="Password" required>
+                    <input type="text" id="displayNameInput" class="auth-input" placeholder="Display Name (optional)" style="display: none;">
+                    <button type="submit" class="auth-button" id="authSubmitBtn">
+                        <span id="authButtonText">LOGIN</span>
+                        <div class="loading" id="authLoading" style="display: none;"></div>
+                    </button>
+                </form>
+                <div class="auth-toggle">
+                    <span id="authToggleText">Need an account?</span>
+                    <button type="button" id="authToggleBtn">Register</button>
+                </div>
+                <div id="authMessage" class="auth-message" style="display: none;"></div>
+            </div>
+
+            <!-- User Info (shown when authenticated) -->
+            <div id="userInfo" class="user-info" style="display: none;">
+                <div class="user-welcome">Welcome back!</div>
+                <div class="user-details">
+                    <strong id="userDisplayName"></strong><br>
+                    <span id="userUsername"></span>
+                </div>
+                <div class="user-stats">
+                    <div class="stat-item">
+                        <span class="stat-label">ELO Rating</span>
+                        <span class="stat-value" id="userElo">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Games</span>
+                        <span class="stat-value" id="userGames">0</span>
+                    </div>
+                </div>
+                <button class="logout-button" id="logoutBtn">LOGOUT</button>
+            </div>
+        </div>
+        
         <div class="content-wrapper">
             <h1 class="game-title">Head Soccer</h1>
             <p class="subtitle">Ultimate Championship Edition</p>
@@ -241,6 +516,7 @@
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/classes/DotParticle.js"></script>
+    <script src="js/auth-manager.js"></script>
     
     <script>
         class MainMenu {
@@ -266,6 +542,254 @@
                 
                 // Add audio feedback for button
                 this.setupAudioFeedback();
+                
+                // Initialize authentication
+                this.setupAuthentication();
+                
+                // Authentication state
+                this.isLoginMode = true;
+                this.isLoading = false;
+            }
+            
+            setupAuthentication() {
+                // Get DOM elements
+                this.authForm = document.getElementById('authForm');
+                this.userInfo = document.getElementById('userInfo');
+                this.loginForm = document.getElementById('loginForm');
+                this.authTitle = document.getElementById('authTitle');
+                this.authSubmitBtn = document.getElementById('authSubmitBtn');
+                this.authButtonText = document.getElementById('authButtonText');
+                this.authLoading = document.getElementById('authLoading');
+                this.authToggleBtn = document.getElementById('authToggleBtn');
+                this.authToggleText = document.getElementById('authToggleText');
+                this.authMessage = document.getElementById('authMessage');
+                this.logoutBtn = document.getElementById('logoutBtn');
+                
+                // Input elements
+                this.usernameInput = document.getElementById('usernameInput');
+                this.passwordInput = document.getElementById('passwordInput');
+                this.displayNameInput = document.getElementById('displayNameInput');
+                
+                // User info elements
+                this.userDisplayName = document.getElementById('userDisplayName');
+                this.userUsername = document.getElementById('userUsername');
+                this.userElo = document.getElementById('userElo');
+                this.userGames = document.getElementById('userGames');
+                
+                // Set up event listeners
+                this.loginForm.addEventListener('submit', (e) => this.handleAuthSubmit(e));
+                this.authToggleBtn.addEventListener('click', () => this.toggleAuthMode());
+                this.logoutBtn.addEventListener('click', () => this.handleLogout());
+                
+                // Input validation
+                this.usernameInput.addEventListener('input', () => this.validateForm());
+                this.passwordInput.addEventListener('input', () => this.validateForm());
+                
+                // Check initial auth state
+                this.updateAuthUI();
+            }
+            
+            toggleAuthMode() {
+                this.isLoginMode = !this.isLoginMode;
+                this.clearMessages();
+                this.updateAuthModeUI();
+            }
+            
+            updateAuthModeUI() {
+                if (this.isLoginMode) {
+                    this.authTitle.textContent = 'PLAYER LOGIN';
+                    this.authButtonText.textContent = 'LOGIN';
+                    this.authToggleText.textContent = 'Need an account?';
+                    this.authToggleBtn.textContent = 'Register';
+                    this.displayNameInput.style.display = 'none';
+                    this.displayNameInput.required = false;
+                } else {
+                    this.authTitle.textContent = 'PLAYER REGISTER';
+                    this.authButtonText.textContent = 'REGISTER';
+                    this.authToggleText.textContent = 'Have an account?';
+                    this.authToggleBtn.textContent = 'Login';
+                    this.displayNameInput.style.display = 'block';
+                    this.displayNameInput.required = false;
+                }
+                
+                // Clear form
+                this.loginForm.reset();
+                this.validateForm();
+            }
+            
+            validateForm() {
+                const username = this.usernameInput.value.trim();
+                const password = this.passwordInput.value;
+                
+                const usernameValid = window.authManager.validateUsername(username);
+                const passwordValid = window.authManager.validatePassword(password);
+                
+                const isValid = usernameValid.valid && passwordValid.valid && !this.isLoading;
+                this.authSubmitBtn.disabled = !isValid;
+            }
+            
+            async handleAuthSubmit(e) {
+                e.preventDefault();
+                
+                if (this.isLoading) return;
+                
+                const username = this.usernameInput.value.trim();
+                const password = this.passwordInput.value;
+                const displayName = this.displayNameInput.value.trim() || username;
+                
+                this.setLoading(true);
+                this.clearMessages();
+                
+                try {
+                    let result;
+                    
+                    if (this.isLoginMode) {
+                        result = await window.authManager.login(username, password);
+                    } else {
+                        result = await window.authManager.register(username, password, displayName);
+                    }
+                    
+                    if (result.success) {
+                        this.showMessage(`${this.isLoginMode ? 'Login' : 'Registration'} successful! Welcome, ${result.user.display_name}!`, 'success');
+                        setTimeout(() => {
+                            this.updateAuthUI();
+                            this.playSuccessSound();
+                        }, 1000);
+                    } else {
+                        this.showMessage(result.error || 'Authentication failed', 'error');
+                        this.playErrorSound();
+                    }
+                } catch (error) {
+                    console.error('Auth error:', error);
+                    this.showMessage('Network error. Please try again.', 'error');
+                    this.playErrorSound();
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+            
+            handleLogout() {
+                window.authManager.logout();
+                this.updateAuthUI();
+                this.showMessage('Logged out successfully', 'success');
+                this.playClickSound();
+            }
+            
+            updateAuthUI() {
+                const isAuthenticated = window.authManager.isAuthenticated();
+                
+                if (isAuthenticated) {
+                    const user = window.authManager.getCurrentUser();
+                    
+                    // Show user info, hide auth form
+                    this.authForm.style.display = 'none';
+                    this.userInfo.style.display = 'block';
+                    
+                    // Update user information
+                    this.userDisplayName.textContent = user.display_name;
+                    this.userUsername.textContent = `@${user.username}`;
+                    this.userElo.textContent = user.elo_rating || 1200;
+                    this.userGames.textContent = '0'; // Will be updated with stats API later
+                    
+                    // Load user stats
+                    this.loadUserStats();
+                } else {
+                    // Show auth form, hide user info
+                    this.authForm.style.display = 'block';
+                    this.userInfo.style.display = 'none';
+                    this.updateAuthModeUI();
+                }
+            }
+            
+            async loadUserStats() {
+                try {
+                    const response = await window.authManager.apiRequest('/stats/me');
+                    const data = await response.json();
+                    
+                    if (data.success && data.data.statistics) {
+                        this.userGames.textContent = data.data.statistics.games_played || '0';
+                    }
+                } catch (error) {
+                    console.log('Could not load user stats:', error);
+                }
+            }
+            
+            setLoading(loading) {
+                this.isLoading = loading;
+                
+                if (loading) {
+                    this.authButtonText.style.display = 'none';
+                    this.authLoading.style.display = 'inline-block';
+                    this.authSubmitBtn.disabled = true;
+                } else {
+                    this.authButtonText.style.display = 'inline';
+                    this.authLoading.style.display = 'none';
+                    this.validateForm();
+                }
+            }
+            
+            showMessage(message, type) {
+                this.authMessage.textContent = message;
+                this.authMessage.className = `auth-${type}`;
+                this.authMessage.style.display = 'block';
+                
+                // Auto-hide success messages
+                if (type === 'success') {
+                    setTimeout(() => {
+                        this.clearMessages();
+                    }, 3000);
+                }
+            }
+            
+            clearMessages() {
+                this.authMessage.style.display = 'none';
+                this.authMessage.textContent = '';
+            }
+            
+            playSuccessSound() {
+                if (window.AudioContext || window.webkitAudioContext) {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(900, audioContext.currentTime + 0.3);
+                        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.3);
+                    } catch (e) {
+                        // Ignore audio errors
+                    }
+                }
+            }
+            
+            playErrorSound() {
+                if (window.AudioContext || window.webkitAudioContext) {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.5);
+                        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.5);
+                    } catch (e) {
+                        // Ignore audio errors
+                    }
+                }
             }
             
             resizeCanvas() {
