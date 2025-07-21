@@ -106,17 +106,48 @@ class CacheService {
     return this.fallbackCache.setEx(key, ttl, value);
   }
 
+  // Alias method for backward compatibility
+  async set(key, value, ttl) {
+    // Handle different parameter orders - some calls use (key, value, ttl)
+    if (typeof value === 'object' && typeof ttl === 'number') {
+      // Convert object to JSON string for storage
+      return this.setEx(key, ttl, JSON.stringify(value));
+    } else if (typeof ttl === 'number') {
+      // Standard (key, value, ttl) format
+      const valueStr = typeof value === 'object' ? JSON.stringify(value) : value;
+      return this.setEx(key, ttl, valueStr);
+    } else {
+      throw new Error('Invalid parameters for set method');
+    }
+  }
+
   async get(key) {
+    let result = null;
+    
     if (this.useRedis && this.isRedisConnected) {
       try {
-        return await this.redisClient.get(key);
+        result = await this.redisClient.get(key);
       } catch (error) {
         console.error('Redis get error, falling back:', error.message);
         this.useRedis = false;
       }
     }
     
-    return this.fallbackCache.get(key);
+    if (result === null) {
+      result = this.fallbackCache.get(key);
+    }
+    
+    // Try to parse JSON if it's a string that looks like JSON
+    if (typeof result === 'string' && (result.startsWith('{') || result.startsWith('['))) {
+      try {
+        return JSON.parse(result);
+      } catch (parseError) {
+        // If parsing fails, return the original string
+        return result;
+      }
+    }
+    
+    return result;
   }
 
   async del(key) {
