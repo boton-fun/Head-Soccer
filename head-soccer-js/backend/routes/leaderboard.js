@@ -812,11 +812,20 @@ router.get('/debug', async (req, res) => {
 
     if (error) throw error;
 
+    // Also check player_stats
+    const { data: stats, error: statsError } = await supabase
+      .from('player_stats')
+      .select('user_id, games_played, games_won')
+      .limit(5);
+
     res.json({
       success: true,
       debug: {
         users_found: users ? users.length : 0,
         users: users || [],
+        stats_found: stats ? stats.length : 0,
+        stats: stats || [],
+        stats_error: statsError ? statsError.message : null,
         cache_status: cacheService ? 'available' : 'not available'
       }
     });
