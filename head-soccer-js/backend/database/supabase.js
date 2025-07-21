@@ -103,6 +103,67 @@ const users = {
     } catch (error) {
       return { success: false, error: error.message };
     }
+  },
+
+  // Find user by username (for login)
+  async findByUsername(username) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('username', username.toLowerCase())
+        .single();
+      
+      if (error && error.code === 'PGRST116') {
+        return { success: true, data: null };
+      }
+      
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error finding user by username:', error.message);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Find user by ID (for profile)
+  async findById(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error && error.code === 'PGRST116') {
+        return { success: true, data: null };
+      }
+      
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error finding user by ID:', error.message);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Update last login timestamp
+  async updateLastLogin(userId) {
+    try {
+      const { error } = await supabase
+        .from('users')
+        .update({ 
+          last_login_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
+      
+      if (error) throw error;
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating last login:', error.message);
+      return { success: false, error: error.message };
+    }
   }
 };
 
@@ -343,6 +404,27 @@ const stats = {
       return { success: true, data };
     } catch (error) {
       console.error('Error fetching leaderboard:', error.message);
+      return { success: false, error: error.message };
+    }
+  },
+
+  // Find user statistics by user ID
+  async findByUserId(userId) {
+    try {
+      const { data, error } = await supabase
+        .from('player_stats')
+        .select('*')
+        .eq('user_id', userId)
+        .single();
+      
+      if (error && error.code === 'PGRST116') {
+        return { success: true, data: null };
+      }
+      
+      if (error) throw error;
+      return { success: true, data };
+    } catch (error) {
+      console.error('Error finding stats by user ID:', error.message);
       return { success: false, error: error.message };
     }
   }

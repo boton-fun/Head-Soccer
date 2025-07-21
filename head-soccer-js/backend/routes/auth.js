@@ -293,6 +293,303 @@ function generateUsernameSuggestions(username) {
 }
 
 /**
+ * POST /api/auth/login
+ * Authenticate user and return JWT token
+ */
+router.post('/login', authLimiter, [
+  body('username')
+    .notEmpty()
+    .withMessage('Username is required')
+    .toLowerCase()
+    .trim(),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required')
+], async (req, res) => {
+  try {
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields',
+        details: errors.array().map(err => ({
+          field: err.path,
+          message: err.msg
+        }))
+      });
+    }
+
+    const { username, password } = req.body;
+
+    // Find user by username
+    const userResult = await users.findByUsername(username);
+    if (!userResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Database error during authentication'
+      });
+    }
+
+    if (!userResult.data) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid username or password'
+      });
+    }
+
+    const user = userResult.data;
+
+    // Verify password
+    const validPassword = await bcrypt.compare(password, user.password_hash);
+    if (!validPassword) {
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid username or password'
+      });
+    }
+
+    // Update last login timestamp
+    await users.updateLastLogin(user.id);
+
+    // Generate JWT token
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        username: user.username,
+        iat: Math.floor(Date.now() / 1000)
+      },
+      config.jwt.secret,
+      {
+        expiresIn: config.jwt.expiresIn || '7d',
+        issuer: 'head-soccer-api'
+      }
+    );
+
+    // Return user data and token (exclude sensitive information)
+    res.json({
+      success: true,
+      message: 'Login successful',
+      data: {
+        user: {
+          id: user.id,
+          username: user.username,
+          display_name: user.display_name,
+          character_id: user.character_id,
+          elo_rating: user.elo_rating,
+          created_at: user.created_at,
+          updated_at: user.updated_at
+        },
+        token,
+        expiresIn: config.jwt.expiresIn || '7d'
+      }
+    });
+
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error during login',
+      message: 'Please try again later'
+    });
+  }
+});
+
+/**
+ * JWT Authentication middleware
+ */
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
+
+  if (!token) {
+    return res.status(401).json({
+      success: false,
+      error: 'Access token required'
+    });
+  }
+
+  jwt.verify(token, config.jwt.secret, (err, decoded) => {
+    if (err) {
+      if (err.name === 'TokenExpiredError') {
+        return res.status(401).json({
+          success: false,
+          error: 'Token expired',
+          message: 'Please login again'
+        });
+      } else if (err.name === 'JsonWebTokenError') {
+        return res.status(401).json({
+          success: false,
+          error: 'Invalid token',
+          message: 'Please login again'
+        });
+      } else {
+        return res.status(500).json({
+          success: false,
+          error: 'Token verification failed'
+        });
+      }
+    }
+
+    req.user = decoded;
+    next();
+  });
+};
+
+/**
+ * GET /api/auth/profile
+ * Get current user's profile information
+ */
+router.get('/profile', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    // Get user data
+    const userResult = await users.findById(userId);
+    if (!userResult.success || !userResult.data) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found'
+      });
+    }
+
+    const user = userResult.data;
+
+    // Get user statistics
+    const statsResult = await stats.findByUserId(userId);
+    const userStats = statsResult.success ? statsResult.data : null;
+
+    // Return profile data (exclude sensitive information)
+    res.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          username: user.username,
+          display_name: user.display_name,
+          avatar_url: user.avatar_url,
+          character_id: user.character_id,
+          elo_rating: user.elo_rating,
+          created_at: user.created_at,
+          updated_at: user.updated_at
+        },
+        stats: userStats ? {
+          games_played: userStats.games_played,
+          games_won: userStats.games_won,
+          games_lost: userStats.games_lost,
+          games_drawn: userStats.games_drawn,
+          goals_scored: userStats.goals_scored,
+          goals_conceded: userStats.goals_conceded,
+          win_streak: userStats.win_streak,
+          best_win_streak: userStats.best_win_streak,
+          total_play_time_seconds: userStats.total_play_time_seconds
+        } : null
+      }
+    });
+
+  } catch (error) {
+    console.error('Profile retrieval error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve profile'
+    });
+  }
+});
+
+/**
+ * PUT /api/auth/profile
+ * Update current user's profile information
+ */
+router.put('/profile', authenticateToken, [
+  body('display_name')
+    .optional()
+    .isLength({ min: 1, max: 50 })
+    .withMessage('Display name must be between 1 and 50 characters')
+    .trim(),
+  body('avatar_url')
+    .optional()
+    .isURL()
+    .withMessage('Avatar URL must be a valid URL'),
+  body('character_id')
+    .optional()
+    .isIn(['player1', 'player2', 'player3', 'player4', 'player5'])
+    .withMessage('Invalid character selection')
+], async (req, res) => {
+  try {
+    // Check validation errors
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        success: false,
+        error: 'Validation failed',
+        details: errors.array().map(err => ({
+          field: err.path,
+          message: err.msg,
+          value: err.value
+        }))
+      });
+    }
+
+    const userId = req.user.userId;
+    const { display_name, avatar_url, character_id } = req.body;
+
+    // Prepare update data
+    const updateData = {
+      updated_at: new Date().toISOString()
+    };
+
+    if (display_name !== undefined) updateData.display_name = display_name;
+    if (avatar_url !== undefined) updateData.avatar_url = avatar_url;
+    if (character_id !== undefined) updateData.character_id = character_id;
+
+    // Update user profile
+    const updateResult = await users.update(userId, updateData);
+    if (!updateResult.success) {
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to update profile'
+      });
+    }
+
+    // Get updated user data
+    const userResult = await users.findById(userId);
+    if (!userResult.success || !userResult.data) {
+      return res.status(404).json({
+        success: false,
+        error: 'User not found after update'
+      });
+    }
+
+    const user = userResult.data;
+
+    // Return updated profile
+    res.json({
+      success: true,
+      message: 'Profile updated successfully',
+      data: {
+        user: {
+          id: user.id,
+          username: user.username,
+          display_name: user.display_name,
+          avatar_url: user.avatar_url,
+          character_id: user.character_id,
+          elo_rating: user.elo_rating,
+          created_at: user.created_at,
+          updated_at: user.updated_at
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error during profile update'
+    });
+  }
+});
+
+/**
  * Health check endpoint
  */
 router.get('/health', (req, res) => {
@@ -304,4 +601,6 @@ router.get('/health', (req, res) => {
   });
 });
 
+// Export the authentication middleware for use in other routes
 module.exports = router;
+module.exports.authenticateToken = authenticateToken;

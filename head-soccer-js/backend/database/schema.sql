@@ -10,6 +10,7 @@ CREATE TABLE public.users (
     avatar_url TEXT,
     character_id VARCHAR(50) DEFAULT 'player1',
     elo_rating INTEGER DEFAULT 1200,
+    last_login_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
