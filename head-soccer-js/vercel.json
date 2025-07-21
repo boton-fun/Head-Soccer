@@ -3,6 +3,10 @@
   "public": true,
   "rewrites": [
     {
+      "source": "/",
+      "destination": "/main-menu.html"
+    },
+    {
       "source": "/((?!.*\\.\\w+$).*)",
       "destination": "/main-menu.html"
     }
