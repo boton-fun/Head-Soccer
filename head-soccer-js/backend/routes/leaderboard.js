@@ -800,6 +800,36 @@ function getCategoryLabel(category) {
 }
 
 /**
+ * Test endpoint for debugging
+ */
+router.get('/debug', async (req, res) => {
+  try {
+    // Test basic database query
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, username')
+      .limit(3);
+
+    if (error) throw error;
+
+    res.json({
+      success: true,
+      debug: {
+        users_found: users ? users.length : 0,
+        users: users || [],
+        cache_status: cacheService ? 'available' : 'not available'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+});
+
+/**
  * Health check endpoint
  */
 router.get('/health', (req, res) => {
