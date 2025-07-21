@@ -113,7 +113,28 @@ const validationRules = {
       .trim()
       .isLength({ min: 1, max: 50 })
       .withMessage('Search query must be between 1 and 50 characters')
-      .customSanitizer(value => xss(value))
+      .customSanitizer(value => xss(value)),
+
+  // Room code validation
+  roomCode: () =>
+    body('room_code')
+      .optional()
+      .isLength({ min: 4, max: 8 })
+      .withMessage('Room code must be between 4 and 8 characters')
+      .matches(/^[A-Z0-9]+$/)
+      .withMessage('Room code must contain only uppercase letters and numbers'),
+
+  // Game result validation
+  gameResult: () =>
+    body('result')
+      .isIn(['win', 'loss', 'draw', 'abandoned'])
+      .withMessage('Invalid game result'),
+
+  // Duration validation
+  duration: () =>
+    body('duration_seconds')
+      .isInt({ min: 0, max: 7200 })
+      .withMessage('Duration must be between 0 and 7200 seconds (2 hours)')
 };
 
 /**
@@ -199,6 +220,25 @@ const validate = {
   searchPlayers: [
     validationRules.searchQuery(),
     ...validationRules.pagination()
+  ],
+
+  // Game management validations
+  createRoom: [
+    validationRules.roomCode(),
+    validationRules.gameMode(),
+    body('max_players').optional().isInt({ min: 2, max: 8 }).withMessage('Max players must be between 2 and 8'),
+    body('time_limit').optional().isInt({ min: 60, max: 1800 }).withMessage('Time limit must be between 60 and 1800 seconds')
+  ],
+
+  joinRoom: [
+    validationRules.roomCode()
+  ],
+
+  updateGameResult: [
+    validationRules.gameId(),
+    validationRules.gameResult(),
+    validationRules.duration(),
+    body('final_scores').isObject().withMessage('Final scores must be an object')
   ]
 };
 

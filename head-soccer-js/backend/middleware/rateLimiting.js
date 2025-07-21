@@ -4,7 +4,7 @@
  */
 
 const rateLimit = require('express-rate-limit');
-const RedisStore = require('rate-limit-redis');
+const { RedisStore } = require('rate-limit-redis');
 const { supabase } = require('../database/supabase');
 
 /**
@@ -15,7 +15,7 @@ const createStore = (prefix) => {
     const redisClient = require('../database/redis').client;
     if (redisClient && redisClient.status === 'ready') {
       return new RedisStore({
-        client: redisClient,
+        sendCommand: (...args) => redisClient.sendCommand(args),
         prefix: `rl:${prefix}:`
       });
     }

@@ -5,8 +5,7 @@
 
 const express = require('express');
 const { authenticateToken } = require('./auth');
-const { rateLimiters } = require('../middleware');
-const { validate, handleValidationErrors } = require('../middleware');
+const { rateLimiters, handleValidationErrors } = require('../middleware');
 const { body, query, param } = require('express-validator');
 const { users, stats, games, supabase } = require('../database/supabase');
 
@@ -493,6 +492,336 @@ function calculateHeadToHead(userId1, userId2, games) {
   });
 
   return record;
+}
+
+/**
+ * POST /api/stats/submit-game-result
+ * Submit game result and update player statistics
+ */
+router.post('/submit-game-result',
+  authenticateToken,
+  rateLimiters.game,
+  body('game_id').isUUID().withMessage('Invalid game ID'),
+  body('opponent_id').isUUID().withMessage('Invalid opponent ID'),
+  body('result').isIn(['win', 'loss', 'draw']).withMessage('Invalid game result'),
+  body('player_score').isInt({ min: 0, max: 50 }).withMessage('Player score must be between 0 and 50'),
+  body('opponent_score').isInt({ min: 0, max: 50 }).withMessage('Opponent score must be between 0 and 50'),
+  body('duration_seconds').isInt({ min: 0, max: 7200 }).withMessage('Duration must be between 0 and 7200 seconds'),
+  body('goals_scored').optional().isInt({ min: 0 }).withMessage('Goals scored must be non-negative'),
+  body('goals_conceded').optional().isInt({ min: 0 }).withMessage('Goals conceded must be non-negative'),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const userId = req.user.userId;
+      const {
+        game_id,
+        opponent_id,
+        result,
+        player_score,
+        opponent_score,
+        duration_seconds,
+        goals_scored = player_score,
+        goals_conceded = opponent_score
+      } = req.body;
+
+      // Verify the game exists and user is a participant
+      const { data: game, error: gameError } = await supabase
+        .from('games')
+        .select('*')
+        .eq('id', game_id)
+        .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
+        .single();
+
+      if (gameError || !game) {
+        return res.status(404).json({
+          success: false,
+          error: 'Game not found or access denied'
+        });
+      }
+
+      if (game.status !== 'in_progress') {
+        return res.status(400).json({
+          success: false,
+          error: 'Game is not in progress'
+        });
+      }
+
+      // Update game record
+      const gameUpdateData = {
+        status: 'completed',
+        player1_score: game.player1_id === userId ? player_score : opponent_score,
+        player2_score: game.player2_id === userId ? player_score : opponent_score,
+        winner_id: result === 'win' ? userId : (result === 'loss' ? opponent_id : null),
+        duration_seconds,
+        completed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { error: updateGameError } = await supabase
+        .from('games')
+        .update(gameUpdateData)
+        .eq('id', game_id);
+
+      if (updateGameError) throw updateGameError;
+
+      // Get current player stats
+      const statsResult = await stats.findByUserId(userId);
+      let currentStats = statsResult.success ? statsResult.data : null;
+
+      if (!currentStats) {
+        // Create initial stats if they don't exist
+        currentStats = {
+          user_id: userId,
+          games_played: 0,
+          games_won: 0,
+          games_lost: 0,
+          games_drawn: 0,
+          goals_scored: 0,
+          goals_conceded: 0,
+          win_streak: 0,
+          best_win_streak: 0,
+          total_play_time_seconds: 0
+        };
+      }
+
+      // Update statistics
+      const statsUpdate = {
+        games_played: currentStats.games_played + 1,
+        goals_scored: currentStats.goals_scored + goals_scored,
+        goals_conceded: currentStats.goals_conceded + goals_conceded,
+        total_play_time_seconds: currentStats.total_play_time_seconds + duration_seconds,
+        updated_at: new Date().toISOString()
+      };
+
+      // Update win/loss/draw counts and streak
+      if (result === 'win') {
+        statsUpdate.games_won = currentStats.games_won + 1;
+        statsUpdate.win_streak = currentStats.win_streak + 1;
+        statsUpdate.best_win_streak = Math.max(currentStats.best_win_streak, statsUpdate.win_streak);
+      } else if (result === 'loss') {
+        statsUpdate.games_lost = currentStats.games_lost + 1;
+        statsUpdate.win_streak = 0;
+      } else {
+        statsUpdate.games_drawn = currentStats.games_drawn + 1;
+        statsUpdate.win_streak = 0;
+      }
+
+      // Update or create stats record
+      let statsError;
+      if (statsResult.success && currentStats.user_id) {
+        const { error } = await supabase
+          .from('player_stats')
+          .update(statsUpdate)
+          .eq('user_id', userId);
+        statsError = error;
+      } else {
+        const { error } = await supabase
+          .from('player_stats')
+          .insert({ ...statsUpdate, user_id: userId, created_at: new Date().toISOString() });
+        statsError = error;
+      }
+
+      if (statsError) {
+        console.error('Error updating player stats:', statsError);
+        // Continue without failing the request
+      }
+
+      // Calculate ELO rating changes (basic ELO system)
+      const { data: opponent, error: opponentError } = await supabase
+        .from('users')
+        .select('elo_rating')
+        .eq('id', opponent_id)
+        .single();
+
+      if (!opponentError && opponent) {
+        const { data: currentUser } = await supabase
+          .from('users')
+          .select('elo_rating')
+          .eq('id', userId)
+          .single();
+
+        if (currentUser) {
+          const newEloRating = calculateEloRating(
+            currentUser.elo_rating,
+            opponent.elo_rating,
+            result === 'win' ? 1 : (result === 'draw' ? 0.5 : 0)
+          );
+
+          // Update user's ELO rating
+          await supabase
+            .from('users')
+            .update({ 
+              elo_rating: newEloRating, 
+              updated_at: new Date().toISOString() 
+            })
+            .eq('id', userId);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: 'Game result submitted successfully',
+        data: {
+          game_id,
+          result,
+          statistics_updated: true,
+          final_score: {
+            player: player_score,
+            opponent: opponent_score
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error submitting game result:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to submit game result'
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/stats/recent-activity/:userId
+ * Get recent activity and achievements for a player
+ */
+router.get('/recent-activity/:userId',
+  rateLimiters.read,
+  param('userId').isUUID().withMessage('Invalid user ID format'),
+  query('days').optional().isInt({ min: 1, max: 90 }).withMessage('Days must be between 1 and 90').toInt(),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const { days = 7 } = req.query;
+
+      const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+      // Get recent games
+      const { data: recentGames, error: gamesError } = await supabase
+        .from('games')
+        .select(`
+          *,
+          opponent:users!games_player2_id_fkey(username, display_name, elo_rating),
+          opponent2:users!games_player1_id_fkey(username, display_name, elo_rating)
+        `)
+        .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
+        .eq('status', 'completed')
+        .gte('completed_at', startDate.toISOString())
+        .order('completed_at', { ascending: false })
+        .limit(10);
+
+      if (gamesError) throw gamesError;
+
+      // Process games to show from player's perspective
+      const processedGames = recentGames.map(game => {
+        const isPlayer1 = game.player1_id === userId;
+        const opponent = isPlayer1 ? game.opponent : game.opponent2;
+        const playerScore = isPlayer1 ? game.player1_score : game.player2_score;
+        const opponentScore = isPlayer1 ? game.player2_score : game.player1_score;
+        
+        let result = 'draw';
+        if (playerScore > opponentScore) result = 'win';
+        else if (opponentScore > playerScore) result = 'loss';
+
+        return {
+          game_id: game.id,
+          opponent: {
+            username: opponent?.username,
+            display_name: opponent?.display_name,
+            elo_rating: opponent?.elo_rating
+          },
+          result,
+          score: {
+            player: playerScore,
+            opponent: opponentScore
+          },
+          duration_seconds: game.duration_seconds,
+          completed_at: game.completed_at
+        };
+      });
+
+      // Calculate activity statistics
+      const totalGames = recentGames.length;
+      const wins = processedGames.filter(g => g.result === 'win').length;
+      const losses = processedGames.filter(g => g.result === 'loss').length;
+      const draws = processedGames.filter(g => g.result === 'draw').length;
+      const totalGoals = processedGames.reduce((sum, g) => sum + g.score.player, 0);
+      const totalConceded = processedGames.reduce((sum, g) => sum + g.score.opponent, 0);
+
+      // Check for achievements (simple examples)
+      const achievements = [];
+      
+      // Win streak achievement
+      let currentStreak = 0;
+      let maxStreak = 0;
+      for (const game of processedGames.reverse()) {
+        if (game.result === 'win') {
+          currentStreak++;
+          maxStreak = Math.max(maxStreak, currentStreak);
+        } else {
+          currentStreak = 0;
+        }
+      }
+      
+      if (maxStreak >= 3) {
+        achievements.push({
+          type: 'win_streak',
+          description: `${maxStreak} game win streak`,
+          achieved_at: recentGames[0]?.completed_at
+        });
+      }
+
+      // Goal scoring achievement
+      if (totalGoals >= 10) {
+        achievements.push({
+          type: 'goal_scorer',
+          description: `Scored ${totalGoals} goals in ${days} days`,
+          achieved_at: new Date().toISOString()
+        });
+      }
+
+      res.json({
+        success: true,
+        data: {
+          period: {
+            days,
+            start_date: startDate.toISOString(),
+            end_date: new Date().toISOString()
+          },
+          recent_games: processedGames,
+          activity_summary: {
+            total_games: totalGames,
+            wins,
+            losses,
+            draws,
+            win_rate: totalGames > 0 ? Math.round((wins / totalGames) * 100 * 100) / 100 : 0,
+            total_goals_scored: totalGoals,
+            total_goals_conceded: totalConceded,
+            goal_difference: totalGoals - totalConceded
+          },
+          recent_achievements: achievements
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching recent activity:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve recent activity'
+      });
+    }
+  }
+);
+
+/**
+ * Helper function to calculate ELO rating
+ */
+function calculateEloRating(playerRating, opponentRating, gameResult, kFactor = 32) {
+  const expectedScore = 1 / (1 + Math.pow(10, (opponentRating - playerRating) / 400));
+  const ratingChange = Math.round(kFactor * (gameResult - expectedScore));
+  return Math.max(800, Math.min(3000, playerRating + ratingChange)); // Clamp between 800 and 3000
 }
 
 /**

@@ -255,6 +255,10 @@ app.use('/api/auth', authRoutes);
 const statsRoutes = require('./routes/stats');
 app.use('/api/stats', statsRoutes);
 
+// Import and use leaderboard routes
+const leaderboardRoutes = require('./routes/leaderboard');
+app.use('/api/leaderboard', leaderboardRoutes);
+
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Head Soccer Multiplayer Server',
@@ -273,7 +277,14 @@ app.get('/', (req, res) => {
       '/api/stats/player/:id - Player statistics by ID',
       '/api/stats/history/:id - Player game history',
       '/api/stats/compare/:id1/:id2 - Compare two players',
-      '/api/stats/summary - Overall game statistics'
+      '/api/stats/summary - Overall game statistics',
+      '/api/stats/submit-game-result - Submit game result',
+      '/api/stats/recent-activity/:id - Recent player activity',
+      '/api/leaderboard - Global leaderboard with filtering',
+      '/api/leaderboard/top/:count - Top N players',
+      '/api/leaderboard/player/:id/rank - Player rank and context',
+      '/api/leaderboard/seasons - Seasonal leaderboards',
+      '/api/leaderboard/categories/:category - Category leaderboards'
     ]
   });
 });
