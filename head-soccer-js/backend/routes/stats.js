@@ -121,11 +121,87 @@ router.get('/me',
   rateLimiters.read,
   async (req, res) => {
     try {
-      // Redirect to the player stats endpoint with the authenticated user's ID
-      req.params.userId = req.user.userId;
-      
-      // Forward to the existing player stats handler
-      return router.stack[0].route.stack[0].handle(req, res);
+      const userId = req.user.userId;
+
+      // Get basic user info
+      const userResult = await users.findById(userId);
+      if (!userResult.success || !userResult.data) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found'
+        });
+      }
+
+      // Get player statistics
+      const statsResult = await stats.findByUserId(userId);
+      const playerStats = statsResult.success ? statsResult.data : null;
+
+      // Get recent games count
+      const { data: recentGames, error: gamesError } = await supabase
+        .from('games')
+        .select('id')
+        .or(`player1_id.eq.${userId},player2_id.eq.${userId}`)
+        .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days
+        .eq('status', 'completed');
+
+      const recentGamesCount = gamesError ? 0 : recentGames?.length || 0;
+
+      // Calculate advanced metrics
+      let winRate = 0;
+      let goalRatio = 0;
+      let averageGameDuration = 0;
+
+      if (playerStats) {
+        const totalGames = playerStats.games_played;
+        winRate = totalGames > 0 ? (playerStats.games_won / totalGames * 100) : 0;
+        goalRatio = playerStats.goals_conceded > 0 ? 
+          (playerStats.goals_scored / playerStats.goals_conceded) : 
+          playerStats.goals_scored;
+        averageGameDuration = totalGames > 0 ? 
+          (playerStats.total_play_time_seconds / totalGames) : 0;
+      }
+
+      const response = {
+        success: true,
+        data: {
+          player: {
+            id: userResult.data.id,
+            username: userResult.data.username,
+            display_name: userResult.data.display_name,
+            elo_rating: userResult.data.elo_rating,
+            character_id: userResult.data.character_id,
+            created_at: userResult.data.created_at
+          },
+          statistics: playerStats ? {
+            // Basic stats
+            games_played: playerStats.games_played,
+            games_won: playerStats.games_won,
+            games_lost: playerStats.games_lost,
+            games_drawn: playerStats.games_drawn,
+            goals_scored: playerStats.goals_scored,
+            goals_conceded: playerStats.goals_conceded,
+            win_streak: playerStats.win_streak,
+            best_win_streak: playerStats.best_win_streak,
+            total_play_time_seconds: playerStats.total_play_time_seconds,
+            
+            // Advanced metrics
+            win_rate: Math.round(winRate * 100) / 100,
+            goal_ratio: Math.round(goalRatio * 100) / 100,
+            average_game_duration: Math.round(averageGameDuration),
+            recent_games_30d: recentGamesCount,
+            goals_per_game: playerStats.games_played > 0 ? 
+              Math.round((playerStats.goals_scored / playerStats.games_played) * 100) / 100 : 0,
+            
+            // Performance indicators
+            consistency_score: calculateConsistencyScore(playerStats),
+            activity_level: calculateActivityLevel(recentGamesCount, playerStats.games_played),
+            skill_trend: calculateSkillTrend(userResult.data.elo_rating)
+          } : null
+        }
+      };
+
+      res.json(response);
+
     } catch (error) {
       console.error('Error fetching user statistics:', error);
       res.status(500).json({

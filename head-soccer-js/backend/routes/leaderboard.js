@@ -58,8 +58,8 @@ router.get('/',
           break;
       }
 
-      // Build the main query
-      let query = supabase
+      // Get users with stats - use a simpler approach to avoid complex joins
+      const { data: players, error, count } = await supabase
         .from('users')
         .select(`
           id,
@@ -67,34 +67,47 @@ router.get('/',
           display_name,
           elo_rating,
           character_id,
-          created_at,
-          player_stats!inner (
-            games_played,
-            games_won,
-            games_lost,
-            games_drawn,
-            goals_scored,
-            goals_conceded,
-            win_streak,
-            best_win_streak,
-            total_play_time_seconds,
-            updated_at
-          )
+          created_at
         `)
-        .not('player_stats.games_played', 'eq', 0) // Only include players with games
-        .order(sortBy === 'win_rate' ? 'player_stats.games_won' : sortBy, { ascending: false })
-        .range(offset, offset + limit - 1);
+        .order('elo_rating', { ascending: false })
+        .range(offset, offset + limit * 2 - 1); // Get more than needed to filter later
 
-      // Apply date filters for period-based rankings
-      if (dateFilter) {
-        query = query.gte('player_stats.updated_at', dateFilter.toISOString());
-      }
-
-      const { data: players, error, count } = await query;
       if (error) throw error;
 
+      // Get stats for these players
+      const playerIds = players.map(p => p.id);
+      let playerStats = [];
+      
+      if (playerIds.length > 0) {
+        const { data: statsData, error: statsError } = await supabase
+          .from('player_stats')
+          .select('*')
+          .in('user_id', playerIds)
+          .gt('games_played', 0); // Only players with games
+
+        if (!statsError && statsData) {
+          playerStats = statsData;
+        }
+      }
+
+      // Apply date filters for period-based rankings
+      if (dateFilter && playerStats.length > 0) {
+        playerStats = playerStats.filter(stat => 
+          new Date(stat.updated_at) >= dateFilter
+        );
+      }
+
+      // Combine player data with their stats
+      const playersWithStats = [];
+      for (const player of players) {
+        const stats = playerStats.find(s => s.user_id === player.id);
+        if (stats) {
+          playersWithStats.push({ ...player, player_stats: stats });
+        }
+      }
+
       // Calculate win rates and additional metrics
-      const enrichedPlayers = players.map((player, index) => {
+      const enrichedPlayers = playersWithStats.map((player, index) => {
         const stats = player.player_stats;
         const winRate = stats.games_played > 0 ? (stats.games_won / stats.games_played * 100) : 0;
         const goalRatio = stats.goals_conceded > 0 ? (stats.goals_scored / stats.goals_conceded) : stats.goals_scored;
@@ -127,24 +140,41 @@ router.get('/',
         };
       });
 
-      // Sort by calculated win rate if needed
-      if (sortBy === 'win_rate') {
-        enrichedPlayers.sort((a, b) => b.statistics.win_rate - a.statistics.win_rate);
-        enrichedPlayers.forEach((player, index) => {
-          player.rank = offset + index + 1;
-        });
-      }
+      // Sort by specified criteria
+      const getSortValue = (stats, player, sortBy) => {
+        switch (sortBy) {
+          case 'elo_rating':
+            return player.elo_rating;
+          case 'games_won':
+            return stats.games_won;
+          case 'win_rate':
+            return stats.games_played > 0 ? (stats.games_won / stats.games_played) : 0;
+          case 'goals_scored':
+            return stats.goals_scored;
+          default:
+            return player.elo_rating;
+        }
+      };
 
-      // Get total count for pagination
-      const { count: totalCount } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true })
-        .not('player_stats.games_played', 'eq', 0);
+      enrichedPlayers.sort((a, b) => {
+        const aValue = getSortValue(a.statistics, a.player, sortBy);
+        const bValue = getSortValue(b.statistics, b.player, sortBy);
+        return bValue - aValue;
+      });
+
+      // Add ranks and slice to limit
+      const finalPlayers = enrichedPlayers.slice(0, limit).map((player, index) => ({
+        ...player,
+        rank: offset + index + 1
+      }));
+
+      // Get total count for pagination (count of players with games)
+      const totalCount = playerStats.length;
 
       const response = {
         success: true,
         data: {
-          leaderboard: enrichedPlayers,
+          leaderboard: finalPlayers,
           pagination: {
             page: parseInt(page),
             limit: parseInt(limit),
@@ -196,6 +226,7 @@ router.get('/top/:count',
         return res.json(cachedResult);
       }
 
+      // Get top users by ELO
       const { data: players, error } = await supabase
         .from('users')
         .select(`
@@ -203,16 +234,40 @@ router.get('/top/:count',
           username,
           display_name,
           elo_rating,
-          character_id,
-          player_stats!inner (games_played, games_won, goals_scored)
+          character_id
         `)
-        .not('player_stats.games_played', 'eq', 0)
         .order('elo_rating', { ascending: false })
-        .limit(count);
+        .limit(count * 2); // Get more than needed in case some don't have stats
 
       if (error) throw error;
 
-      const topPlayers = players.map((player, index) => ({
+      // Get stats for these players
+      const playerIds = players.map(p => p.id);
+      let playerStats = [];
+      
+      if (playerIds.length > 0) {
+        const { data: statsData, error: statsError } = await supabase
+          .from('player_stats')
+          .select('*')
+          .in('user_id', playerIds)
+          .gt('games_played', 0); // Only players with games
+
+        if (!statsError && statsData) {
+          playerStats = statsData;
+        }
+      }
+
+      // Combine player data with their stats and filter to only those with games
+      const playersWithStats = [];
+      for (const player of players) {
+        const stats = playerStats.find(s => s.user_id === player.id);
+        if (stats) {
+          playersWithStats.push({ ...player, stats });
+        }
+      }
+
+      // Take only the requested count and create response
+      const topPlayers = playersWithStats.slice(0, count).map((player, index) => ({
         rank: index + 1,
         player: {
           id: player.id,
@@ -222,9 +277,9 @@ router.get('/top/:count',
           character_id: player.character_id
         },
         stats: {
-          games_played: player.player_stats.games_played,
-          games_won: player.player_stats.games_won,
-          goals_scored: player.player_stats.goals_scored
+          games_played: player.stats.games_played,
+          games_won: player.stats.games_won,
+          goals_scored: player.stats.goals_scored
         }
       }));
 
@@ -531,50 +586,69 @@ router.get('/categories/:category',
         return res.json(cachedResult);
       }
 
-      let orderField, selectField;
-      switch (category) {
-        case 'goals':
-          orderField = 'player_stats.goals_scored';
-          selectField = 'goals_scored';
-          break;
-        case 'win_streak':
-          orderField = 'player_stats.best_win_streak';
-          selectField = 'best_win_streak';
-          break;
-        case 'games_played':
-          orderField = 'player_stats.games_played';
-          selectField = 'games_played';
-          break;
-        case 'consistency':
-          // For consistency, we'll use a combination of win rate and games played
-          orderField = 'player_stats.games_won';
-          selectField = 'games_won';
-          break;
-      }
-
-      const { data: players, error } = await supabase
+      // Get all users first
+      const { data: users, error } = await supabase
         .from('users')
         .select(`
           id,
           username,
           display_name,
           elo_rating,
-          character_id,
-          player_stats!inner (
-            games_played,
-            games_won,
-            goals_scored,
-            best_win_streak
-          )
+          character_id
         `)
-        .not('player_stats.games_played', 'eq', 0)
-        .order(orderField, { ascending: false })
-        .limit(limit);
+        .order('elo_rating', { ascending: false })
+        .limit(limit * 5); // Get more than needed to filter later
 
       if (error) throw error;
 
+      // Get stats for these users
+      const userIds = users.map(u => u.id);
+      let allStats = [];
+      
+      if (userIds.length > 0) {
+        const { data: statsData, error: statsError } = await supabase
+          .from('player_stats')
+          .select('*')
+          .in('user_id', userIds)
+          .gt('games_played', 0); // Only players with games
+
+        if (!statsError && statsData) {
+          allStats = statsData;
+        }
+      }
+
+      // Combine and sort by category
+      const playersWithStats = [];
+      for (const user of users) {
+        const stats = allStats.find(s => s.user_id === user.id);
+        if (stats) {
+          playersWithStats.push({ ...user, stats });
+        }
+      }
+
+      // Sort by category criteria
+      playersWithStats.sort((a, b) => {
+        switch (category) {
+          case 'goals':
+            return b.stats.goals_scored - a.stats.goals_scored;
+          case 'win_streak':
+            return b.stats.best_win_streak - a.stats.best_win_streak;
+          case 'games_played':
+            return b.stats.games_played - a.stats.games_played;
+          case 'consistency':
+            const aWinRate = a.stats.games_played > 0 ? (a.stats.games_won / a.stats.games_played) : 0;
+            const bWinRate = b.stats.games_played > 0 ? (b.stats.games_won / b.stats.games_played) : 0;
+            return bWinRate - aWinRate;
+          default:
+            return b.stats.goals_scored - a.stats.goals_scored;
+        }
+      });
+
+      // Take only the requested limit
+      const players = playersWithStats.slice(0, limit);
+
       const categoryLeaderboard = players.map((player, index) => {
-        const stats = player.player_stats;
+        const stats = player.stats;
         let categoryValue, categoryLabel;
 
         switch (category) {
