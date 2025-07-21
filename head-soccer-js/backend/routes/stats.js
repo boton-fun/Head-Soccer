@@ -816,20 +816,16 @@ router.post('/submit-game-result',
         statsUpdate.win_streak = 0;
       }
 
-      // Update or create stats record
-      let statsError;
-      if (statsResult.success && currentStats.user_id) {
-        const { error } = await supabase
-          .from('player_stats')
-          .update(statsUpdate)
-          .eq('user_id', userId);
-        statsError = error;
-      } else {
-        const { error } = await supabase
-          .from('player_stats')
-          .insert({ ...statsUpdate, user_id: userId, created_at: new Date().toISOString() });
-        statsError = error;
-      }
+      // Update or create stats record using UPSERT pattern
+      const { error: statsError } = await supabase
+        .from('player_stats')
+        .upsert({
+          user_id: userId,
+          ...statsUpdate,
+          created_at: currentStats.user_id ? currentStats.created_at : new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
 
       if (statsError) {
         console.error('Error updating player stats:', statsError);
