@@ -90,6 +90,34 @@ router.get('/',
         }
       }
 
+      // If no players have stats, return empty leaderboard
+      if (playerStats.length === 0) {
+        const response = {
+          success: true,
+          data: {
+            leaderboard: [],
+            pagination: {
+              page: parseInt(page),
+              limit: parseInt(limit),
+              total: 0,
+              total_pages: 0,
+              has_next: false,
+              has_previous: false
+            },
+            filters: {
+              period,
+              sort_by: sortBy,
+              game_mode: game_mode || 'all'
+            },
+            generated_at: new Date().toISOString()
+          }
+        };
+
+        // Cache the empty result for 2 minutes
+        await cacheService.set(cacheKey, response, 120);
+        return res.json(response);
+      }
+
       // Apply date filters for period-based rankings
       if (dateFilter && playerStats.length > 0) {
         playerStats = playerStats.filter(stat => 
@@ -255,6 +283,22 @@ router.get('/top/:count',
         if (!statsError && statsData) {
           playerStats = statsData;
         }
+      }
+
+      // If no player stats found, return empty result
+      if (playerStats.length === 0) {
+        const response = {
+          success: true,
+          data: {
+            top_players: [],
+            count: 0,
+            generated_at: new Date().toISOString()
+          }
+        };
+
+        // Cache for 2 minutes
+        await cacheService.set(cacheKey, response, 120);
+        return res.json(response);
       }
 
       // Combine player data with their stats and filter to only those with games
@@ -615,6 +659,24 @@ router.get('/categories/:category',
         if (!statsError && statsData) {
           allStats = statsData;
         }
+      }
+
+      // If no player stats found, return empty result
+      if (allStats.length === 0) {
+        const response = {
+          success: true,
+          data: {
+            category,
+            category_label: getCategoryLabel(category),
+            leaderboard: [],
+            total_results: 0,
+            generated_at: new Date().toISOString()
+          }
+        };
+
+        // Cache for 2 minutes
+        await cacheService.set(cacheKey, response, 120);
+        return res.json(response);
       }
 
       // Combine and sort by category
