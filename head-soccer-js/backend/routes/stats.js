@@ -8,6 +8,7 @@ const { authenticateToken } = require('./auth');
 const { rateLimiters, handleValidationErrors } = require('../middleware');
 const { body, query, param } = require('express-validator');
 const { users, stats, games, supabase } = require('../database/supabase');
+const antiCheatValidator = require('../utils/anti-cheat');
 
 const router = express.Router();
 
@@ -571,6 +572,79 @@ function calculateHeadToHead(userId1, userId2, games) {
 }
 
 /**
+ * POST /api/stats/create-game
+ * Create a new game session for testing (development endpoint)
+ */
+router.post('/create-game',
+  authenticateToken,
+  rateLimiters.game,
+  body('opponent_id').isUUID().withMessage('Invalid opponent ID'),
+  body('game_mode').optional().isIn(['ranked', 'casual', 'tournament']).withMessage('Invalid game mode'),
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const userId = req.user.userId;
+      const { opponent_id, game_mode = 'casual' } = req.body;
+
+      // Verify opponent exists
+      const { data: opponent, error: opponentError } = await supabase
+        .from('users')
+        .select('id, username')
+        .eq('id', opponent_id)
+        .single();
+
+      if (opponentError || !opponent) {
+        return res.status(404).json({
+          success: false,
+          error: 'Opponent not found'
+        });
+      }
+
+      // Create new game
+      const { data: game, error: gameError } = await supabase
+        .from('games')
+        .insert({
+          player1_id: userId,
+          player2_id: opponent_id,
+          player1_score: 0,
+          player2_score: 0,
+          status: 'in_progress',
+          game_mode,
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (gameError) {
+        throw gameError;
+      }
+
+      res.json({
+        success: true,
+        message: 'Game created successfully',
+        data: {
+          game_id: game.id,
+          opponent: {
+            id: opponent.id,
+            username: opponent.username
+          },
+          status: game.status,
+          game_mode: game.game_mode,
+          created_at: game.created_at
+        }
+      });
+
+    } catch (error) {
+      console.error('Error creating game:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to create game'
+      });
+    }
+  }
+);
+
+/**
  * POST /api/stats/submit-game-result
  * Submit game result and update player statistics
  */
@@ -621,6 +695,66 @@ router.post('/submit-game-result',
           error: 'Game is not in progress'
         });
       }
+
+      // Get user data for anti-cheat validation
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (userError || !userData) {
+        return res.status(404).json({
+          success: false,
+          error: 'User not found'
+        });
+      }
+
+      // Perform comprehensive anti-cheat validation
+      const gameData = {
+        game_id,
+        player_score,
+        opponent_score,
+        duration_seconds,
+        result,
+        goals_scored,
+        goals_conceded,
+        userId,
+        opponent_id
+      };
+
+      const validation = await antiCheatValidator.validateGameResult(gameData, userData);
+      
+      // Log suspicious activity
+      if (validation.suspiciousLevel > 2) {
+        console.warn(`🚨 Suspicious game result from user ${userId}:`, {
+          suspiciousLevel: validation.suspiciousLevel,
+          flags: validation.flags,
+          warnings: validation.warnings,
+          gameData: gameData
+        });
+      }
+
+      // Reject if validation fails
+      if (!validation.isValid) {
+        return res.status(400).json({
+          success: false,
+          error: 'Game result rejected due to validation failure',
+          details: {
+            flags: validation.flags,
+            warnings: validation.warnings,
+            suspiciousLevel: validation.suspiciousLevel
+          }
+        });
+      }
+
+      // Add validation info to response for transparency
+      const validationInfo = {
+        passed: true,
+        suspiciousLevel: validation.suspiciousLevel,
+        flags: validation.flags.length,
+        warnings: validation.warnings.length
+      };
 
       // Update game record
       const gameUpdateData = {
@@ -744,7 +878,10 @@ router.post('/submit-game-result',
           final_score: {
             player: player_score,
             opponent: opponent_score
-          }
+          },
+          validation: validationInfo,
+          elo_updated: !!userData.elo_rating,
+          duration_seconds
         }
       });
 
@@ -901,6 +1038,42 @@ function calculateEloRating(playerRating, opponentRating, gameResult, kFactor = 
 }
 
 /**
+ * GET /api/stats/anti-cheat-status
+ * Get anti-cheat system status and statistics
+ */
+router.get('/anti-cheat-status',
+  rateLimiters.read,
+  async (req, res) => {
+    try {
+      const validationStats = antiCheatValidator.getValidationStats();
+
+      res.json({
+        success: true,
+        data: {
+          anti_cheat_system: {
+            status: 'active',
+            version: '1.0.0',
+            ...validationStats
+          },
+          monitoring: {
+            active_users_tracked: validationStats.activeTrackingUsers,
+            validation_thresholds: validationStats.thresholds
+          },
+          generated_at: new Date().toISOString()
+        }
+      });
+
+    } catch (error) {
+      console.error('Error fetching anti-cheat status:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve anti-cheat status'
+      });
+    }
+  }
+);
+
+/**
  * Health check endpoint
  */
 router.get('/health', (req, res) => {
@@ -908,7 +1081,8 @@ router.get('/health', (req, res) => {
     success: true,
     service: 'stats',
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    version: '1.0.0',
+    anti_cheat: 'active'
   });
 });
 
