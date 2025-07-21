@@ -257,7 +257,7 @@ async function createInitialStats(statsData) {
   try {
     const { data, error } = await require('../database/supabase').supabase
       .from('player_stats')
-      .insert(statsData)
+      .upsert(statsData)
       .select()
       .single();
 
