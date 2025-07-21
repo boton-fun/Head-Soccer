@@ -103,10 +103,9 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
+// Apply comprehensive middleware suite
+const { setupMiddleware, errorLogger } = require('./middleware');
+setupMiddleware(app);
 
 app.get('/health', (req, res) => {
   const cacheStatus = cacheService.getStatus();
@@ -252,6 +251,10 @@ app.get('/infrastructure/optimize', (req, res) => {
 const authRoutes = require('./routes/auth');
 app.use('/api/auth', authRoutes);
 
+// Import and use statistics routes
+const statsRoutes = require('./routes/stats');
+app.use('/api/stats', statsRoutes);
+
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Head Soccer Multiplayer Server',
@@ -265,7 +268,12 @@ app.get('/', (req, res) => {
       '/infrastructure/optimize - Optimization suggestions',
       '/api/auth/register - User registration',
       '/api/auth/check-username - Username availability check',
-      '/api/auth/health - Auth service health'
+      '/api/auth/health - Auth service health',
+      '/api/stats/me - Current user statistics',
+      '/api/stats/player/:id - Player statistics by ID',
+      '/api/stats/history/:id - Player game history',
+      '/api/stats/compare/:id1/:id2 - Compare two players',
+      '/api/stats/summary - Overall game statistics'
     ]
   });
 });
@@ -285,11 +293,16 @@ const resourceMonitor = new ResourceMonitor({
 
 // WebSocket initialization will happen after server starts
 
+// Error logging middleware
+app.use(errorLogger);
+
+// Error handling middleware
 app.use((err, req, res, next) => {
-  console.error('Error:', err.stack);
-  res.status(500).json({
+  // Don't log again, errorLogger already logged it
+  res.status(err.status || 500).json({
     error: 'Internal Server Error',
-    message: config.isDevelopment() ? err.message : 'Something went wrong'
+    message: config.isDevelopment() ? err.message : 'Something went wrong',
+    ...(config.isDevelopment() && { stack: err.stack })
   });
 });
 
