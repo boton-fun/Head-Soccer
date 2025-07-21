@@ -95,6 +95,9 @@ const io = new Server(server, {
   }
 });
 
+// Enable trust proxy for Railway deployment
+app.set('trust proxy', 1);
+
 app.use(cors({
   origin: config.frontendUrl,
   credentials: true

@@ -5,6 +5,7 @@
 
 const express = require('express');
 const { body, validationResult } = require('express-validator');
+const { validate, handleValidationErrors } = require('../middleware');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const rateLimit = require('express-rate-limit');
@@ -146,9 +147,8 @@ router.post('/register', registerLimiter, validateUsername, async (req, res) => 
       goals_conceded: 0,
       win_streak: 0,
       best_win_streak: 0,
-      total_play_time_seconds: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
+      total_play_time_seconds: 0
+      // created_at and updated_at will be handled by database defaults
     };
 
     // Create initial stats (continue even if this fails)

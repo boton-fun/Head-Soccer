@@ -234,22 +234,15 @@ const slidingWindowLimiter = (options) => {
  * Apply rate limiting to all routes
  */
 const applyRateLimiting = (app) => {
-  // Authentication routes - strict
-  app.use('/api/auth/login', rateLimiters.auth);
-  app.use('/api/auth/register', rateLimiters.auth);
+  // Skip global rate limiting - let individual routes handle it
+  // This prevents double application of rate limiters which causes the "next is not a function" error
   
-  // Game routes - moderate
-  app.use('/api/games', rateLimiters.game);
-  app.use('/api/matchmaking', rateLimiters.game);
+  // Authentication routes are handled in individual route files
+  // Game routes are handled in individual route files  
+  // Read routes are handled in individual route files
+  // Expensive operations are handled in individual route files
   
-  // Read routes - lenient
-  app.use('/api/leaderboard', rateLimiters.read);
-  app.use('/api/stats', rateLimiters.read);
-  app.use('/api/players', rateLimiters.read);
-  
-  // Expensive operations - very strict
-  app.use('/api/export', rateLimiters.expensive);
-  app.use('/api/analytics', rateLimiters.expensive);
+  console.log('Rate limiting configured - handled by individual routes');
 };
 
 module.exports = {
