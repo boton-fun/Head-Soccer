@@ -98,17 +98,6 @@ class SocketHandler extends EventEmitter {
       'pause_request': {
         required: ['reason'],
         maxLength: { reason: 100 }
-      },
-      'forfeit_game': {
-        required: [],
-        optional: ['reason'],
-        maxLength: { reason: 200 }
-      },
-      'request_game_end': {
-        required: ['reason'],
-        optional: ['force'],
-        maxLength: { reason: 200 },
-        enum: { reason: ['time_up', 'mutual_agreement', 'admin_request'] }
       }
     };
     
@@ -252,15 +241,6 @@ class SocketHandler extends EventEmitter {
     
     socket.on('resume_request', (data) => {
       this.handleEvent(socket, 'resume_request', data, this.handleResumeRequest.bind(this));
-    });
-    
-    // Game end events
-    socket.on('forfeit_game', (data) => {
-      this.handleEvent(socket, 'forfeit_game', data, this.handleForfeitGame.bind(this));
-    });
-    
-    socket.on('request_game_end', (data) => {
-      this.handleEvent(socket, 'request_game_end', data, this.handleRequestGameEnd.bind(this));
     });
     
     // Room management events
@@ -827,33 +807,17 @@ class SocketHandler extends EventEmitter {
    * Handle player disconnected
    * @param {Object} data - Disconnection data
    */
-  async handlePlayerDisconnected(data) {
+  handlePlayerDisconnected(data) {
     const { playerId, socketId } = data;
     
     if (playerId) {
-      console.log(`🔌 Player ${playerId} disconnected, processing...`);
-      
-      // Get connection info to find room
-      const connection = this.connectionManager.getConnectionByPlayerId(playerId);
-      const roomId = connection?.roomId;
-      
-      // Handle disconnection in active game
-      if (roomId && this.gameplayEvents) {
-        try {
-          const result = await this.gameplayEvents.handlePlayerDisconnection(playerId, roomId);
-          console.log(`🎮 Game disconnection handled: ${result.success ? 'success' : result.reason}`);
-        } catch (error) {
-          console.error(`❌ Error handling game disconnection:`, error);
-        }
-      }
-      
       // Remove from matchmaking if queued
       this.matchmaker.removeFromQueue(playerId);
       
       // Clean up player data
       this.activePlayers.delete(playerId);
       
-      console.log(`🧹 Player ${playerId} cleaned up from all game systems`);
+      console.log(`<� Player ${playerId} cleaned up from game systems`);
     }
     
     // Clean up rate limiting data
@@ -895,51 +859,11 @@ class SocketHandler extends EventEmitter {
   }
   
   async handlePauseRequest(socket, data) {
-    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
-    if (!connection || !connection.playerId || !connection.roomId) return;
-    
-    try {
-      const result = await this.gameplayEvents.handlePauseRequest(connection.playerId, data);
-      
-      if (!result.success) {
-        socket.emit('pause_rejected', {
-          reason: result.reason
-        });
-      } else {
-        socket.emit('pause_confirmed', {
-          timeout: result.timeout
-        });
-        console.log(`⏸️ Game paused by ${connection.playerId}: ${data.reason}`);
-      }
-    } catch (error) {
-      console.error(`Error handling pause request:`, error);
-      socket.emit('pause_rejected', {
-        reason: 'Internal server error'
-      });
-    }
+    console.log(`� Pause request: ${data.reason}`);
   }
   
-  async handleResumeRequest(socket, data) {
-    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
-    if (!connection || !connection.playerId || !connection.roomId) return;
-    
-    try {
-      const result = await this.gameplayEvents.handleResumeRequest(connection.playerId, data);
-      
-      if (!result.success) {
-        socket.emit('resume_rejected', {
-          reason: result.reason
-        });
-      } else {
-        socket.emit('resume_confirmed', {});
-        console.log(`▶️ Game resumed by ${connection.playerId}`);
-      }
-    } catch (error) {
-      console.error(`Error handling resume request:`, error);
-      socket.emit('resume_rejected', {
-        reason: 'Internal server error'
-      });
-    }
+  handleResumeRequest(socket, data) {
+    console.log(`� Resume request from ${socket.id}`);
   }
   
   handleGetGameState(socket, data) {
@@ -955,130 +879,6 @@ class SocketHandler extends EventEmitter {
       clientTime: data.clientTime,
       serverTime: Date.now()
     });
-  }
-  
-  /**
-   * Handle forfeit game request
-   */
-  async handleForfeitGame(socket, data) {
-    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
-    if (!connection || !connection.playerId || !connection.roomId) {
-      socket.emit('forfeit_rejected', {
-        reason: 'Not in an active game'
-      });
-      return;
-    }
-    
-    try {
-      console.log(`🏳️ Player ${connection.playerId} requesting to forfeit game in room ${connection.roomId}`);
-      
-      // Use GameplayEvents to handle forfeit (which will call GameEndEvents)
-      const result = await this.gameplayEvents.handleForcedEnd(
-        connection.roomId, 
-        'forfeit', 
-        connection.playerId
-      );
-      
-      if (result.success) {
-        socket.emit('forfeit_accepted', {
-          roomId: connection.roomId,
-          reason: 'forfeit'
-        });
-        
-        console.log(`✅ Game forfeit processed successfully for room ${connection.roomId}`);
-      } else {
-        socket.emit('forfeit_rejected', {
-          reason: result.reason || 'Failed to process forfeit'
-        });
-        
-        console.log(`❌ Game forfeit failed for room ${connection.roomId}: ${result.reason}`);
-      }
-      
-    } catch (error) {
-      console.error(`💥 Error processing game forfeit:`, error);
-      socket.emit('forfeit_rejected', {
-        reason: 'Internal server error'
-      });
-    }
-  }
-  
-  /**
-   * Handle request game end (admin or special conditions)
-   */
-  async handleRequestGameEnd(socket, data) {
-    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
-    if (!connection || !connection.playerId || !connection.roomId) {
-      socket.emit('game_end_rejected', {
-        reason: 'Not in an active game'
-      });
-      return;
-    }
-    
-    try {
-      const endReason = data.reason || 'player_request';
-      
-      console.log(`🏁 Player ${connection.playerId} requesting game end: ${endReason}`);
-      
-      // Validate the request based on reason
-      let isValidRequest = false;
-      
-      switch (endReason) {
-        case 'time_limit':
-          // Check if time limit actually reached
-          isValidRequest = true; // GameplayEvents will validate
-          break;
-        case 'mutual_agreement':
-          // Would need both players to agree (simplified for now)
-          isValidRequest = data.confirmed === true;
-          break;
-        case 'technical_issue':
-          // Allow technical issues to end games
-          isValidRequest = true;
-          break;
-        case 'admin_intervention':
-          // Would need admin privileges (simplified for now)
-          isValidRequest = data.adminCode === 'ADMIN_END_GAME';
-          break;
-        default:
-          isValidRequest = false;
-      }
-      
-      if (!isValidRequest) {
-        socket.emit('game_end_rejected', {
-          reason: `Invalid or unauthorized game end request: ${endReason}`
-        });
-        return;
-      }
-      
-      // Use GameplayEvents to handle the game end
-      const result = await this.gameplayEvents.handleForcedEnd(
-        connection.roomId,
-        endReason,
-        connection.playerId
-      );
-      
-      if (result.success) {
-        socket.emit('game_end_accepted', {
-          roomId: connection.roomId,
-          reason: endReason,
-          endTime: Date.now()
-        });
-        
-        console.log(`✅ Game end request processed successfully for room ${connection.roomId}`);
-      } else {
-        socket.emit('game_end_rejected', {
-          reason: result.reason || 'Failed to end game'
-        });
-        
-        console.log(`❌ Game end request failed for room ${connection.roomId}: ${result.reason}`);
-      }
-      
-    } catch (error) {
-      console.error(`💥 Error processing game end request:`, error);
-      socket.emit('game_end_rejected', {
-        reason: 'Internal server error'
-      });
-    }
   }
   
   /**

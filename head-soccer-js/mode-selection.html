@@ -240,13 +240,15 @@
         <div class="content-wrapper">
             <h1 class="mode-title">Mode Select</h1>
             
+            <a href="main-menu.html" class="back-button" style="position: absolute; top: 20px; left: 20px; background: linear-gradient(135deg, #666, #444); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: all 0.3s ease;">← Back</a>
+            
             <div class="mode-buttons">
                 <a href="character-selection-responsive.html" class="mode-button arcade-button">
                     <div class="mode-number">1P</div>
                     <div class="mode-name">ARCADE</div>
                 </a>
                 
-                <a href="#" class="mode-button versus-button">
+                <a href="character-selection-responsive.html?mode=multiplayer" class="mode-button versus-button">
                     <div class="mode-number">2P</div>
                     <div class="mode-name">VERSUS</div>
                 </a>
@@ -315,13 +317,6 @@
                     });
                     
                     button.addEventListener('click', (e) => {
-                        // Only handle 1P Arcade button, 2P Versus is not implemented yet
-                        if (button.classList.contains('versus-button')) {
-                            e.preventDefault();
-                            this.playErrorSound();
-                            return;
-                        }
-                        
                         e.preventDefault();
                         this.playClickSound();
                         

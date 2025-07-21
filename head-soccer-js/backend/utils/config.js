@@ -41,7 +41,8 @@ const config = {
   
   // Security Configuration
   jwt: {
-    secret: validateEnvVar('JWT_SECRET', 'default-jwt-secret-change-in-production', false)
+    secret: validateEnvVar('JWT_SECRET', 'default-jwt-secret-change-in-production', false),
+    expiresIn: validateEnvVar('JWT_EXPIRES_IN', '7d', false)
   },
   session: {
     secret: validateEnvVar('SESSION_SECRET', 'default-session-secret-change-in-production', false)

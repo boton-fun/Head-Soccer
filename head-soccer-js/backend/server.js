@@ -248,6 +248,10 @@ app.get('/infrastructure/optimize', (req, res) => {
   }
 });
 
+// Import and use authentication routes
+const authRoutes = require('./routes/auth');
+app.use('/api/auth', authRoutes);
+
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Head Soccer Multiplayer Server',
@@ -258,7 +262,10 @@ app.get('/', (req, res) => {
       '/websocket/stats - WebSocket statistics',
       '/websocket/connections - Active connections',
       '/infrastructure/status - Infrastructure monitoring',
-      '/infrastructure/optimize - Optimization suggestions'
+      '/infrastructure/optimize - Optimization suggestions',
+      '/api/auth/register - User registration',
+      '/api/auth/check-username - Username availability check',
+      '/api/auth/health - Auth service health'
     ]
   });
 });

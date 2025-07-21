@@ -40,7 +40,14 @@
       "Bash(timeout:*)",
       "Bash(NODE_ENV=development node test/websocket.test.js)",
       "Bash(pkill:*)",
-      "Bash(NODE_ENV=production node test/websocket.test.js)"
+      "Bash(NODE_ENV=production node test/websocket.test.js)",
+      "Bash(sed:*)",
+      "Bash(grep:*)",
+      "Bash(npm start)",
+      "Bash(wc:*)",
+      "Bash(\"taskkill\" \"/F\" \"/IM\" \"node.exe\")",
+      "Bash(PORT=3002 npm start)",
+      "Bash(SERVER_URL=\"http://localhost:3002\" node test/auth-api-test.js)"
     ],
     "deny": []
   }
