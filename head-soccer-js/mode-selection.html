@@ -219,6 +219,43 @@
             }
         }
         
+        /* Back Button */
+        .back-button {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            background: linear-gradient(135deg, #666, #444);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 1rem;
+            font-family: 'Font', Arial, sans-serif;
+            transition: all 0.3s ease;
+            z-index: 30;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .back-button:hover {
+            background: linear-gradient(135deg, #777, #555);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        /* Responsive back button */
+        @media (max-width: 768px) {
+            .back-button {
+                top: 1rem;
+                left: 1rem;
+                padding: 0.6rem 1.2rem;
+                font-size: 0.9rem;
+            }
+        }
+        
         /* Loading fonts */
         @font-face {
             font-family: 'Font';
@@ -237,10 +274,11 @@
     <div class="main-container">
         <canvas id="backgroundCanvas"></canvas>
         
+        <!-- Back Button -->
+        <a href="main-menu.html" class="back-button">← Back</a>
+        
         <div class="content-wrapper">
             <h1 class="mode-title">Mode Select</h1>
-            
-            <a href="main-menu.html" class="back-button" style="position: absolute; top: 20px; left: 20px; background: linear-gradient(135deg, #666, #444); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: all 0.3s ease;">← Back</a>
             
             <div class="mode-buttons">
                 <a href="character-selection-responsive.html" class="mode-button arcade-button">
