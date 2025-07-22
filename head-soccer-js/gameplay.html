@@ -346,7 +346,7 @@
         <!-- Top UI Bar -->
         <div id="top-ui-bar">
             <div id="top-left-controls">
-                <button id="back-button" onclick="window.location.href='main-menu.html'">
+                <button id="back-button">
                     Menu
                 </button>
                 <button id="pause-button" onclick="toggleGamePause()">
@@ -589,6 +589,16 @@
                 if (popup.style.display === 'flex') {
                     hideControlsPopup();
                 }
+            }
+        });
+        
+        // Back button event listener
+        document.addEventListener('DOMContentLoaded', () => {
+            const backButton = document.getElementById('back-button');
+            if (backButton) {
+                backButton.addEventListener('click', () => {
+                    window.location.href = 'main-menu.html';
+                });
             }
         });
         

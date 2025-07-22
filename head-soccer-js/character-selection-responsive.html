@@ -269,6 +269,41 @@
             }
         }
         
+        /* Back Button */
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 20;
+            background: linear-gradient(135deg, #666, #444);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            font-family: 'Font', Arial, sans-serif;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .back-button:hover {
+            background: linear-gradient(135deg, #777, #555);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        @media (max-width: 768px) {
+            .back-button {
+                top: 15px;
+                left: 15px;
+                padding: 8px 16px;
+                font-size: 0.9rem;
+            }
+        }
+        
         @font-face {
             font-family: 'Font';
             src: url('./assets/Font.TTF') format('truetype');
@@ -286,7 +321,7 @@
     <div class="main-container">
         <canvas id="backgroundCanvas"></canvas>
         
-        <a href="mode-selection.html" style="position: absolute; top: 20px; left: 20px; z-index: 20; background: linear-gradient(135deg, #666, #444); color: white; padding: 10px 20px; border-radius: 8px; text-decoration: none; font-weight: bold; transition: all 0.3s ease;">← Back</a>
+        <a href="mode-selection.html" class="back-button">← Back</a>
         
         <div class="content-wrapper">
             <h1 class="game-title">Character Selection</h1>
