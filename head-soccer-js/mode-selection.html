@@ -260,6 +260,7 @@
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/classes/DotParticle.js"></script>
+    <script src="js/auth-manager.js"></script>
     
     <script>
         class ModeSelection {
@@ -320,13 +321,22 @@
                         e.preventDefault();
                         this.playClickSound();
                         
-                        // Fade out animation before navigation
-                        document.body.style.opacity = '0';
-                        document.body.style.transition = 'opacity 0.5s ease-out';
+                        // Check if multiplayer mode requires authentication
+                        const isMultiplayer = button.href.includes('mode=multiplayer');
                         
-                        setTimeout(() => {
-                            window.location.href = button.href;
-                        }, 500);
+                        if (isMultiplayer && !window.authManager.isAuthenticated()) {
+                            // Redirect to main menu with auth required flag
+                            localStorage.setItem('authRequired', 'true');
+                            window.location.href = 'main-menu.html';
+                        } else {
+                            // Proceed with normal navigation
+                            document.body.style.opacity = '0';
+                            document.body.style.transition = 'opacity 0.5s ease-out';
+                            
+                            setTimeout(() => {
+                                window.location.href = button.href;
+                            }, 500);
+                        }
                     });
                 });
             }

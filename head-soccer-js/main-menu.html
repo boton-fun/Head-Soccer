@@ -451,6 +451,129 @@
             src: url('./assets/Font 2.TTF') format('truetype');
             font-display: swap;
         }
+
+        /* Modal Overlay */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        /* Login Modal */
+        .login-modal {
+            background: rgba(20, 20, 40, 0.95);
+            border: 3px solid rgba(74, 144, 226, 0.8);
+            border-radius: 20px;
+            padding: 2.5rem;
+            min-width: 400px;
+            max-width: 500px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            animation: slideIn 0.3s ease-out;
+            position: relative;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+        }
+
+        .modal-close:hover {
+            color: #4A90E2;
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(90deg);
+        }
+
+        .modal-auth-title {
+            color: #4A90E2;
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-align: center;
+            font-family: 'Font', Arial, sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        .modal-subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .continue-as-guest {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            padding: 0.6rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 1rem;
+            width: 100%;
+            text-align: center;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: none; /* Hidden for now - multiplayer requires login */
+        }
+
+        .continue-as-guest:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* Responsive modal */
+        @media (max-width: 480px) {
+            .login-modal {
+                min-width: 90%;
+                padding: 2rem 1.5rem;
+                margin: 1rem;
+            }
+
+            .modal-auth-title {
+                font-size: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -512,6 +635,34 @@
         <div class="soccer-ball ball-4"></div>
     </div>
 
+    <!-- Login Modal Overlay -->
+    <div class="modal-overlay" id="loginModalOverlay">
+        <div class="login-modal">
+            <button class="modal-close" id="modalCloseBtn">&times;</button>
+            <h2 class="modal-auth-title">LOGIN REQUIRED</h2>
+            <p class="modal-subtitle">Sign in to access multiplayer mode</p>
+            
+            <!-- Login/Register Form -->
+            <div id="modalAuthForm" class="auth-form-container">
+                <form class="auth-form" id="modalLoginForm">
+                    <input type="text" id="modalUsernameInput" class="auth-input" placeholder="Username" required>
+                    <input type="password" id="modalPasswordInput" class="auth-input" placeholder="Password" required>
+                    <input type="text" id="modalDisplayNameInput" class="auth-input" placeholder="Display Name (optional)" style="display: none;">
+                    <button type="submit" class="auth-button" id="modalAuthSubmitBtn">
+                        <span id="modalAuthButtonText">LOGIN</span>
+                        <div class="loading" id="modalAuthLoading" style="display: none;"></div>
+                    </button>
+                </form>
+                <div class="auth-toggle">
+                    <span id="modalAuthToggleText">Need an account?</span>
+                    <button type="button" id="modalAuthToggleBtn">Register</button>
+                </div>
+                <div id="modalAuthMessage" class="auth-message" style="display: none;"></div>
+                <button class="continue-as-guest" id="continueAsGuestBtn">Continue as Guest</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
@@ -549,6 +700,23 @@
                 // Authentication state
                 this.isLoginMode = true;
                 this.isLoading = false;
+                
+                // Modal state
+                this.isModalLoginMode = true;
+                this.isModalLoading = false;
+                
+                // Setup modal
+                this.setupModal();
+                
+                // Check if auth is required (from mode selection redirect)
+                if (localStorage.getItem('authRequired') === 'true') {
+                    localStorage.removeItem('authRequired');
+                    if (!window.authManager.isAuthenticated()) {
+                        setTimeout(() => {
+                            this.showLoginModal();
+                        }, 500);
+                    }
+                }
             }
             
             setupAuthentication() {
@@ -824,14 +992,194 @@
                     e.preventDefault();
                     this.playClickSound();
                     
-                    // Fade out animation before navigation
-                    document.body.style.opacity = '0';
-                    document.body.style.transition = 'opacity 0.5s ease-out';
-                    
+                    // Check if user is authenticated
+                    if (window.authManager.isAuthenticated()) {
+                        // User is logged in, proceed to game
+                        document.body.style.opacity = '0';
+                        document.body.style.transition = 'opacity 0.5s ease-out';
+                        
+                        setTimeout(() => {
+                            window.location.href = playButton.href;
+                        }, 500);
+                    } else {
+                        // User not logged in, show login modal
+                        this.showLoginModal();
+                    }
+                });
+            }
+            
+            setupModal() {
+                // Get modal elements
+                this.modalOverlay = document.getElementById('loginModalOverlay');
+                this.modalCloseBtn = document.getElementById('modalCloseBtn');
+                this.modalLoginForm = document.getElementById('modalLoginForm');
+                this.modalAuthToggleBtn = document.getElementById('modalAuthToggleBtn');
+                this.modalAuthToggleText = document.getElementById('modalAuthToggleText');
+                this.modalAuthButtonText = document.getElementById('modalAuthButtonText');
+                this.modalAuthLoading = document.getElementById('modalAuthLoading');
+                this.modalAuthMessage = document.getElementById('modalAuthMessage');
+                this.modalAuthSubmitBtn = document.getElementById('modalAuthSubmitBtn');
+                this.modalUsernameInput = document.getElementById('modalUsernameInput');
+                this.modalPasswordInput = document.getElementById('modalPasswordInput');
+                this.modalDisplayNameInput = document.getElementById('modalDisplayNameInput');
+                
+                // Setup modal event listeners
+                this.modalCloseBtn.addEventListener('click', () => this.hideLoginModal());
+                this.modalOverlay.addEventListener('click', (e) => {
+                    if (e.target === this.modalOverlay) {
+                        this.hideLoginModal();
+                    }
+                });
+                
+                // Setup modal form
+                this.modalLoginForm.addEventListener('submit', (e) => this.handleModalAuthSubmit(e));
+                this.modalAuthToggleBtn.addEventListener('click', () => this.toggleModalAuthMode());
+                
+                // Input validation for modal
+                this.modalUsernameInput.addEventListener('input', () => this.validateModalForm());
+                this.modalPasswordInput.addEventListener('input', () => this.validateModalForm());
+                
+                // Listen for successful login to redirect
+                window.addEventListener('auth:loginSuccess', () => {
+                    this.hideLoginModal();
                     setTimeout(() => {
-                        window.location.href = playButton.href;
+                        window.location.href = 'mode-selection.html';
                     }, 500);
                 });
+            }
+            
+            showLoginModal() {
+                this.modalOverlay.classList.add('active');
+                this.modalUsernameInput.focus();
+                // Reset form
+                this.modalLoginForm.reset();
+                this.clearModalMessages();
+                this.isModalLoginMode = true;
+                this.updateModalAuthModeUI();
+            }
+            
+            hideLoginModal() {
+                this.modalOverlay.classList.remove('active');
+                this.clearModalMessages();
+            }
+            
+            toggleModalAuthMode() {
+                this.isModalLoginMode = !this.isModalLoginMode;
+                this.clearModalMessages();
+                this.updateModalAuthModeUI();
+            }
+            
+            updateModalAuthModeUI() {
+                const modalTitle = document.querySelector('.modal-auth-title');
+                const modalSubtitle = document.querySelector('.modal-subtitle');
+                
+                if (this.isModalLoginMode) {
+                    modalTitle.textContent = 'LOGIN REQUIRED';
+                    modalSubtitle.textContent = 'Sign in to access multiplayer mode';
+                    this.modalAuthButtonText.textContent = 'LOGIN';
+                    this.modalAuthToggleText.textContent = 'Need an account?';
+                    this.modalAuthToggleBtn.textContent = 'Register';
+                    this.modalDisplayNameInput.style.display = 'none';
+                    this.modalDisplayNameInput.required = false;
+                } else {
+                    modalTitle.textContent = 'CREATE ACCOUNT';
+                    modalSubtitle.textContent = 'Register to play multiplayer mode';
+                    this.modalAuthButtonText.textContent = 'REGISTER';
+                    this.modalAuthToggleText.textContent = 'Have an account?';
+                    this.modalAuthToggleBtn.textContent = 'Login';
+                    this.modalDisplayNameInput.style.display = 'block';
+                    this.modalDisplayNameInput.required = false;
+                }
+                
+                // Clear form
+                this.modalLoginForm.reset();
+                this.validateModalForm();
+            }
+            
+            validateModalForm() {
+                const username = this.modalUsernameInput.value.trim();
+                const password = this.modalPasswordInput.value;
+                
+                const usernameValid = window.authManager.validateUsername(username);
+                const passwordValid = window.authManager.validatePassword(password);
+                
+                const isValid = usernameValid.valid && passwordValid.valid && !this.isModalLoading;
+                this.modalAuthSubmitBtn.disabled = !isValid;
+            }
+            
+            async handleModalAuthSubmit(e) {
+                e.preventDefault();
+                
+                if (this.isModalLoading) return;
+                
+                const username = this.modalUsernameInput.value.trim();
+                const password = this.modalPasswordInput.value;
+                const displayName = this.modalDisplayNameInput.value.trim() || username;
+                
+                this.setModalLoading(true);
+                this.clearModalMessages();
+                
+                try {
+                    let result;
+                    
+                    if (this.isModalLoginMode) {
+                        result = await window.authManager.login(username, password);
+                    } else {
+                        result = await window.authManager.register(username, password, displayName);
+                    }
+                    
+                    if (result.success) {
+                        this.showModalMessage(`${this.isModalLoginMode ? 'Login' : 'Registration'} successful! Welcome, ${result.user.display_name}!`, 'success');
+                        this.playSuccessSound();
+                        
+                        // Update main auth UI
+                        this.updateAuthUI();
+                        
+                        // Fire success event
+                        window.dispatchEvent(new CustomEvent('auth:loginSuccess'));
+                    } else {
+                        this.showModalMessage(result.error || 'Authentication failed', 'error');
+                        this.playErrorSound();
+                    }
+                } catch (error) {
+                    console.error('Modal auth error:', error);
+                    this.showModalMessage('Network error. Please try again.', 'error');
+                    this.playErrorSound();
+                } finally {
+                    this.setModalLoading(false);
+                }
+            }
+            
+            setModalLoading(loading) {
+                this.isModalLoading = loading;
+                
+                if (loading) {
+                    this.modalAuthButtonText.style.display = 'none';
+                    this.modalAuthLoading.style.display = 'inline-block';
+                    this.modalAuthSubmitBtn.disabled = true;
+                } else {
+                    this.modalAuthButtonText.style.display = 'inline';
+                    this.modalAuthLoading.style.display = 'none';
+                    this.validateModalForm();
+                }
+            }
+            
+            showModalMessage(message, type) {
+                this.modalAuthMessage.textContent = message;
+                this.modalAuthMessage.className = `auth-${type}`;
+                this.modalAuthMessage.style.display = 'block';
+                
+                // Auto-hide success messages
+                if (type === 'success') {
+                    setTimeout(() => {
+                        this.clearModalMessages();
+                    }, 3000);
+                }
+            }
+            
+            clearModalMessages() {
+                this.modalAuthMessage.style.display = 'none';
+                this.modalAuthMessage.textContent = '';
             }
             
             playHoverSound() {
