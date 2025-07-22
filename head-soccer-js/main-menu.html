@@ -406,55 +406,61 @@
         }
 
 
-        /* Simple User Display */
-        .user-display {
+        /* Auth Button Display */
+        .auth-button-display {
             position: absolute;
             top: 2rem;
             right: 2rem;
             background: linear-gradient(135deg, #0c0c2e 0%, #1a0c3e 25%, #2d1b5e 50%, #0c0c2e 75%, #000 100%);
             border: 2px solid rgba(74, 144, 226, 0.5);
             border-radius: 12px;
-            padding: 1rem 1.5rem;
+            padding: 0.8rem 1.2rem;
             backdrop-filter: blur(10px);
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.8rem;
             z-index: 20;
             transition: all 0.3s ease;
-            min-width: 150px;
         }
 
-        .user-display.active {
-            display: flex;
-        }
-
-        .user-display:hover {
+        .auth-button-display:hover {
             border-color: rgba(74, 144, 226, 0.8);
             transform: translateY(-2px);
         }
 
-        .user-display-name {
-            color: #4A90E2;
-            font-weight: bold;
-            font-size: 1.1rem;
-            font-family: 'Font', Arial, sans-serif;
-        }
-
-        .logout-btn {
-            background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
-            border: 2px solid #991B1B;
-            border-radius: 6px;
+        .login-btn {
+            background: linear-gradient(135deg, #4A90E2 0%, #2E5BBA 100%);
+            border: 2px solid #1E3A8A;
+            border-radius: 8px;
             color: white;
-            font-size: 0.8rem;
+            font-size: 0.9rem;
             font-weight: bold;
-            padding: 0.5rem 1rem;
+            padding: 0.6rem 1.2rem;
             cursor: pointer;
             transition: all 0.3s ease;
             text-transform: uppercase;
             letter-spacing: 1px;
             font-family: 'Font', Arial, sans-serif;
-            width: 100%;
+            text-align: center;
+        }
+
+        .login-btn:hover {
+            background: linear-gradient(135deg, #5BA3F5 0%, #3A6CCD 100%);
+            border-color: #2563EB;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(74, 144, 226, 0.4);
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+            border: 2px solid #991B1B;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: bold;
+            padding: 0.6rem 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Font', Arial, sans-serif;
             text-align: center;
         }
 
@@ -600,23 +606,17 @@
             }
         }
 
-        /* Responsive user display */
+        /* Responsive auth button display */
         @media (max-width: 768px) {
-            .user-display {
+            .auth-button-display {
                 top: 1rem;
                 right: 1rem;
-                padding: 0.8rem 1rem;
-                min-width: 120px;
-                gap: 0.6rem;
+                padding: 0.6rem 1rem;
             }
 
-            .user-display-name {
-                font-size: 0.9rem;
-            }
-
-            .logout-btn {
-                padding: 0.4rem 0.6rem;
-                font-size: 0.7rem;
+            .login-btn, .logout-btn {
+                padding: 0.5rem 1rem;
+                font-size: 0.8rem;
             }
         }
     </style>
@@ -625,10 +625,10 @@
     <div class="main-container">
         <canvas id="backgroundCanvas"></canvas>
         
-        <!-- User Display (shown when logged in) -->
-        <div class="user-display" id="userDisplay">
-            <span class="user-display-name" id="userDisplayName"></span>
-            <button class="logout-btn" id="logoutBtn">LOGOUT</button>
+        <!-- Auth Button Display -->
+        <div class="auth-button-display" id="authButtonDisplay">
+            <button class="login-btn" id="loginBtn" style="display: none;">LOGIN</button>
+            <button class="logout-btn" id="logoutBtn" style="display: none;">LOGOUT</button>
         </div>
         
         <div class="content-wrapper">
@@ -993,9 +993,15 @@
             
             setupUserDisplay() {
                 // Get elements
-                this.userDisplay = document.getElementById('userDisplay');
-                this.userDisplayName = document.getElementById('userDisplayName');
+                this.authButtonDisplay = document.getElementById('authButtonDisplay');
+                this.loginBtn = document.getElementById('loginBtn');
                 this.logoutBtn = document.getElementById('logoutBtn');
+                
+                // Setup login button
+                this.loginBtn.addEventListener('click', () => {
+                    this.showLoginModal();
+                    this.playClickSound();
+                });
                 
                 // Setup logout button
                 this.logoutBtn.addEventListener('click', () => {
@@ -1015,11 +1021,13 @@
             
             updateUserDisplay() {
                 if (window.authManager.isAuthenticated()) {
-                    const user = window.authManager.getCurrentUser();
-                    this.userDisplayName.textContent = user.display_name || user.username;
-                    this.userDisplay.classList.add('active');
+                    // Show logout button, hide login button
+                    this.loginBtn.style.display = 'none';
+                    this.logoutBtn.style.display = 'block';
                 } else {
-                    this.userDisplay.classList.remove('active');
+                    // Show login button, hide logout button
+                    this.loginBtn.style.display = 'block';
+                    this.logoutBtn.style.display = 'none';
                 }
             }
             
