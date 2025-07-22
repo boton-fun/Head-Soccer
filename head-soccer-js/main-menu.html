@@ -406,6 +406,60 @@
         }
 
 
+        /* Simple User Display */
+        .user-display {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            background: rgba(0, 0, 0, 0.7);
+            border: 2px solid rgba(74, 144, 226, 0.5);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+            backdrop-filter: blur(10px);
+            display: none;
+            align-items: center;
+            gap: 1rem;
+            z-index: 20;
+            transition: all 0.3s ease;
+        }
+
+        .user-display.active {
+            display: flex;
+        }
+
+        .user-display:hover {
+            border-color: rgba(74, 144, 226, 0.8);
+            transform: translateY(-2px);
+        }
+
+        .user-display-name {
+            color: #4A90E2;
+            font-weight: bold;
+            font-size: 1.1rem;
+            font-family: 'Font', Arial, sans-serif;
+        }
+
+        .logout-btn {
+            background: linear-gradient(135deg, #DC2626 0%, #B91C1C 100%);
+            border: 2px solid #991B1B;
+            border-radius: 6px;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: bold;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Font', Arial, sans-serif;
+        }
+
+        .logout-btn:hover {
+            background: linear-gradient(135deg, #EF4444 0%, #DC2626 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 38, 38, 0.4);
+        }
+
         /* Loading fonts */
         @font-face {
             font-family: 'Font';
@@ -541,12 +595,36 @@
                 font-size: 1.5rem;
             }
         }
+
+        /* Responsive user display */
+        @media (max-width: 768px) {
+            .user-display {
+                top: 1rem;
+                right: 1rem;
+                padding: 0.8rem 1rem;
+                font-size: 0.9rem;
+            }
+
+            .user-display-name {
+                font-size: 1rem;
+            }
+
+            .logout-btn {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="main-container">
         <canvas id="backgroundCanvas"></canvas>
         
+        <!-- User Display (shown when logged in) -->
+        <div class="user-display" id="userDisplay">
+            <span class="user-display-name" id="userDisplayName"></span>
+            <button class="logout-btn" id="logoutBtn">LOGOUT</button>
+        </div>
         
         <div class="content-wrapper">
             <h1 class="game-title">Head Soccer</h1>
@@ -626,6 +704,9 @@
                 
                 // Setup modal
                 this.setupModal();
+                
+                // Setup user display
+                this.setupUserDisplay();
                 
                 // Check if auth is required (from mode selection redirect)
                 if (localStorage.getItem('authRequired') === 'true') {
@@ -767,6 +848,7 @@
                 // Listen for successful login to redirect
                 window.addEventListener('auth:loginSuccess', () => {
                     this.hideLoginModal();
+                    this.updateUserDisplay();
                     setTimeout(() => {
                         window.location.href = 'mode-selection.html';
                     }, 500);
@@ -902,6 +984,38 @@
             clearModalMessages() {
                 this.modalAuthMessage.style.display = 'none';
                 this.modalAuthMessage.textContent = '';
+            }
+            
+            setupUserDisplay() {
+                // Get elements
+                this.userDisplay = document.getElementById('userDisplay');
+                this.userDisplayName = document.getElementById('userDisplayName');
+                this.logoutBtn = document.getElementById('logoutBtn');
+                
+                // Setup logout button
+                this.logoutBtn.addEventListener('click', () => {
+                    window.authManager.logout();
+                    this.updateUserDisplay();
+                    this.playClickSound();
+                });
+                
+                // Initial check
+                this.updateUserDisplay();
+                
+                // Listen for auth events
+                window.addEventListener('auth:logout', () => {
+                    this.updateUserDisplay();
+                });
+            }
+            
+            updateUserDisplay() {
+                if (window.authManager.isAuthenticated()) {
+                    const user = window.authManager.getCurrentUser();
+                    this.userDisplayName.textContent = user.display_name || user.username;
+                    this.userDisplay.classList.add('active');
+                } else {
+                    this.userDisplay.classList.remove('active');
+                }
             }
             
             playHoverSound() {
