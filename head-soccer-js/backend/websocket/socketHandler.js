@@ -1042,13 +1042,24 @@ class SocketHandler extends EventEmitter {
    */
   handleChallengePlayer(socket, data) {
     try {
+      console.log('🔍 DEBUG: Challenge request received:', data);
+      
       const challengerConnection = this.connectionManager.getConnectionBySocketId(socket.id);
+      console.log('🔍 DEBUG: Challenger connection:', {
+        hasConnection: !!challengerConnection,
+        isAuthenticated: challengerConnection?.isAuthenticated,
+        username: challengerConnection?.username,
+        playerId: challengerConnection?.playerId
+      });
+      
       if (!challengerConnection || !challengerConnection.isAuthenticated) {
+        console.log('❌ Challenge failed: Not authenticated');
         socket.emit('challenge_error', { reason: 'Not authenticated' });
         return;
       }
 
       const { targetPlayerId, targetUsername, targetSocketId } = data;
+      console.log('🔍 DEBUG: Target data:', { targetPlayerId, targetUsername, targetSocketId });
 
       // Validate challenge data
       if (!targetPlayerId || !targetUsername || !targetSocketId) {
@@ -1058,7 +1069,15 @@ class SocketHandler extends EventEmitter {
 
       // Get target player connection
       const targetConnection = this.connectionManager.getConnectionBySocketId(targetSocketId);
+      console.log('🔍 DEBUG: Target connection:', {
+        hasConnection: !!targetConnection,
+        isAuthenticated: targetConnection?.isAuthenticated,
+        username: targetConnection?.username,
+        playerId: targetConnection?.playerId
+      });
+      
       if (!targetConnection || !targetConnection.isAuthenticated) {
+        console.log('❌ Challenge failed: Target player not found or not authenticated');
         socket.emit('challenge_error', { reason: 'Target player not found or not authenticated' });
         return;
       }
@@ -1483,6 +1502,7 @@ class SocketHandler extends EventEmitter {
           
           const player = {
             socketId: socketId,
+            playerId: connection.playerId,
             username: connection.username || connection.playerId || 'Guest',
             status: this.getPlayerStatus(connection),
             connectedAt: connection.connectedAt,
