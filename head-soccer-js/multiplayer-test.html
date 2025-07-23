@@ -591,6 +591,7 @@
     <script>
         class ConnectionTest {
             constructor() {
+                console.log('🔍 DEBUG: ConnectionTest constructor called');
                 this.socket = null;
                 this.isConnected = false;
                 this.playerCountInterval = null;
@@ -715,6 +716,7 @@
                     
                     // Connection successful
                     this.socket.on('connect', () => {
+                        console.log('🔍 DEBUG: Socket connect event fired');
                         console.log('Connected to server:', this.socket.id);
                         this.isConnected = true;
                         this.updateStatus('connected', 'Connected');
@@ -724,6 +726,7 @@
                         this.testButton.textContent = 'Disconnect';
                         
                         // Authenticate with server if user is logged in
+                        console.log('🔍 DEBUG: About to call authenticateWithServer');
                         this.authenticateWithServer();
                         
                         // Show player count container
@@ -1153,6 +1156,8 @@
         
         // Initialize connection test when page loads
         window.addEventListener('load', () => {
+            console.log('🔍 DEBUG: Page loaded, creating ConnectionTest');
+            console.log('🔍 DEBUG: authManager available on page load?', !!window.authManager);
             new ConnectionTest();
         });
     </script>
