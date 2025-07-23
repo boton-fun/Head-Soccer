@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Head Soccer - Connection Test</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            min-height: 100vh;
+            color: white;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Main container */
+        .main-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #0c0c2e 0%, #1a0c3e 25%, #2d1b5e 50%, #0c0c2e 75%, #000 100%);
+        }
+        
+        /* Canvas for animated background */
+        #backgroundCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        /* Content wrapper */
+        .content-wrapper {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            animation: fadeIn 1.5s ease-out;
+            max-width: 800px;
+            width: 100%;
+            padding: 0 2rem;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Page title */
+        .page-title {
+            font-size: 4rem;
+            font-weight: bold;
+            letter-spacing: 3px;
+            margin-bottom: 1rem;
+            color: white;
+            text-shadow: 
+                0 0 10px rgba(255, 255, 255, 0.5),
+                0 0 20px rgba(255, 255, 255, 0.3),
+                0 0 30px rgba(255, 255, 255, 0.1);
+            text-transform: uppercase;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        /* Subtitle */
+        .subtitle {
+            font-size: 1.2rem;
+            color: #ccc;
+            margin-bottom: 3rem;
+            opacity: 0.8;
+        }
+        
+        /* Connection status container */
+        .connection-container {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Connection status indicator */
+        .connection-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .status-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #333;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .status-indicator.connected {
+            background: #00ff88;
+            border-color: #00cc66;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+        
+        .status-indicator.disconnected {
+            background: #ff4444;
+            border-color: #cc3333;
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+        }
+        
+        .status-indicator.connecting {
+            background: #ffaa00;
+            border-color: #cc8800;
+            box-shadow: 0 0 20px rgba(255, 170, 0, 0.5);
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+        }
+        
+        .status-text {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        .status-text.connected { color: #00ff88; }
+        .status-text.disconnected { color: #ff4444; }
+        .status-text.connecting { color: #ffaa00; }
+        
+        /* User info section */
+        .user-info {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(74, 144, 226, 0.1);
+            border: 1px solid rgba(74, 144, 226, 0.3);
+            border-radius: 10px;
+        }
+        
+        .user-label {
+            color: #4A90E2;
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .user-value {
+            color: white;
+            font-size: 1.2rem;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        /* Connection info */
+        .connection-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .info-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 10px;
+            text-align: center;
+        }
+        
+        .info-label {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+        
+        .info-value {
+            color: #4A90E2;
+            font-size: 1.1rem;
+            font-weight: bold;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        /* Test button */
+        .test-button {
+            background: linear-gradient(135deg, #4A90E2 0%, #2E5BBA 100%);
+            border: 4px solid #1E3A8A;
+            border-radius: 15px;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 1rem 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-family: 'Font', Arial, sans-serif;
+            margin-bottom: 2rem;
+        }
+        
+        .test-button:hover {
+            transform: translateY(-3px) scale(1.05);
+            background: linear-gradient(135deg, #5BA3F5 0%, #3A6CCD 100%);
+            border-color: #2563EB;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+        }
+        
+        .test-button:active {
+            transform: translateY(-1px) scale(1.02);
+        }
+        
+        .test-button:disabled {
+            background: rgba(74, 144, 226, 0.3);
+            border-color: rgba(30, 58, 138, 0.3);
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* Player count display */
+        .player-count-container {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: rgba(74, 144, 226, 0.1);
+            border: 2px solid rgba(74, 144, 226, 0.3);
+            border-radius: 15px;
+            text-align: center;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .player-count-label {
+            color: #4A90E2;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 0.5rem;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        .player-count-value {
+            color: #00ff88;
+            font-size: 3rem;
+            font-weight: bold;
+            font-family: 'Font', Arial, sans-serif;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .player-count-refresh {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+        
+        @keyframes countUpdate {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+            100% { transform: scale(1); }
+        }
+        
+        .player-count-value.updating {
+            animation: countUpdate 0.3s ease-out;
+        }
+        
+        /* Back button */
+        .back-button {
+            background: linear-gradient(135deg, #666 0%, #444 100%);
+            border: 2px solid #333;
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            padding: 0.8rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Font', Arial, sans-serif;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .back-button:hover {
+            background: linear-gradient(135deg, #888 0%, #666 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Loading fonts */
+        @font-face {
+            font-family: 'Font';
+            src: url('./assets/Font.TTF') format('truetype');
+            font-display: swap;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 3rem;
+                letter-spacing: 2px;
+            }
+            
+            .connection-container {
+                padding: 1.5rem;
+            }
+            
+            .connection-info {
+                grid-template-columns: 1fr;
+            }
+            
+            .test-button {
+                padding: 0.8rem 1.5rem;
+                font-size: 1rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .page-title {
+                font-size: 2.5rem;
+                letter-spacing: 1px;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+            }
+            
+            .connection-container {
+                padding: 1rem;
+            }
+            
+            .status-text {
+                font-size: 1.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <canvas id="backgroundCanvas"></canvas>
+        
+        <div class="content-wrapper">
+            <h1 class="page-title">Connection Test</h1>
+            <p class="subtitle">Testing multiplayer server connection</p>
+            
+            <div class="connection-container">
+                <!-- Connection Status -->
+                <div class="connection-status">
+                    <div class="status-indicator disconnected" id="statusIndicator"></div>
+                    <div class="status-text disconnected" id="statusText">Disconnected</div>
+                </div>
+                
+                <!-- Current User Info -->
+                <div class="user-info" id="userInfo" style="display: none;">
+                    <div class="user-label">👤 Current User</div>
+                    <div class="user-value" id="currentUser">Not logged in</div>
+                </div>
+                
+                <!-- Connection Info -->
+                <div class="connection-info">
+                    <div class="info-item">
+                        <div class="info-label">Socket ID</div>
+                        <div class="info-value" id="socketId">N/A</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Server Status</div>
+                        <div class="info-value" id="serverStatus">Unknown</div>
+                    </div>
+                </div>
+                
+                <!-- Player Count Display -->
+                <div class="player-count-container" id="playerCountContainer" style="display: none;">
+                    <div class="player-count-label">Players Online</div>
+                    <div class="player-count-value" id="playerCount">0</div>
+                    <div class="player-count-refresh">🔄 Auto-refresh every 5 seconds</div>
+                </div>
+                
+                <!-- Test Connection Button -->
+                <button class="test-button" id="testButton">Test Connection</button>
+            </div>
+            
+            <!-- Back Button -->
+            <a href="mode-selection.html" class="back-button">← Back to Mode Selection</a>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth-manager.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <script>
+        class ConnectionTest {
+            constructor() {
+                this.socket = null;
+                this.isConnected = false;
+                this.playerCountInterval = null;
+                this.lastPlayerCount = 0;
+                
+                // Get DOM elements
+                this.statusIndicator = document.getElementById('statusIndicator');
+                this.statusText = document.getElementById('statusText');
+                this.userInfo = document.getElementById('userInfo');
+                this.currentUser = document.getElementById('currentUser');
+                this.socketId = document.getElementById('socketId');
+                this.serverStatus = document.getElementById('serverStatus');
+                this.testButton = document.getElementById('testButton');
+                this.playerCountContainer = document.getElementById('playerCountContainer');
+                this.playerCountValue = document.getElementById('playerCount');
+                
+                // Setup event listeners
+                this.setupEventListeners();
+                
+                // Initialize background animation
+                this.initializeBackground();
+                
+                // Check authentication and display user info
+                this.updateUserInfo();
+                
+                // Auto-connect on load
+                this.connectToServer();
+            }
+            
+            setupEventListeners() {
+                this.testButton.addEventListener('click', () => {
+                    if (this.isConnected) {
+                        this.disconnectFromServer();
+                    } else {
+                        this.connectToServer();
+                    }
+                });
+            }
+            
+            updateUserInfo() {
+                if (window.authManager && window.authManager.isAuthenticated()) {
+                    const user = window.authManager.getCurrentUser();
+                    this.userInfo.style.display = 'block';
+                    this.currentUser.textContent = user.display_name || user.username;
+                } else {
+                    this.userInfo.style.display = 'block';
+                    this.currentUser.textContent = 'Not logged in (Guest mode)';
+                }
+            }
+            
+            connectToServer() {
+                this.updateStatus('connecting', 'Connecting...');
+                this.testButton.disabled = true;
+                this.testButton.textContent = 'Connecting...';
+                
+                // Get server URL from config
+                const serverUrl = window.CONFIG?.SERVER_URL || 'https://head-soccer-production.up.railway.app';
+                
+                console.log('Connecting to server:', serverUrl);
+                
+                try {
+                    // Create socket connection
+                    this.socket = io(serverUrl, {
+                        transports: ['websocket', 'polling'],
+                        timeout: 10000,
+                        forceNew: true
+                    });
+                    
+                    // Connection successful
+                    this.socket.on('connect', () => {
+                        console.log('Connected to server:', this.socket.id);
+                        this.isConnected = true;
+                        this.updateStatus('connected', 'Connected');
+                        this.socketId.textContent = this.socket.id;
+                        this.serverStatus.textContent = 'Online';
+                        this.testButton.disabled = false;
+                        this.testButton.textContent = 'Disconnect';
+                        
+                        // Show player count container
+                        this.playerCountContainer.style.display = 'block';
+                        
+                        // Start player count updates
+                        this.startPlayerCountUpdates();
+                        
+                        // Play success sound
+                        this.playSuccessSound();
+                    });
+                    
+                    // Connection failed
+                    this.socket.on('connect_error', (error) => {
+                        console.error('Connection error:', error);
+                        this.isConnected = false;
+                        this.updateStatus('disconnected', 'Connection Failed');
+                        this.socketId.textContent = 'N/A';
+                        this.serverStatus.textContent = 'Error: ' + error.message;
+                        this.testButton.disabled = false;
+                        this.testButton.textContent = 'Retry Connection';
+                        
+                        // Play error sound
+                        this.playErrorSound();
+                    });
+                    
+                    // Disconnected
+                    this.socket.on('disconnect', (reason) => {
+                        console.log('Disconnected:', reason);
+                        this.isConnected = false;
+                        this.updateStatus('disconnected', 'Disconnected');
+                        this.socketId.textContent = 'N/A';
+                        this.serverStatus.textContent = 'Offline';
+                        this.testButton.disabled = false;
+                        this.testButton.textContent = 'Test Connection';
+                        
+                        // Stop player count updates
+                        this.stopPlayerCountUpdates();
+                        
+                        // Hide player count container
+                        this.playerCountContainer.style.display = 'none';
+                    });
+                    
+                    // Listen for player count updates
+                    this.socket.on('playerCount', (count) => {
+                        this.updatePlayerCount(count);
+                    });
+                    
+                    // Handle connection errors
+                    this.socket.on('connect_error', (error) => {
+                        console.log('Connection error, player count unavailable');
+                        this.playerCountValue.textContent = 'N/A';
+                    });
+                    
+                    // Other socket events
+                    this.socket.on('error', (error) => {
+                        console.error('Socket error:', error);
+                        this.serverStatus.textContent = 'Error: ' + error;
+                    });
+                    
+                } catch (error) {
+                    console.error('Failed to create socket:', error);
+                    this.updateStatus('disconnected', 'Connection Failed');
+                    this.serverStatus.textContent = 'Failed to connect';
+                    this.testButton.disabled = false;
+                    this.testButton.textContent = 'Retry Connection';
+                    this.playErrorSound();
+                }
+            }
+            
+            disconnectFromServer() {
+                if (this.socket) {
+                    this.socket.disconnect();
+                    this.socket = null;
+                }
+                this.isConnected = false;
+                this.updateStatus('disconnected', 'Disconnected');
+                this.socketId.textContent = 'N/A';
+                this.serverStatus.textContent = 'Offline';
+                this.testButton.textContent = 'Test Connection';
+                
+                // Stop player count updates
+                this.stopPlayerCountUpdates();
+                
+                // Hide player count container
+                this.playerCountContainer.style.display = 'none';
+            }
+            
+            startPlayerCountUpdates() {
+                // Request initial player count
+                this.requestPlayerCount();
+                
+                // Set up interval for auto-refresh every 5 seconds
+                this.playerCountInterval = setInterval(() => {
+                    this.requestPlayerCount();
+                }, 5000);
+            }
+            
+            stopPlayerCountUpdates() {
+                if (this.playerCountInterval) {
+                    clearInterval(this.playerCountInterval);
+                    this.playerCountInterval = null;
+                }
+            }
+            
+            requestPlayerCount() {
+                if (this.socket && this.isConnected) {
+                    // Request player count from server
+                    this.socket.emit('getPlayerCount');
+                }
+            }
+            
+            // Removed simulatePlayerCount - now using real server data
+            
+            updatePlayerCount(count) {
+                // Update the display
+                this.playerCountValue.textContent = count;
+                
+                // Add animation if count changed
+                if (count !== this.lastPlayerCount) {
+                    this.playerCountValue.classList.add('updating');
+                    setTimeout(() => {
+                        this.playerCountValue.classList.remove('updating');
+                    }, 300);
+                    
+                    // Play a subtle sound if count increased
+                    if (count > this.lastPlayerCount) {
+                        this.playCountIncreaseSound();
+                    }
+                }
+                
+                this.lastPlayerCount = count;
+            }
+            
+            playCountIncreaseSound() {
+                if (window.AudioContext || window.webkitAudioContext) {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.1);
+                        gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.1);
+                    } catch (e) {
+                        // Ignore audio errors
+                    }
+                }
+            }
+            
+            updateStatus(status, text) {
+                // Remove all status classes
+                this.statusIndicator.classList.remove('connected', 'disconnected', 'connecting');
+                this.statusText.classList.remove('connected', 'disconnected', 'connecting');
+                
+                // Add new status class
+                this.statusIndicator.classList.add(status);
+                this.statusText.classList.add(status);
+                this.statusText.textContent = text;
+            }
+            
+            playSuccessSound() {
+                if (window.AudioContext || window.webkitAudioContext) {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(900, audioContext.currentTime + 0.3);
+                        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.3);
+                    } catch (e) {
+                        // Ignore audio errors
+                    }
+                }
+            }
+            
+            playErrorSound() {
+                if (window.AudioContext || window.webkitAudioContext) {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(150, audioContext.currentTime + 0.5);
+                        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValue[ToBeRemoved](0.01, audioContext.currentTime + 0.5);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.5);
+                    } catch (e) {
+                        // Ignore audio errors
+                    }
+                }
+            }
+            
+            initializeBackground() {
+                const canvas = document.getElementById('backgroundCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Set canvas size
+                function resizeCanvas() {
+                    canvas.width = canvas.offsetWidth;
+                    canvas.height = canvas.offsetHeight;
+                }
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+                
+                // Simple particle system matching main menu
+                const particles = [];
+                const numParticles = 30;
+                
+                class Particle {
+                    constructor() {
+                        this.x = Math.random() * canvas.width;
+                        this.y = Math.random() * canvas.height;
+                        this.vx = (Math.random() - 0.5) * 0.5;
+                        this.vy = (Math.random() - 0.5) * 0.5;
+                        this.size = Math.random() * 2 + 0.5;
+                        this.opacity = Math.random() * 0.6 + 0.2;
+                        this.color = this.getRandomColor();
+                        this.twinkle = Math.random() * Math.PI * 2;
+                    }
+                    
+                    getRandomColor() {
+                        const colors = ['#ffffff', '#4A90E2', '#00ff88', '#ff6699'];
+                        return colors[Math.floor(Math.random() * colors.length)];
+                    }
+                    
+                    update() {
+                        this.x += this.vx;
+                        this.y += this.vy;
+                        this.twinkle += 0.03;
+                        
+                        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+                    }
+                    
+                    draw() {
+                        ctx.save();
+                        const twinkleOpacity = this.opacity * (0.5 + 0.5 * Math.sin(this.twinkle));
+                        ctx.globalAlpha = twinkleOpacity;
+                        ctx.fillStyle = this.color;
+                        ctx.shadowBlur = 8;
+                        ctx.shadowColor = this.color;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+                
+                // Initialize particles
+                for (let i = 0; i < numParticles; i++) {
+                    particles.push(new Particle());
+                }
+                
+                // Animation loop
+                function animate() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    particles.forEach(particle => {
+                        particle.update();
+                        particle.draw();
+                    });
+                    
+                    requestAnimationFrame(animate);
+                }
+                
+                animate();
+            }
+        }
+        
+        // Initialize connection test when page loads
+        window.addEventListener('load', () => {
+            new ConnectionTest();
+        });
+    </script>
+</body>
+</html>

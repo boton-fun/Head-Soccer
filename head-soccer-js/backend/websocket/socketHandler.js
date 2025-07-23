@@ -184,6 +184,9 @@ class SocketHandler extends EventEmitter {
     
     // Initialize rate limiting for this socket
     this.rateLimitStore.set(socketId, new Map());
+    
+    // Broadcast updated player count to all clients
+    this.broadcastPlayerCount();
   }
   
   /**
@@ -283,6 +286,11 @@ class SocketHandler extends EventEmitter {
     
     socket.on('get_matchmaking_stats', (data) => {
       this.handleEvent(socket, 'get_matchmaking_stats', data, this.handleGetMatchmakingStats.bind(this));
+    });
+    
+    // Player count request
+    socket.on('getPlayerCount', () => {
+      this.handleGetPlayerCount(socket);
     });
   }
   
@@ -858,6 +866,9 @@ class SocketHandler extends EventEmitter {
     
     // Clean up rate limiting data
     this.rateLimitStore.delete(socketId);
+    
+    // Broadcast updated player count to all clients
+    this.broadcastPlayerCount();
   }
   
   /**
@@ -955,6 +966,28 @@ class SocketHandler extends EventEmitter {
       clientTime: data.clientTime,
       serverTime: Date.now()
     });
+  }
+  
+  /**
+   * Handle get player count request
+   * @param {Socket} socket - Socket.IO socket
+   */
+  handleGetPlayerCount(socket) {
+    try {
+      // Get the count of all connected clients
+      const connectedSockets = this.connectionManager.io.sockets.sockets.size;
+      
+      // Emit the count back to the requesting client
+      socket.emit('playerCount', connectedSockets);
+      
+      // Also broadcast to all clients for real-time updates
+      this.connectionManager.io.emit('playerCount', connectedSockets);
+      
+      console.log(`👥 Player count requested: ${connectedSockets} players online`);
+    } catch (error) {
+      console.error('Error getting player count:', error);
+      socket.emit('playerCount', 0);
+    }
   }
   
   /**
@@ -1196,6 +1229,19 @@ class SocketHandler extends EventEmitter {
    */
   getGameEventStats() {
     return this.gameEventSystem.getStats();
+  }
+  
+  /**
+   * Broadcast current player count to all connected clients
+   */
+  broadcastPlayerCount() {
+    try {
+      const connectedSockets = this.connectionManager.io.sockets.sockets.size;
+      this.connectionManager.io.emit('playerCount', connectedSockets);
+      console.log(`📢 Broadcasting player count: ${connectedSockets} players online`);
+    } catch (error) {
+      console.error('Error broadcasting player count:', error);
+    }
   }
   
   /**

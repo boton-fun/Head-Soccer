@@ -84,6 +84,9 @@
             gap: 4rem;
             justify-content: center;
             align-items: center;
+            flex-wrap: wrap;
+            max-width: 1200px;
+            margin: 0 auto;
         }
         
         /* Mode button base styling */
@@ -152,6 +155,32 @@
             border-color: #22C55E;
         }
         
+        /* Multiplayer Test button (purple) */
+        .test-button {
+            background: linear-gradient(135deg, #9333EA 0%, #7C3AED 100%);
+            border-color: #6B21A8;
+            color: white;
+        }
+        
+        .test-button:hover {
+            background: linear-gradient(135deg, #A855F7 0%, #8B5CF6 100%);
+            border-color: #7C3AED;
+        }
+        
+        .test-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .test-label {
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            font-family: 'Font', Arial, sans-serif;
+            line-height: 1.2;
+        }
+        
         /* Mode button text */
         .mode-number {
             font-size: 6rem;
@@ -194,6 +223,14 @@
             .mode-name {
                 font-size: 2rem;
                 letter-spacing: 2px;
+            }
+            
+            .test-icon {
+                font-size: 3rem;
+            }
+            
+            .test-label {
+                font-size: 1.5rem;
             }
         }
         
@@ -288,6 +325,11 @@
                 <a href="character-selection-responsive.html?mode=multiplayer" class="mode-button versus-button">
                     <div class="mode-number">2P</div>
                     <div class="mode-name">VERSUS</div>
+                </a>
+                
+                <a href="multiplayer-test.html" class="mode-button test-button">
+                    <div class="test-icon">🔌</div>
+                    <div class="test-label">MULTIPLAYER<br>TEST</div>
                 </a>
             </div>
         </div>
