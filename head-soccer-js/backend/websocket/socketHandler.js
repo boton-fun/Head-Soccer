@@ -149,6 +149,10 @@ class SocketHandler extends EventEmitter {
     this.connectionManager.on('player_reconnected', (data) => {
       this.handlePlayerReconnected(data);
     });
+    
+    this.connectionManager.on('refresh_player_list', () => {
+      this.handleRefreshPlayerList();
+    });
   }
   
   /**
@@ -575,6 +579,14 @@ class SocketHandler extends EventEmitter {
     this.activePlayers.set(playerId, player);
     
     console.log(` Player ${username} authenticated and ready for gameplay`);
+  }
+  
+  /**
+   * Handle refresh player list after authentication
+   */
+  handleRefreshPlayerList() {
+    console.log('🔄 Refreshing player list after authentication');
+    this.broadcastPlayerList();
   }
   
   /**

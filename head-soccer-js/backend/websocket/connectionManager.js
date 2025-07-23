@@ -227,6 +227,10 @@ class ConnectionManager extends EventEmitter {
         connection: this.getPublicConnectionInfo(connection)
       });
       
+      // Emit event to trigger player list refresh
+      console.log('🔄 Triggering player list refresh after authentication');
+      this.emit('refresh_player_list');
+      
     } catch (error) {
       console.error('Authentication error:', error);
       socket.emit('auth_error', { reason: 'Authentication failed' });
