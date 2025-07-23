@@ -184,6 +184,12 @@ class SocketHandler extends EventEmitter {
     console.log(`<� Setting up event handlers for ${socketId}`);
     
     // Setup all game event handlers
+    console.log('🔍 DEBUG: About to call setupGameEventHandlers with socket:', {
+      hasSocket: !!socket,
+      socketId: socket?.id,
+      socketType: typeof socket,
+      hasOnMethod: typeof socket?.on === 'function'
+    });
     this.setupGameEventHandlers(socket);
     
     // Initialize rate limiting for this socket
@@ -199,6 +205,8 @@ class SocketHandler extends EventEmitter {
    * @param {Socket} socket - Socket.IO socket
    */
   setupGameEventHandlers(socket) {
+    console.log('🔍 DEBUG: setupGameEventHandlers called with:', typeof socket, socket?.id);
+    
     if (!socket) {
       console.error('❌ setupGameEventHandlers: socket is undefined or null');
       return;
