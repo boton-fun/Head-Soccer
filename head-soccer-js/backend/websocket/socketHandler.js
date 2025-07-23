@@ -303,13 +303,19 @@ class SocketHandler extends EventEmitter {
     });
 
     // Challenge system events
+    console.log('🎯 Registering challenge event handlers for socket:', socket.id);
+    
     socket.on('challenge_player', (data) => {
+      console.log('🔍 DEBUG: challenge_player event received on socket:', socket.id, 'data:', data);
       this.handleEvent(socket, 'challenge_player', data, this.handleChallengePlayer.bind(this));
     });
 
     socket.on('challenge_response', (data) => {
+      console.log('🔍 DEBUG: challenge_response event received on socket:', socket.id, 'data:', data);
       this.handleEvent(socket, 'challenge_response', data, this.handleChallengeResponse.bind(this));
     });
+    
+    console.log('✅ Challenge event handlers registered for socket:', socket.id);
   }
   
   /**
