@@ -1153,8 +1153,18 @@
                 // Clear existing rows
                 this.playerListBody.innerHTML = '';
                 
+                console.log('🔍 DEBUG: Received player list:', playerList);
+                
                 // Add each player to the table
-                playerList.forEach(player => {
+                playerList.forEach((player, index) => {
+                    console.log(`🔍 DEBUG: Player ${index}:`, {
+                        username: player.username,
+                        playerId: player.playerId,
+                        socketId: player.socketId,
+                        status: player.status,
+                        hasPlayerId: player.hasOwnProperty('playerId'),
+                        playerKeys: Object.keys(player)
+                    });
                     const row = this.createPlayerRow(player);
                     this.playerListBody.appendChild(row);
                 });
@@ -1235,6 +1245,14 @@
             
             challengePlayer(player) {
                 console.log(`⚔️ Sending challenge to player:`, player.username);
+                console.log('🔍 DEBUG: Player object received by challengePlayer:', {
+                    player: player,
+                    playerKeys: Object.keys(player),
+                    hasPlayerId: player.hasOwnProperty('playerId'),
+                    playerId: player.playerId,
+                    socketId: player.socketId,
+                    username: player.username
+                });
                 
                 if (!this.socket || !this.isConnected) {
                     alert('Not connected to server. Please connect first.');
