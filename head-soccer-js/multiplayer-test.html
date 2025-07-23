@@ -1050,6 +1050,19 @@
                         this.hideChallengeModal();
                     });
                     
+                    // Add socket error listeners for debugging
+                    this.socket.on('error', (error) => {
+                        console.error('🔴 Socket error:', error);
+                    });
+                    
+                    this.socket.on('disconnect', (reason) => {
+                        console.warn('🔌 Socket disconnected:', reason);
+                    });
+                    
+                    this.socket.on('connect_error', (error) => {
+                        console.error('🔴 Connection error:', error);
+                    });
+                    
                     this.socket.on('challenge_error', (error) => {
                         console.error('❌ Challenge error:', error);
                         alert(`Challenge error: ${error.reason}`);
@@ -1267,7 +1280,21 @@
                 };
                 
                 console.log('📤 Sending challenge request:', challengeData);
-                this.socket.emit('challenge_player', challengeData);
+                console.log('🔍 DEBUG: Socket connection status:', {
+                    connected: this.socket.connected,
+                    id: this.socket.id,
+                    transport: this.socket.io.engine.transport.name
+                });
+                
+                // Add error handling for the emit
+                try {
+                    this.socket.emit('challenge_player', challengeData);
+                    console.log('✅ Challenge request emitted successfully');
+                } catch (error) {
+                    console.error('❌ Error emitting challenge request:', error);
+                    alert('Error sending challenge request: ' + error.message);
+                    return;
+                }
                 
                 // Provide immediate feedback
                 alert(`Challenge sent to ${player.username}! Waiting for response...`);
