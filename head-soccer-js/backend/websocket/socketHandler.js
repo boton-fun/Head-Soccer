@@ -301,6 +301,15 @@ class SocketHandler extends EventEmitter {
     socket.on('getPlayerList', () => {
       this.handleGetPlayerList(socket);
     });
+
+    // Challenge system events
+    socket.on('challenge_player', (data) => {
+      this.handleEvent(socket, 'challenge_player', data, this.handleChallengePlayer.bind(this));
+    });
+
+    socket.on('challenge_response', (data) => {
+      this.handleEvent(socket, 'challenge_response', data, this.handleChallengeResponse.bind(this));
+    });
   }
   
   /**
@@ -1023,6 +1032,166 @@ class SocketHandler extends EventEmitter {
     } catch (error) {
       console.error('Error getting player list:', error);
       socket.emit('playerList', []);
+    }
+  }
+
+  /**
+   * Handle challenge player request
+   * @param {Socket} socket - Socket.IO socket
+   * @param {Object} data - Challenge data
+   */
+  handleChallengePlayer(socket, data) {
+    try {
+      const challengerConnection = this.connectionManager.getConnectionBySocketId(socket.id);
+      if (!challengerConnection || !challengerConnection.isAuthenticated) {
+        socket.emit('challenge_error', { reason: 'Not authenticated' });
+        return;
+      }
+
+      const { targetPlayerId, targetUsername, targetSocketId } = data;
+
+      // Validate challenge data
+      if (!targetPlayerId || !targetUsername || !targetSocketId) {
+        socket.emit('challenge_error', { reason: 'Invalid challenge data' });
+        return;
+      }
+
+      // Get target player connection
+      const targetConnection = this.connectionManager.getConnectionBySocketId(targetSocketId);
+      if (!targetConnection || !targetConnection.isAuthenticated) {
+        socket.emit('challenge_error', { reason: 'Target player not found or not authenticated' });
+        return;
+      }
+
+      // Check if target player is available (not busy)
+      if (targetConnection.status === 'playing' || targetConnection.status === 'in-game' || targetConnection.status === 'matchmaking') {
+        socket.emit('challenge_error', { reason: 'Target player is busy' });
+        return;
+      }
+
+      // Prevent self-challenge
+      if (challengerConnection.playerId === targetPlayerId) {
+        socket.emit('challenge_error', { reason: 'Cannot challenge yourself' });
+        return;
+      }
+
+      // Create challenge object
+      const challengeId = `challenge_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const challengeData = {
+        challengeId: challengeId,
+        challengerPlayerId: challengerConnection.playerId,
+        challengerUsername: challengerConnection.username,
+        challengerSocketId: socket.id,
+        targetPlayerId: targetPlayerId,
+        targetUsername: targetUsername,
+        targetSocketId: targetSocketId,
+        timestamp: Date.now(),
+        expiresAt: Date.now() + 30000 // 30 seconds timeout
+      };
+
+      console.log(`⚔️ Challenge request: ${challengerConnection.username} → ${targetUsername}`);
+
+      // Send challenge request to target player
+      targetConnection.socket.emit('challenge_received', {
+        challengeId: challengeId,
+        challengerUsername: challengerConnection.username,
+        challengerPlayerId: challengerConnection.playerId,
+        expiresAt: challengeData.expiresAt
+      });
+
+      // Send confirmation to challenger
+      socket.emit('challenge_sent', {
+        challengeId: challengeId,
+        targetUsername: targetUsername,
+        expiresAt: challengeData.expiresAt
+      });
+
+      // Store challenge (you might want to store this in Redis or memory)
+      // For now, we'll set a timeout to auto-expire the challenge
+      setTimeout(() => {
+        // Auto-decline after 30 seconds
+        targetConnection.socket.emit('challenge_expired', { challengeId: challengeId });
+        socket.emit('challenge_expired', { challengeId: challengeId });
+        console.log(`⏰ Challenge expired: ${challengeId}`);
+      }, 30000);
+
+    } catch (error) {
+      console.error('Error handling challenge request:', error);
+      socket.emit('challenge_error', { reason: 'Challenge request failed' });
+    }
+  }
+
+  /**
+   * Handle challenge response (accept/decline)
+   * @param {Socket} socket - Socket.IO socket
+   * @param {Object} data - Response data
+   */
+  handleChallengeResponse(socket, data) {
+    try {
+      const responderConnection = this.connectionManager.getConnectionBySocketId(socket.id);
+      if (!responderConnection || !responderConnection.isAuthenticated) {
+        socket.emit('challenge_error', { reason: 'Not authenticated' });
+        return;
+      }
+
+      const { challengeId, response, challengerPlayerId, challengerUsername } = data;
+
+      // Validate response data
+      if (!challengeId || !response || !challengerPlayerId) {
+        socket.emit('challenge_error', { reason: 'Invalid response data' });
+        return;
+      }
+
+      if (response !== 'accept' && response !== 'decline') {
+        socket.emit('challenge_error', { reason: 'Invalid response type' });
+        return;
+      }
+
+      // Find challenger connection
+      const challengerConnection = this.connectionManager.getPlayerConnection(challengerPlayerId);
+      if (!challengerConnection || !challengerConnection.socket) {
+        socket.emit('challenge_error', { reason: 'Challenger no longer available' });
+        return;
+      }
+
+      console.log(`📋 Challenge response: ${responderConnection.username} ${response}ed ${challengerUsername}'s challenge`);
+
+      if (response === 'accept') {
+        // Challenge accepted - proceed to match setup
+        challengerConnection.socket.emit('challenge_accepted', {
+          challengeId: challengeId,
+          opponentUsername: responderConnection.username,
+          opponentPlayerId: responderConnection.playerId
+        });
+
+        socket.emit('challenge_accepted', {
+          challengeId: challengeId,
+          opponentUsername: challengerConnection.username,
+          opponentPlayerId: challengerConnection.playerId
+        });
+
+        console.log(`✅ Challenge accepted: ${challengerConnection.username} vs ${responderConnection.username}`);
+        
+        // TODO: Phase 3.2 - Create game room and redirect both players
+        
+      } else {
+        // Challenge declined
+        challengerConnection.socket.emit('challenge_declined', {
+          challengeId: challengeId,
+          opponentUsername: responderConnection.username
+        });
+
+        socket.emit('challenge_declined', {
+          challengeId: challengeId,
+          challengerUsername: challengerConnection.username
+        });
+
+        console.log(`❌ Challenge declined: ${responderConnection.username} declined ${challengerConnection.username}'s challenge`);
+      }
+
+    } catch (error) {
+      console.error('Error handling challenge response:', error);
+      socket.emit('challenge_error', { reason: 'Challenge response failed' });
     }
   }
   

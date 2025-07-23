@@ -359,9 +359,9 @@
         .status-playing { background: rgba(255, 68, 68, 0.2); color: #ff4444; }
         .status-in-lobby { background: rgba(138, 43, 226, 0.2); color: #8a2be2; }
         
-        .connect-button {
-            background: linear-gradient(135deg, #4A90E2 0%, #2E5BBA 100%);
-            border: 2px solid #1E3A8A;
+        .challenge-button {
+            background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+            border: 2px solid #e85d00;
             border-radius: 6px;
             color: white;
             font-size: 0.8rem;
@@ -373,15 +373,15 @@
             letter-spacing: 1px;
         }
         
-        .connect-button:hover {
-            background: linear-gradient(135deg, #5BA3F5 0%, #3A6CCD 100%);
+        .challenge-button:hover {
+            background: linear-gradient(135deg, #ff7f50 0%, #ff8c00 100%);
             transform: translateY(-1px);
-            box-shadow: 0 3px 10px rgba(74, 144, 226, 0.4);
+            box-shadow: 0 3px 10px rgba(255, 107, 53, 0.4);
         }
         
-        .connect-button:disabled {
-            background: rgba(74, 144, 226, 0.3);
-            border-color: rgba(30, 58, 138, 0.3);
+        .challenge-button:disabled {
+            background: rgba(255, 107, 53, 0.3);
+            border-color: rgba(232, 93, 0, 0.3);
             cursor: not-allowed;
             transform: none;
         }
@@ -397,6 +397,129 @@
         .time-ago {
             color: rgba(255, 255, 255, 0.7);
             font-size: 0.8rem;
+        }
+        
+        /* Challenge Modal Styles */
+        .challenge-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+        
+        .challenge-modal.show {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            animation: modalFadeIn 0.3s ease-out;
+        }
+        
+        @keyframes modalFadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        
+        .challenge-modal-content {
+            background: linear-gradient(135deg, #2d1b5e 0%, #1a0c3e 50%, #0c0c2e 100%);
+            border: 3px solid #4A90E2;
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            position: relative;
+        }
+        
+        .challenge-modal-title {
+            color: #ff6b35;
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+        }
+        
+        .challenge-modal-message {
+            color: white;
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.4;
+        }
+        
+        .challenge-modal-challenger {
+            color: #00ff88;
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin: 0.5rem 0;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+        
+        .challenge-modal-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 2rem;
+        }
+        
+        .challenge-accept-btn {
+            flex: 1;
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+            border: 2px solid #00aa44;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 0.8rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .challenge-accept-btn:hover {
+            background: linear-gradient(135deg, #22ff99 0%, #11dd77 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.4);
+        }
+        
+        .challenge-decline-btn {
+            flex: 1;
+            background: linear-gradient(135deg, #ff4444 0%, #cc3333 100%);
+            border: 2px solid #aa2222;
+            border-radius: 10px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: bold;
+            padding: 0.8rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .challenge-decline-btn:hover {
+            background: linear-gradient(135deg, #ff5555 0%, #dd4444 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 68, 68, 0.4);
+        }
+        
+        .challenge-timer {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255, 68, 68, 0.2);
+            border: 2px solid #ff4444;
+            border-radius: 20px;
+            padding: 0.3rem 0.8rem;
+            color: #ff4444;
+            font-weight: bold;
+            font-size: 0.9rem;
         }
         
         .player-count-label {
@@ -560,7 +683,7 @@
                                     <th>Username</th>
                                     <th>Status</th>
                                     <th>Connected</th>
-                                    <th>Action</th>
+                                    <th>Challenge</th>
                                 </tr>
                             </thead>
                             <tbody id="playerListBody">
@@ -579,6 +702,22 @@
             
             <!-- Back Button -->
             <a href="mode-selection.html" class="back-button">← Back to Mode Selection</a>
+        </div>
+    </div>
+
+    <!-- Challenge Modal -->
+    <div class="challenge-modal" id="challengeModal">
+        <div class="challenge-modal-content">
+            <div class="challenge-timer" id="challengeTimer">30s</div>
+            <h2 class="challenge-modal-title">⚔️ Challenge Received!</h2>
+            <div class="challenge-modal-message">
+                <div class="challenge-modal-challenger" id="challengerName">Player Name</div>
+                wants to play Head Soccer with you!
+            </div>
+            <div class="challenge-modal-buttons">
+                <button class="challenge-accept-btn" id="acceptChallengeBtn">✅ Accept</button>
+                <button class="challenge-decline-btn" id="declineChallengeBtn">❌ Decline</button>
+            </div>
         </div>
     </div>
 
@@ -613,6 +752,17 @@
                 this.refreshListBtn = document.getElementById('refreshListBtn');
                 this.lastUpdated = document.getElementById('lastUpdated');
                 
+                // Challenge modal elements
+                this.challengeModal = document.getElementById('challengeModal');
+                this.challengerName = document.getElementById('challengerName');
+                this.challengeTimer = document.getElementById('challengeTimer');
+                this.acceptChallengeBtn = document.getElementById('acceptChallengeBtn');
+                this.declineChallengeBtn = document.getElementById('declineChallengeBtn');
+                
+                // Challenge state
+                this.currentChallenge = null;
+                this.challengeTimerInterval = null;
+                
                 // Setup event listeners
                 this.setupEventListeners();
                 
@@ -620,6 +770,15 @@
                 this.refreshListBtn.addEventListener('click', () => {
                     this.requestPlayerList();
                     this.playClickSound();
+                });
+                
+                // Setup challenge modal buttons
+                this.acceptChallengeBtn.addEventListener('click', () => {
+                    this.respondToChallenge('accept');
+                });
+                
+                this.declineChallengeBtn.addEventListener('click', () => {
+                    this.respondToChallenge('decline');
                 });
                 
                 // Initialize background animation
@@ -864,6 +1023,38 @@
                         this.updatePlayerList(playerList);
                     });
                     
+                    // Challenge system events
+                    this.socket.on('challenge_received', (challengeData) => {
+                        this.showChallengeModal(challengeData);
+                    });
+                    
+                    this.socket.on('challenge_sent', (data) => {
+                        console.log('✅ Challenge sent successfully:', data);
+                        alert(`Challenge sent to ${data.targetUsername}! They have 30 seconds to respond.`);
+                    });
+                    
+                    this.socket.on('challenge_accepted', (data) => {
+                        console.log('🎉 Challenge accepted:', data);
+                        alert(`${data.opponentUsername} accepted your challenge! Preparing match...`);
+                        // TODO: Phase 3.2 - Redirect to game
+                    });
+                    
+                    this.socket.on('challenge_declined', (data) => {
+                        console.log('😔 Challenge declined:', data);
+                        alert(`${data.opponentUsername} declined your challenge.`);
+                    });
+                    
+                    this.socket.on('challenge_expired', (data) => {
+                        console.log('⏰ Challenge expired:', data);
+                        alert('Challenge expired - no response received.');
+                        this.hideChallengeModal();
+                    });
+                    
+                    this.socket.on('challenge_error', (error) => {
+                        console.error('❌ Challenge error:', error);
+                        alert(`Challenge error: ${error.reason}`);
+                    });
+                    
                     // Handle connection errors
                     this.socket.on('connect_error', (error) => {
                         console.log('Connection error, player count unavailable');
@@ -997,27 +1188,30 @@
                 timeCell.textContent = this.getTimeAgo(player.connectedAt);
                 row.appendChild(timeCell);
                 
-                // Action cell
+                // Challenge cell
                 const actionCell = document.createElement('td');
-                const connectBtn = document.createElement('button');
-                connectBtn.className = 'connect-button';
-                connectBtn.textContent = 'Connect';
+                const challengeBtn = document.createElement('button');
+                challengeBtn.className = 'challenge-button';
+                challengeBtn.textContent = 'Challenge';
                 
-                // Disable connect button for self or if already connected
+                // Disable challenge button for self or if player is busy
                 const currentSocketId = this.socket ? this.socket.id : null;
                 if (player.socketId === currentSocketId) {
-                    connectBtn.textContent = 'You';
-                    connectBtn.disabled = true;
+                    challengeBtn.textContent = 'You';
+                    challengeBtn.disabled = true;
                 } else if (player.status === 'playing' || player.status === 'in-game') {
-                    connectBtn.textContent = 'Busy';
-                    connectBtn.disabled = true;
+                    challengeBtn.textContent = 'Busy';
+                    challengeBtn.disabled = true;
+                } else if (player.status === 'matchmaking') {
+                    challengeBtn.textContent = 'In Queue';
+                    challengeBtn.disabled = true;
                 }
                 
-                connectBtn.addEventListener('click', () => {
-                    this.connectToPlayer(player);
+                challengeBtn.addEventListener('click', () => {
+                    this.challengePlayer(player);
                 });
                 
-                actionCell.appendChild(connectBtn);
+                actionCell.appendChild(challengeBtn);
                 row.appendChild(actionCell);
                 
                 return row;
@@ -1039,13 +1233,28 @@
                 }
             }
             
-            connectToPlayer(player) {
-                console.log(`🔗 Attempting to connect to player:`, player.username);
+            challengePlayer(player) {
+                console.log(`⚔️ Sending challenge to player:`, player.username);
                 
-                // For now, just show an alert (Phase 3 will implement actual connection)
-                alert(`Feature coming soon! Will connect to ${player.username}`);
+                if (!this.socket || !this.isConnected) {
+                    alert('Not connected to server. Please connect first.');
+                    return;
+                }
                 
-                // Play connection sound
+                // Send challenge request to server
+                const challengeData = {
+                    targetPlayerId: player.playerId,
+                    targetUsername: player.username,
+                    targetSocketId: player.socketId
+                };
+                
+                console.log('📤 Sending challenge request:', challengeData);
+                this.socket.emit('challenge_player', challengeData);
+                
+                // Provide immediate feedback
+                alert(`Challenge sent to ${player.username}! Waiting for response...`);
+                
+                // Play challenge sound
                 this.playClickSound();
             }
             
@@ -1067,6 +1276,112 @@
                 }
                 
                 this.lastPlayerCount = count;
+            }
+            
+            // Challenge Modal Methods
+            showChallengeModal(challengeData) {
+                console.log('🎯 Received challenge:', challengeData);
+                
+                // Store challenge data
+                this.currentChallenge = challengeData;
+                
+                // Update modal content
+                this.challengerName.textContent = challengeData.challengerUsername;
+                
+                // Show modal
+                this.challengeModal.classList.add('show');
+                
+                // Start countdown timer
+                this.startChallengeTimer(challengeData.expiresAt);
+                
+                // Play challenge received sound
+                this.playChallengeReceivedSound();
+                
+                console.log(`⚔️ Challenge modal shown for ${challengeData.challengerUsername}`);
+            }
+            
+            hideChallengeModal() {
+                this.challengeModal.classList.remove('show');
+                this.currentChallenge = null;
+                this.stopChallengeTimer();
+                console.log('❌ Challenge modal hidden');
+            }
+            
+            respondToChallenge(response) {
+                if (!this.currentChallenge) {
+                    console.error('No active challenge to respond to');
+                    return;
+                }
+                
+                const responseData = {
+                    challengeId: this.currentChallenge.challengeId,
+                    response: response,
+                    challengerPlayerId: this.currentChallenge.challengerPlayerId,
+                    challengerUsername: this.currentChallenge.challengerUsername
+                };
+                
+                console.log(`📤 Sending challenge response: ${response}`);
+                this.socket.emit('challenge_response', responseData);
+                
+                // Hide modal
+                this.hideChallengeModal();
+                
+                // Play response sound
+                if (response === 'accept') {
+                    this.playSuccessSound();
+                } else {
+                    this.playClickSound();
+                }
+            }
+            
+            startChallengeTimer(expiresAt) {
+                const updateTimer = () => {
+                    const timeLeft = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+                    this.challengeTimer.textContent = `${timeLeft}s`;
+                    
+                    if (timeLeft <= 0) {
+                        this.hideChallengeModal();
+                    }
+                };
+                
+                // Update immediately
+                updateTimer();
+                
+                // Update every second
+                this.challengeTimerInterval = setInterval(updateTimer, 1000);
+            }
+            
+            stopChallengeTimer() {
+                if (this.challengeTimerInterval) {
+                    clearInterval(this.challengeTimerInterval);
+                    this.challengeTimerInterval = null;
+                }
+            }
+            
+            playChallengeReceivedSound() {
+                if (window.AudioContext || window.webkitAudioContext) {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        // Challenge sound - rising tone
+                        oscillator.frequency.setValueAtTime(400, audioContext.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(800, audioContext.currentTime + 0.2);
+                        oscillator.frequency.exponentialRampToValueAtTime(600, audioContext.currentTime + 0.4);
+                        
+                        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.4);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.4);
+                    } catch (e) {
+                        // Ignore audio errors
+                    }
+                }
             }
             
             playCountIncreaseSound() {
