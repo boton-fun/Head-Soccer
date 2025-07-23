@@ -847,7 +847,7 @@ class SocketHandler extends EventEmitter {
       console.log(`🔌 Player ${playerId} disconnected, processing...`);
       
       // Get connection info to find room
-      const connection = this.connectionManager.getConnectionByPlayerId(playerId);
+      const connection = this.connectionManager.getPlayerConnection(playerId);
       const roomId = connection?.roomId;
       
       // Handle disconnection in active game
