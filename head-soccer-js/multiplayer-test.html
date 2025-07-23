@@ -829,8 +829,15 @@
                         const user = window.authManager.getCurrentUser();
                         console.log('🔍 DEBUG: Current user object:', user);
                         
+                        // Ensure playerId is a string, not an array
+                        let playerId = user.id || user.username;
+                        if (Array.isArray(playerId)) {
+                            console.warn('⚠️ playerId was an array, taking first element:', playerId);
+                            playerId = playerId[0];
+                        }
+                        
                         const authData = {
-                            playerId: user.id || user.username,
+                            playerId: playerId,
                             username: user.display_name || user.username,
                             token: user.token || 'guest-token'
                         };
@@ -1277,8 +1284,15 @@
                 }
                 
                 // Send challenge request to server
+                // Ensure playerId is a string if it's an array
+                let targetPlayerId = player.playerId;
+                if (Array.isArray(targetPlayerId)) {
+                    console.warn('⚠️ Target playerId was an array, taking first element:', targetPlayerId);
+                    targetPlayerId = targetPlayerId[0];
+                }
+                
                 const challengeData = {
-                    targetPlayerId: player.playerId,
+                    targetPlayerId: targetPlayerId,
                     targetUsername: player.username,
                     targetSocketId: player.socketId
                 };
