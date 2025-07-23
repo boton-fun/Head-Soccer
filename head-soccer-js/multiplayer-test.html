@@ -692,7 +692,79 @@
                         console.log('👤 User not authenticated - connecting as guest');
                     }
                 } else {
-                    console.log('❌ authManager not available - connecting as guest');
+                    console.log('❌ authManager not available - trying fallback authentication');
+                    this.tryFallbackAuthentication();
+                }
+            }
+            
+            tryFallbackAuthentication() {
+                console.log('🔄 Trying fallback authentication methods...');
+                
+                // Method 1: Try to get username from localStorage
+                let username = null;
+                
+                try {
+                    // Check for various localStorage keys that might contain auth data
+                    const authKeys = ['user', 'authUser', 'currentUser', 'userSession', 'auth'];
+                    for (const key of authKeys) {
+                        const stored = localStorage.getItem(key);
+                        if (stored) {
+                            console.log(`🔍 Found localStorage[${key}]:`, stored);
+                            try {
+                                const parsed = JSON.parse(stored);
+                                if (parsed.username || parsed.display_name || parsed.name) {
+                                    username = parsed.username || parsed.display_name || parsed.name;
+                                    console.log(`✅ Extracted username from ${key}:`, username);
+                                    break;
+                                }
+                            } catch (e) {
+                                // If it's not JSON, maybe it's just a plain username
+                                if (stored.length > 0 && stored.length < 50) {
+                                    username = stored;
+                                    console.log(`✅ Using plain value from ${key}:`, username);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.log('⚠️ Error checking localStorage:', error);
+                }
+                
+                // Method 2: Prompt user for username if not found
+                if (!username) {
+                    console.log('💭 No stored username found, prompting user...');
+                    username = prompt('Enter your username for multiplayer:');
+                }
+                
+                // Method 3: Use default if still no username
+                if (!username || username.trim() === '') {
+                    username = 'Player_' + Math.floor(Math.random() * 1000);
+                    console.log('🎲 Generated random username:', username);
+                }
+                
+                // Authenticate with fallback data
+                if (username) {
+                    const authData = {
+                        playerId: username.toLowerCase(),
+                        username: username,
+                        token: 'fallback-token'
+                    };
+                    
+                    console.log('🔐 Fallback authentication with:', authData);
+                    this.socket.emit('authenticate', authData);
+                    
+                    // Listen for authentication response
+                    this.socket.on('authenticated', (response) => {
+                        console.log('✅ Fallback authentication successful:', response);
+                        this.updateUserInfo(); // Refresh user display
+                    });
+                    
+                    this.socket.on('auth_error', (error) => {
+                        console.error('❌ Fallback authentication failed:', error);
+                    });
+                } else {
+                    console.log('❌ Could not get username for fallback authentication');
                 }
             }
             
