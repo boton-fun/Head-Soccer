@@ -652,6 +652,37 @@
                 }
             }
             
+            authenticateWithServer() {
+                if (!this.socket || !this.isConnected) {
+                    console.log('❌ Cannot authenticate: Socket not connected');
+                    return;
+                }
+                
+                if (window.authManager && window.authManager.isAuthenticated()) {
+                    const user = window.authManager.getCurrentUser();
+                    const authData = {
+                        playerId: user.id || user.username,
+                        username: user.display_name || user.username,
+                        token: user.token || 'guest-token'
+                    };
+                    
+                    console.log('🔐 Authenticating with server:', authData.username);
+                    this.socket.emit('authenticate', authData);
+                    
+                    // Listen for authentication response
+                    this.socket.on('authenticated', (response) => {
+                        console.log('✅ Authentication successful:', response);
+                        this.updateUserInfo(); // Refresh user display
+                    });
+                    
+                    this.socket.on('auth_error', (error) => {
+                        console.error('❌ Authentication failed:', error);
+                    });
+                } else {
+                    console.log('👤 No authentication available - connecting as guest');
+                }
+            }
+            
             connectToServer() {
                 this.updateStatus('connecting', 'Connecting...');
                 this.testButton.disabled = true;
@@ -679,6 +710,9 @@
                         this.serverStatus.textContent = 'Online';
                         this.testButton.disabled = false;
                         this.testButton.textContent = 'Disconnect';
+                        
+                        // Authenticate with server if user is logged in
+                        this.authenticateWithServer();
                         
                         // Show player count container
                         this.playerCountContainer.style.display = 'block';
