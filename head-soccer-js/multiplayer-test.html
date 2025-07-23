@@ -252,6 +252,153 @@
             animation: fadeIn 0.5s ease-out;
         }
         
+        /* Player list display */
+        .player-list-container {
+            margin-top: 2rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 1.5rem;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .player-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .player-list-title {
+            color: #4A90E2;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 0;
+            font-family: 'Font', Arial, sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .refresh-button {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+            border: 2px solid #00aa44;
+            border-radius: 8px;
+            color: white;
+            font-size: 0.9rem;
+            font-weight: bold;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        .refresh-button:hover {
+            background: linear-gradient(135deg, #22ff99 0%, #11dd77 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.4);
+        }
+        
+        .player-list-table-wrapper {
+            overflow-x: auto;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        .player-list-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        .player-list-table th {
+            background: rgba(74, 144, 226, 0.2);
+            color: #4A90E2;
+            padding: 1rem;
+            text-align: left;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+            border-bottom: 2px solid rgba(74, 144, 226, 0.3);
+        }
+        
+        .player-list-table td {
+            padding: 0.8rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+        
+        .player-list-table tbody tr {
+            transition: all 0.3s ease;
+        }
+        
+        .player-list-table tbody tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .username-cell {
+            font-weight: bold;
+            color: #00ff88;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .status-online { background: rgba(0, 255, 136, 0.2); color: #00ff88; }
+        .status-guest { background: rgba(255, 170, 0, 0.2); color: #ffaa00; }
+        .status-matchmaking { background: rgba(74, 144, 226, 0.2); color: #4A90E2; }
+        .status-playing { background: rgba(255, 68, 68, 0.2); color: #ff4444; }
+        .status-in-lobby { background: rgba(138, 43, 226, 0.2); color: #8a2be2; }
+        
+        .connect-button {
+            background: linear-gradient(135deg, #4A90E2 0%, #2E5BBA 100%);
+            border: 2px solid #1E3A8A;
+            border-radius: 6px;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: bold;
+            padding: 0.4rem 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .connect-button:hover {
+            background: linear-gradient(135deg, #5BA3F5 0%, #3A6CCD 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 3px 10px rgba(74, 144, 226, 0.4);
+        }
+        
+        .connect-button:disabled {
+            background: rgba(74, 144, 226, 0.3);
+            border-color: rgba(30, 58, 138, 0.3);
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .player-list-footer {
+            margin-top: 1rem;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+        
+        .time-ago {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.8rem;
+        }
+        
         .player-count-label {
             color: #4A90E2;
             font-size: 1.2rem;
@@ -400,6 +547,32 @@
                     <div class="player-count-refresh">🔄 Auto-refresh every 5 seconds</div>
                 </div>
                 
+                <!-- Player List Display -->
+                <div class="player-list-container" id="playerListContainer" style="display: none;">
+                    <div class="player-list-header">
+                        <h3 class="player-list-title">👥 Connected Players</h3>
+                        <button class="refresh-button" id="refreshListBtn">🔄 Refresh</button>
+                    </div>
+                    <div class="player-list-table-wrapper">
+                        <table class="player-list-table" id="playerListTable">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Status</th>
+                                    <th>Connected</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="playerListBody">
+                                <!-- Player rows will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="player-list-footer">
+                        <span class="last-updated" id="lastUpdated">Last updated: Never</span>
+                    </div>
+                </div>
+                
                 <!-- Test Connection Button -->
                 <button class="test-button" id="testButton">Test Connection</button>
             </div>
@@ -421,6 +594,7 @@
                 this.socket = null;
                 this.isConnected = false;
                 this.playerCountInterval = null;
+                this.playerListInterval = null;
                 this.lastPlayerCount = 0;
                 
                 // Get DOM elements
@@ -433,9 +607,19 @@
                 this.testButton = document.getElementById('testButton');
                 this.playerCountContainer = document.getElementById('playerCountContainer');
                 this.playerCountValue = document.getElementById('playerCount');
+                this.playerListContainer = document.getElementById('playerListContainer');
+                this.playerListBody = document.getElementById('playerListBody');
+                this.refreshListBtn = document.getElementById('refreshListBtn');
+                this.lastUpdated = document.getElementById('lastUpdated');
                 
                 // Setup event listeners
                 this.setupEventListeners();
+                
+                // Setup player list refresh button
+                this.refreshListBtn.addEventListener('click', () => {
+                    this.requestPlayerList();
+                    this.playClickSound();
+                });
                 
                 // Initialize background animation
                 this.initializeBackground();
@@ -499,8 +683,14 @@
                         // Show player count container
                         this.playerCountContainer.style.display = 'block';
                         
+                        // Show player list container
+                        this.playerListContainer.style.display = 'block';
+                        
                         // Start player count updates
                         this.startPlayerCountUpdates();
+                        
+                        // Start player list updates
+                        this.startPlayerListUpdates();
                         
                         // Play success sound
                         this.playSuccessSound();
@@ -533,13 +723,24 @@
                         // Stop player count updates
                         this.stopPlayerCountUpdates();
                         
+                        // Stop player list updates
+                        this.stopPlayerListUpdates();
+                        
                         // Hide player count container
                         this.playerCountContainer.style.display = 'none';
+                        
+                        // Hide player list container
+                        this.playerListContainer.style.display = 'none';
                     });
                     
                     // Listen for player count updates
                     this.socket.on('playerCount', (count) => {
                         this.updatePlayerCount(count);
+                    });
+                    
+                    // Listen for player list updates
+                    this.socket.on('playerList', (playerList) => {
+                        this.updatePlayerList(playerList);
                     });
                     
                     // Handle connection errors
@@ -578,8 +779,14 @@
                 // Stop player count updates
                 this.stopPlayerCountUpdates();
                 
+                // Stop player list updates
+                this.stopPlayerListUpdates();
+                
                 // Hide player count container
                 this.playerCountContainer.style.display = 'none';
+                
+                // Hide player list container
+                this.playerListContainer.style.display = 'none';
             }
             
             startPlayerCountUpdates() {
@@ -592,10 +799,27 @@
                 }, 5000);
             }
             
+            startPlayerListUpdates() {
+                // Request initial player list
+                this.requestPlayerList();
+                
+                // Set up interval for auto-refresh every 5 seconds
+                this.playerListInterval = setInterval(() => {
+                    this.requestPlayerList();
+                }, 5000);
+            }
+            
             stopPlayerCountUpdates() {
                 if (this.playerCountInterval) {
                     clearInterval(this.playerCountInterval);
                     this.playerCountInterval = null;
+                }
+            }
+            
+            stopPlayerListUpdates() {
+                if (this.playerListInterval) {
+                    clearInterval(this.playerListInterval);
+                    this.playerListInterval = null;
                 }
             }
             
@@ -606,7 +830,103 @@
                 }
             }
             
-            // Removed simulatePlayerCount - now using real server data
+            requestPlayerList() {
+                if (this.socket && this.isConnected) {
+                    // Request player list from server
+                    this.socket.emit('getPlayerList');
+                }
+            }
+            
+            updatePlayerList(playerList) {
+                // Clear existing rows
+                this.playerListBody.innerHTML = '';
+                
+                // Add each player to the table
+                playerList.forEach(player => {
+                    const row = this.createPlayerRow(player);
+                    this.playerListBody.appendChild(row);
+                });
+                
+                // Update last updated time
+                this.lastUpdated.textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+                
+                console.log(`📋 Player list updated: ${playerList.length} players`);
+            }
+            
+            createPlayerRow(player) {
+                const row = document.createElement('tr');
+                
+                // Username cell
+                const usernameCell = document.createElement('td');
+                usernameCell.className = 'username-cell';
+                usernameCell.textContent = player.username;
+                row.appendChild(usernameCell);
+                
+                // Status cell
+                const statusCell = document.createElement('td');
+                const statusBadge = document.createElement('span');
+                statusBadge.className = `status-badge status-${player.status}`;
+                statusBadge.textContent = player.status;
+                statusCell.appendChild(statusBadge);
+                row.appendChild(statusCell);
+                
+                // Connected time cell
+                const timeCell = document.createElement('td');
+                timeCell.className = 'time-ago';
+                timeCell.textContent = this.getTimeAgo(player.connectedAt);
+                row.appendChild(timeCell);
+                
+                // Action cell
+                const actionCell = document.createElement('td');
+                const connectBtn = document.createElement('button');
+                connectBtn.className = 'connect-button';
+                connectBtn.textContent = 'Connect';
+                
+                // Disable connect button for self or if already connected
+                const currentSocketId = this.socket ? this.socket.id : null;
+                if (player.socketId === currentSocketId) {
+                    connectBtn.textContent = 'You';
+                    connectBtn.disabled = true;
+                } else if (player.status === 'playing' || player.status === 'in-game') {
+                    connectBtn.textContent = 'Busy';
+                    connectBtn.disabled = true;
+                }
+                
+                connectBtn.addEventListener('click', () => {
+                    this.connectToPlayer(player);
+                });
+                
+                actionCell.appendChild(connectBtn);
+                row.appendChild(actionCell);
+                
+                return row;
+            }
+            
+            getTimeAgo(timestamp) {
+                const now = Date.now();
+                const diff = now - timestamp;
+                const seconds = Math.floor(diff / 1000);
+                const minutes = Math.floor(seconds / 60);
+                const hours = Math.floor(minutes / 60);
+                
+                if (hours > 0) {
+                    return `${hours}h ago`;
+                } else if (minutes > 0) {
+                    return `${minutes}m ago`;
+                } else {
+                    return `${seconds}s ago`;
+                }
+            }
+            
+            connectToPlayer(player) {
+                console.log(`🔗 Attempting to connect to player:`, player.username);
+                
+                // For now, just show an alert (Phase 3 will implement actual connection)
+                alert(`Feature coming soon! Will connect to ${player.username}`);
+                
+                // Play connection sound
+                this.playClickSound();
+            }
             
             updatePlayerCount(count) {
                 // Update the display

@@ -185,8 +185,9 @@ class SocketHandler extends EventEmitter {
     // Initialize rate limiting for this socket
     this.rateLimitStore.set(socketId, new Map());
     
-    // Broadcast updated player count to all clients
+    // Broadcast updated player count and list to all clients
     this.broadcastPlayerCount();
+    this.broadcastPlayerList();
   }
   
   /**
@@ -867,8 +868,9 @@ class SocketHandler extends EventEmitter {
     // Clean up rate limiting data
     this.rateLimitStore.delete(socketId);
     
-    // Broadcast updated player count to all clients
+    // Broadcast updated player count and list to all clients
     this.broadcastPlayerCount();
+    this.broadcastPlayerList();
   }
   
   /**
