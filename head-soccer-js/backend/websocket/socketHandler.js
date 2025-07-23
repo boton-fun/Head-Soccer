@@ -293,6 +293,10 @@ class SocketHandler extends EventEmitter {
     socket.on('getPlayerCount', () => {
       this.handleGetPlayerCount(socket);
     });
+
+    socket.on('getPlayerList', () => {
+      this.handleGetPlayerList(socket);
+    });
   }
   
   /**
@@ -991,6 +995,24 @@ class SocketHandler extends EventEmitter {
       socket.emit('playerCount', 0);
     }
   }
+
+  /**
+   * Handle get player list request
+   */
+  handleGetPlayerList(socket) {
+    try {
+      // Get the list of all connected players
+      const playerList = this.getConnectedPlayersList();
+      
+      // Emit the list back to the requesting client
+      socket.emit('playerList', playerList);
+      
+      console.log(`📋 Player list requested: ${playerList.length} players online`);
+    } catch (error) {
+      console.error('Error getting player list:', error);
+      socket.emit('playerList', []);
+    }
+  }
   
   /**
    * Handle forfeit game request
@@ -1243,6 +1265,68 @@ class SocketHandler extends EventEmitter {
       console.log(`📢 Broadcasting player count: ${connectedSockets} players online`);
     } catch (error) {
       console.error('Error broadcasting player count:', error);
+    }
+  }
+
+  /**
+   * Broadcast current player list to all connected clients
+   */
+  broadcastPlayerList() {
+    try {
+      const playerList = this.getConnectedPlayersList();
+      this.connectionManager.io.emit('playerList', playerList);
+      console.log(`📋 Broadcasting player list: ${playerList.length} players`);
+    } catch (error) {
+      console.error('Error broadcasting player list:', error);
+    }
+  }
+
+  /**
+   * Get list of all connected players
+   * @returns {Array} Array of player objects
+   */
+  getConnectedPlayersList() {
+    const playerList = [];
+    
+    try {
+      // Iterate through all connections
+      for (const [socketId, connection] of this.connectionManager.connections.entries()) {
+        // Only include connected sockets
+        if (connection.socket && connection.socket.connected) {
+          const player = {
+            socketId: socketId,
+            username: connection.playerId || 'Guest', // Use playerId as username for now
+            status: this.getPlayerStatus(connection),
+            connectedAt: connection.connectedAt,
+            roomId: connection.roomId
+          };
+          
+          playerList.push(player);
+        }
+      }
+      
+      // Sort by connection time (newest first)
+      playerList.sort((a, b) => b.connectedAt - a.connectedAt);
+      
+    } catch (error) {
+      console.error('Error getting connected players list:', error);
+    }
+    
+    return playerList;
+  }
+
+  /**
+   * Get player status based on connection state
+   * @param {Object} connection - Connection object
+   * @returns {string} Player status
+   */
+  getPlayerStatus(connection) {
+    if (!connection.isAuthenticated) {
+      return 'guest';
+    } else if (connection.roomId) {
+      return 'playing';
+    } else {
+      return 'online';
     }
   }
   
