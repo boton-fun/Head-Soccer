@@ -1474,6 +1474,10 @@ class SocketHandler extends EventEmitter {
   broadcastPlayerList() {
     try {
       const playerList = this.getConnectedPlayersList();
+      
+      // Debug log to check player data before sending
+      console.log('🔍 DEBUG: Player list before emit:', JSON.stringify(playerList, null, 2));
+      
       this.connectionManager.io.emit('playerList', playerList);
       console.log(`📋 Broadcasting player list: ${playerList.length} players`);
     } catch (error) {

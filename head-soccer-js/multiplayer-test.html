@@ -1173,10 +1173,14 @@
                     console.log(`🔍 DEBUG: Player ${index}:`, {
                         username: player.username,
                         playerId: player.playerId,
+                        playerIdType: typeof player.playerId,
+                        playerIdIsArray: Array.isArray(player.playerId),
+                        playerIdStringified: JSON.stringify(player.playerId),
                         socketId: player.socketId,
                         status: player.status,
                         hasPlayerId: player.hasOwnProperty('playerId'),
-                        playerKeys: Object.keys(player)
+                        playerKeys: Object.keys(player),
+                        fullPlayer: JSON.stringify(player)
                     });
                     const row = this.createPlayerRow(player);
                     this.playerListBody.appendChild(row);
