@@ -184,13 +184,13 @@ class SocketHandler extends EventEmitter {
     console.log(`<� Setting up event handlers for ${socketId}`);
     
     // Setup all game event handlers
-    console.log('🔍 DEBUG: About to call setupGameEventHandlers with socket:', {
+    console.log('🔍 DEBUG: About to call setupSocketGameEventHandlers with socket:', {
       hasSocket: !!socket,
       socketId: socket?.id,
       socketType: typeof socket,
       hasOnMethod: typeof socket?.on === 'function'
     });
-    this.setupGameEventHandlers(socket);
+    this.setupSocketGameEventHandlers(socket);
     
     // Initialize rate limiting for this socket
     this.rateLimitStore.set(socketId, new Map());
@@ -204,16 +204,16 @@ class SocketHandler extends EventEmitter {
    * Setup game-specific event handlers for a socket
    * @param {Socket} socket - Socket.IO socket
    */
-  setupGameEventHandlers(socket) {
-    console.log('🔍 DEBUG: setupGameEventHandlers called with:', typeof socket, socket?.id);
+  setupSocketGameEventHandlers(socket) {
+    console.log('🔍 DEBUG: setupSocketGameEventHandlers called with:', typeof socket, socket?.id);
     
     if (!socket) {
-      console.error('❌ setupGameEventHandlers: socket is undefined or null');
+      console.error('❌ setupSocketGameEventHandlers: socket is undefined or null');
       return;
     }
     
     if (typeof socket.on !== 'function') {
-      console.error('❌ setupGameEventHandlers: socket.on is not a function', typeof socket.on);
+      console.error('❌ setupSocketGameEventHandlers: socket.on is not a function', typeof socket.on);
       console.error('Socket object:', socket);
       return;
     }
