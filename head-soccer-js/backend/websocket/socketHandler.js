@@ -1295,7 +1295,7 @@ class SocketHandler extends EventEmitter {
         if (connection.socket && connection.socket.connected) {
           const player = {
             socketId: socketId,
-            username: connection.playerId || 'Guest', // Use playerId as username for now
+            username: connection.username || connection.playerId || 'Guest',
             status: this.getPlayerStatus(connection),
             connectedAt: connection.connectedAt,
             roomId: connection.roomId

@@ -205,6 +205,7 @@ class ConnectionManager extends EventEmitter {
       
       // Set player information
       connection.playerId = playerId;
+      connection.username = username;
       connection.isAuthenticated = true;
       this.playerConnections.set(playerId, socket.id);
       
@@ -245,6 +246,7 @@ class ConnectionManager extends EventEmitter {
     
     // Transfer player info to new connection
     newConnection.playerId = data.playerId;
+    newConnection.username = data.username;
     newConnection.isAuthenticated = true;
     newConnection.roomId = oldConnection.roomId;
     newConnection.stats.reconnectCount = oldConnection.stats.reconnectCount + 1;
@@ -614,6 +616,7 @@ class ConnectionManager extends EventEmitter {
     return {
       socketId: connection.id,
       playerId: connection.playerId,
+      username: connection.username,
       roomId: connection.roomId,
       connectedAt: connection.connectedAt,
       isAuthenticated: connection.isAuthenticated,
