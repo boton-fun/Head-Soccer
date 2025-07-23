@@ -653,33 +653,45 @@
             }
             
             authenticateWithServer() {
+                console.log('🔍 DEBUG: authenticateWithServer called');
+                console.log('🔍 DEBUG: Socket connected?', this.isConnected);
+                console.log('🔍 DEBUG: authManager available?', !!window.authManager);
+                
                 if (!this.socket || !this.isConnected) {
                     console.log('❌ Cannot authenticate: Socket not connected');
                     return;
                 }
                 
-                if (window.authManager && window.authManager.isAuthenticated()) {
-                    const user = window.authManager.getCurrentUser();
-                    const authData = {
-                        playerId: user.id || user.username,
-                        username: user.display_name || user.username,
-                        token: user.token || 'guest-token'
-                    };
+                if (window.authManager) {
+                    console.log('🔍 DEBUG: authManager.isAuthenticated()?', window.authManager.isAuthenticated());
                     
-                    console.log('🔐 Authenticating with server:', authData.username);
-                    this.socket.emit('authenticate', authData);
-                    
-                    // Listen for authentication response
-                    this.socket.on('authenticated', (response) => {
-                        console.log('✅ Authentication successful:', response);
-                        this.updateUserInfo(); // Refresh user display
-                    });
-                    
-                    this.socket.on('auth_error', (error) => {
-                        console.error('❌ Authentication failed:', error);
-                    });
+                    if (window.authManager.isAuthenticated()) {
+                        const user = window.authManager.getCurrentUser();
+                        console.log('🔍 DEBUG: Current user object:', user);
+                        
+                        const authData = {
+                            playerId: user.id || user.username,
+                            username: user.display_name || user.username,
+                            token: user.token || 'guest-token'
+                        };
+                        
+                        console.log('🔐 Authenticating with server:', authData);
+                        this.socket.emit('authenticate', authData);
+                        
+                        // Listen for authentication response
+                        this.socket.on('authenticated', (response) => {
+                            console.log('✅ Authentication successful:', response);
+                            this.updateUserInfo(); // Refresh user display
+                        });
+                        
+                        this.socket.on('auth_error', (error) => {
+                            console.error('❌ Authentication failed:', error);
+                        });
+                    } else {
+                        console.log('👤 User not authenticated - connecting as guest');
+                    }
                 } else {
-                    console.log('👤 No authentication available - connecting as guest');
+                    console.log('❌ authManager not available - connecting as guest');
                 }
             }
             

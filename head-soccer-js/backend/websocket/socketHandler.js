@@ -1289,10 +1289,17 @@ class SocketHandler extends EventEmitter {
     const playerList = [];
     
     try {
+      console.log('🔍 DEBUG: Getting connected players list...');
       // Iterate through all connections
       for (const [socketId, connection] of this.connectionManager.connections.entries()) {
         // Only include connected sockets
         if (connection.socket && connection.socket.connected) {
+          console.log(`🔍 DEBUG: Connection ${socketId}:`, {
+            username: connection.username,
+            playerId: connection.playerId,
+            isAuthenticated: connection.isAuthenticated
+          });
+          
           const player = {
             socketId: socketId,
             username: connection.username || connection.playerId || 'Guest',

@@ -183,10 +183,12 @@ class ConnectionManager extends EventEmitter {
    */
   handleAuthentication(socket, connection, data) {
     try {
+      console.log('🔍 DEBUG: Authentication attempt received:', data);
       const { playerId, username, token } = data;
       
       // Basic validation (extend with proper auth later)
       if (!playerId || !username) {
+        console.log('❌ DEBUG: Authentication failed - missing fields:', { playerId, username });
         socket.emit('auth_error', { reason: 'Missing required fields' });
         return;
       }
