@@ -161,6 +161,54 @@
             border-radius: 10px;
         }
         
+        /* Challenge status styles */
+        .challenge-status {
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(255, 107, 53, 0.1);
+            border: 1px solid rgba(255, 107, 53, 0.3);
+            border-radius: 10px;
+            display: none;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        .challenge-status.active {
+            display: block;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .challenge-label {
+            color: #ff6b35;
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .challenge-username {
+            color: #fff;
+            font-size: 1.3rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 107, 53, 0.5);
+        }
+        
+        .challenge-timer {
+            color: #ffaa00;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+            font-family: monospace;
+        }
+        
         .user-label {
             color: #4A90E2;
             font-size: 1rem;
@@ -651,6 +699,13 @@
                     <div class="user-value" id="currentUser">Not logged in</div>
                 </div>
                 
+                <!-- Challenge Status -->
+                <div class="challenge-status" id="challengeStatus">
+                    <div class="challenge-label">⚔️ Challenge Sent To</div>
+                    <div class="challenge-username" id="challengeUsername">---</div>
+                    <div class="challenge-timer" id="challengeTimer">Waiting for response...</div>
+                </div>
+                
                 <!-- Connection Info -->
                 <div class="connection-info">
                     <div class="info-item">
@@ -1037,23 +1092,25 @@
                     
                     this.socket.on('challenge_sent', (data) => {
                         console.log('✅ Challenge sent successfully:', data);
-                        alert(`Challenge sent to ${data.targetUsername}! They have 30 seconds to respond.`);
+                        // Challenge status is already shown in the UI
                     });
                     
                     this.socket.on('challenge_accepted', (data) => {
                         console.log('🎉 Challenge accepted:', data);
+                        this.hideChallengeStatus(); // Hide the challenge status
                         alert(`${data.opponentUsername} accepted your challenge! Preparing match...`);
                         // TODO: Phase 3.2 - Redirect to game
                     });
                     
                     this.socket.on('challenge_declined', (data) => {
                         console.log('😔 Challenge declined:', data);
+                        this.hideChallengeStatus(); // Hide the challenge status
                         alert(`${data.opponentUsername} declined your challenge.`);
                     });
                     
                     this.socket.on('challenge_expired', (data) => {
                         console.log('⏰ Challenge expired:', data);
-                        alert('Challenge expired - no response received.');
+                        this.hideChallengeStatus(); // Hide the challenge status
                         this.hideChallengeModal();
                     });
                     
@@ -1314,8 +1371,8 @@
                     return;
                 }
                 
-                // Provide immediate feedback
-                alert(`Challenge sent to ${player.username}! Waiting for response...`);
+                // Show challenge status UI
+                this.showChallengeStatus(player.username);
                 
                 // Play challenge sound
                 this.playClickSound();
@@ -1368,6 +1425,64 @@
                 this.currentChallenge = null;
                 this.stopChallengeTimer();
                 console.log('❌ Challenge modal hidden');
+            }
+            
+            showChallengeStatus(username) {
+                const challengeStatus = document.getElementById('challengeStatus');
+                const challengeUsername = document.getElementById('challengeUsername');
+                const challengeTimer = document.getElementById('challengeTimer');
+                
+                // Show the challenge status
+                challengeStatus.classList.add('active');
+                challengeUsername.textContent = username;
+                challengeTimer.textContent = 'Waiting for response...';
+                
+                // Store the challenge info
+                this.activeChallengeRequest = {
+                    username: username,
+                    startTime: Date.now(),
+                    timeout: 30000 // 30 seconds
+                };
+                
+                // Start a timer to show remaining time
+                this.startChallengeRequestTimer();
+            }
+            
+            hideChallengeStatus() {
+                const challengeStatus = document.getElementById('challengeStatus');
+                challengeStatus.classList.remove('active');
+                this.stopChallengeRequestTimer();
+                this.activeChallengeRequest = null;
+            }
+            
+            startChallengeRequestTimer() {
+                this.stopChallengeRequestTimer(); // Clear any existing timer
+                
+                const challengeTimer = document.getElementById('challengeTimer');
+                const updateTimer = () => {
+                    if (!this.activeChallengeRequest) return;
+                    
+                    const elapsed = Date.now() - this.activeChallengeRequest.startTime;
+                    const remaining = Math.max(0, this.activeChallengeRequest.timeout - elapsed);
+                    const seconds = Math.ceil(remaining / 1000);
+                    
+                    if (seconds > 0) {
+                        challengeTimer.textContent = `Expires in ${seconds}s`;
+                    } else {
+                        challengeTimer.textContent = 'Challenge expired';
+                        this.hideChallengeStatus();
+                    }
+                };
+                
+                updateTimer(); // Initial update
+                this.challengeRequestTimerInterval = setInterval(updateTimer, 1000);
+            }
+            
+            stopChallengeRequestTimer() {
+                if (this.challengeRequestTimerInterval) {
+                    clearInterval(this.challengeRequestTimerInterval);
+                    this.challengeRequestTimerInterval = null;
+                }
             }
             
             respondToChallenge(response) {
