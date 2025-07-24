@@ -1043,7 +1043,17 @@ class GameScene extends Phaser.Scene {
             winner.textContent = "IT'S A TIE!";
             winner.style.color = '#ffff00';
         } else {
-            const playerName = result === 'player1' ? 'Player 1' : 'Player 2';
+            // Get actual player names for multiplayer or use defaults for single player
+            let playerName;
+            if (this.isMultiplayer && this.multiplayerGame) {
+                // Use actual multiplayer usernames
+                playerName = result === 'player1' ? 
+                    this.multiplayerGame.matchData.player1Name : 
+                    this.multiplayerGame.matchData.player2Name;
+            } else {
+                // Fallback for single player
+                playerName = result === 'player1' ? 'Player 1' : 'Player 2';
+            }
             winner.textContent = `${playerName} WINS!`;
             winner.style.color = result === 'player1' ? '#0088ff' : '#ff0000';
         }
