@@ -695,7 +695,22 @@
                     
                     this.socket.on('connect', () => {
                         console.log('Connected to server for character selection');
-                        // Join character selection room
+                        
+                        // First authenticate the socket
+                        const authData = {
+                            playerId: this.isPlayer1 ? this.player1Id : this.player2Id,
+                            username: this.isPlayer1 ? this.player1Username : this.player2Username,
+                            token: 'guest-token' // In production, use actual auth token
+                        };
+                        console.log('Authenticating socket:', authData);
+                        this.socket.emit('authenticate', authData);
+                    });
+                    
+                    // Listen for authentication success
+                    this.socket.on('authenticated', (data) => {
+                        console.log('Socket authenticated successfully:', data);
+                        
+                        // Now join character selection room
                         const joinData = {
                             matchId: this.matchId,
                             playerId: this.isPlayer1 ? this.player1Id : this.player2Id,
@@ -705,6 +720,12 @@
                         this.socket.emit('join_character_selection', joinData);
                     });
                     
+                    // Listen for authentication error
+                    this.socket.on('authentication_failed', (error) => {
+                        console.error('Authentication failed:', error);
+                        alert('Failed to authenticate. Please try again.');
+                    });
+
                     // Listen for join confirmation
                     this.socket.on('character_selection_joined', (data) => {
                         console.log('Successfully joined character selection room:', data);
