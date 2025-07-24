@@ -14,12 +14,14 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #000;
-            min-height: 100vh;
+            height: 100vh;
             color: white;
             overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
+            padding: 0;
+            margin: 0;
         }
         
         /* Main container */
@@ -32,11 +34,13 @@
             justify-content: center;
             align-items: center;
             background: linear-gradient(135deg, #0c0c2e 0%, #1a0c3e 25%, #2d1b5e 50%, #0c0c2e 75%, #000 100%);
+            padding: 1rem;
+            box-sizing: border-box;
         }
         
         /* Canvas for animated background */
         #backgroundCanvas {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -50,9 +54,14 @@
             z-index: 10;
             text-align: center;
             animation: fadeIn 1.5s ease-out;
-            max-width: 800px;
+            max-width: 1200px;
             width: 100%;
-            padding: 0 2rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 0 1rem;
+            box-sizing: border-box;
         }
         
         @keyframes fadeIn {
@@ -68,10 +77,10 @@
         
         /* Page title */
         .page-title {
-            font-size: 4rem;
+            font-size: clamp(1.8rem, 4vw, 2.5rem);
             font-weight: bold;
-            letter-spacing: 3px;
-            margin-bottom: 1rem;
+            letter-spacing: 2px;
+            margin: 0 0 0.5rem 0;
             color: white;
             text-shadow: 
                 0 0 10px rgba(255, 255, 255, 0.5),
@@ -83,88 +92,39 @@
         
         /* Subtitle */
         .subtitle {
-            font-size: 1.2rem;
+            font-size: clamp(0.9rem, 2vw, 1rem);
             color: #ccc;
-            margin-bottom: 3rem;
+            margin: 0 0 1rem 0;
             opacity: 0.8;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        /* Header section */
+        .header-section {
+            flex-shrink: 0;
+            margin-bottom: 1rem;
         }
         
         /* Connection status container */
         .connection-container {
             background: rgba(255, 255, 255, 0.1);
             border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            padding: 2rem;
-            margin-bottom: 2rem;
+            border-radius: 15px;
+            padding: 1rem;
             backdrop-filter: blur(10px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-        
-        /* Connection status indicator */
-        .connection-status {
+            flex: 1;
             display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
+            flex-direction: column;
+            min-height: 0;
         }
         
-        .status-indicator {
-            width: 20px;
-            height: 20px;
-            border-radius: 50%;
-            border: 2px solid #333;
-            animation: pulse 2s ease-in-out infinite;
-        }
         
-        .status-indicator.connected {
-            background: #00ff88;
-            border-color: #00cc66;
-            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
-        }
-        
-        .status-indicator.disconnected {
-            background: #ff4444;
-            border-color: #cc3333;
-            box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
-        }
-        
-        .status-indicator.connecting {
-            background: #ffaa00;
-            border-color: #cc8800;
-            box-shadow: 0 0 20px rgba(255, 170, 0, 0.5);
-        }
-        
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.2); opacity: 0.7; }
-        }
-        
-        .status-text {
-            font-size: 1.5rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            font-family: 'Font', Arial, sans-serif;
-        }
-        
-        .status-text.connected { color: #00ff88; }
-        .status-text.disconnected { color: #ff4444; }
-        .status-text.connecting { color: #ffaa00; }
-        
-        /* User info section */
-        .user-info {
-            margin-bottom: 1.5rem;
-            padding: 1rem;
-            background: rgba(74, 144, 226, 0.1);
-            border: 1px solid rgba(74, 144, 226, 0.3);
-            border-radius: 10px;
-        }
         
         /* Challenge status styles */
         .challenge-status {
-            margin-bottom: 1.5rem;
-            padding: 1rem;
+            margin-bottom: 1rem;
+            padding: 0.8rem;
             background: rgba(255, 107, 53, 0.1);
             border: 1px solid rgba(255, 107, 53, 0.3);
             border-radius: 10px;
@@ -209,20 +169,6 @@
             font-family: monospace;
         }
         
-        .user-label {
-            color: #4A90E2;
-            font-size: 1rem;
-            font-weight: bold;
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        
-        .user-value {
-            color: white;
-            font-size: 1.2rem;
-            font-family: 'Font', Arial, sans-serif;
-        }
         
         /* Connection info */
         .connection-info {
@@ -250,76 +196,37 @@
             color: #4A90E2;
             font-size: 1.1rem;
             font-weight: bold;
-            font-family: 'Font', Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
-        /* Test button */
-        .test-button {
-            background: linear-gradient(135deg, #4A90E2 0%, #2E5BBA 100%);
-            border: 4px solid #1E3A8A;
-            border-radius: 15px;
-            color: white;
-            font-size: 1.2rem;
-            font-weight: bold;
-            padding: 1rem 2rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            font-family: 'Font', Arial, sans-serif;
-            margin-bottom: 2rem;
-        }
         
-        .test-button:hover {
-            transform: translateY(-3px) scale(1.05);
-            background: linear-gradient(135deg, #5BA3F5 0%, #3A6CCD 100%);
-            border-color: #2563EB;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
-        }
-        
-        .test-button:active {
-            transform: translateY(-1px) scale(1.02);
-        }
-        
-        .test-button:disabled {
-            background: rgba(74, 144, 226, 0.3);
-            border-color: rgba(30, 58, 138, 0.3);
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        /* Player count display */
-        .player-count-container {
-            margin-top: 2rem;
-            padding: 1.5rem;
-            background: rgba(74, 144, 226, 0.1);
-            border: 2px solid rgba(74, 144, 226, 0.3);
-            border-radius: 15px;
-            text-align: center;
-            animation: fadeIn 0.5s ease-out;
-        }
         
         /* Player list display */
         .player-list-container {
-            margin-top: 2rem;
             background: rgba(255, 255, 255, 0.05);
             border: 2px solid rgba(255, 255, 255, 0.2);
-            border-radius: 15px;
-            padding: 1.5rem;
+            border-radius: 10px;
+            padding: 1rem;
             animation: fadeIn 0.5s ease-out;
+            width: 100%;
+            max-width: none;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
         
         .player-list-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
+            flex-shrink: 0;
         }
         
         .player-list-title {
             color: #4A90E2;
-            font-size: 1.5rem;
+            font-size: clamp(1.2rem, 3vw, 1.5rem);
             font-weight: bold;
             margin: 0;
             font-family: 'Font', Arial, sans-serif;
@@ -327,55 +234,43 @@
             letter-spacing: 2px;
         }
         
-        .refresh-button {
-            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
-            border: 2px solid #00aa44;
-            border-radius: 8px;
-            color: white;
-            font-size: 0.9rem;
-            font-weight: bold;
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-family: 'Font', Arial, sans-serif;
-        }
-        
-        .refresh-button:hover {
-            background: linear-gradient(135deg, #22ff99 0%, #11dd77 100%);
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 255, 136, 0.4);
-        }
         
         .player-list-table-wrapper {
-            overflow-x: auto;
+            overflow: auto;
             border-radius: 10px;
             background: rgba(0, 0, 0, 0.3);
+            width: 100%;
+            flex: 1;
+            min-height: 0;
         }
         
         .player-list-table {
             width: 100%;
+            min-width: 600px;
             border-collapse: collapse;
-            font-family: 'Font', Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
         
         .player-list-table th {
             background: rgba(74, 144, 226, 0.2);
             color: #4A90E2;
-            padding: 1rem;
+            padding: 0.8rem;
             text-align: left;
             font-weight: bold;
             text-transform: uppercase;
             letter-spacing: 1px;
             font-size: 0.9rem;
             border-bottom: 2px solid rgba(74, 144, 226, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 1;
         }
         
         .player-list-table td {
-            padding: 0.8rem 1rem;
+            padding: 0.8rem;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             color: white;
+            font-size: 0.9rem;
         }
         
         .player-list-table tbody tr {
@@ -389,6 +284,7 @@
         .username-cell {
             font-weight: bold;
             color: #00ff88;
+            font-size: 1rem;
         }
         
         .status-badge {
@@ -414,7 +310,7 @@
             color: white;
             font-size: 0.8rem;
             font-weight: bold;
-            padding: 0.4rem 0.8rem;
+            padding: 0.5rem 1rem;
             cursor: pointer;
             transition: all 0.3s ease;
             text-transform: uppercase;
@@ -435,11 +331,12 @@
         }
         
         .player-list-footer {
-            margin-top: 1rem;
+            margin-top: 0.5rem;
             text-align: center;
             color: rgba(255, 255, 255, 0.6);
-            font-size: 0.9rem;
+            font-size: 0.8rem;
             font-style: italic;
+            flex-shrink: 0;
         }
         
         .time-ago {
@@ -557,6 +454,22 @@
             box-shadow: 0 5px 15px rgba(255, 68, 68, 0.4);
         }
         
+        /* Response modal specific styles */
+        #responseModalTitle {
+            transition: color 0.3s ease;
+        }
+        
+        #responseMessage {
+            color: white;
+            font-size: 1.1rem;
+            margin-top: 0.5rem;
+        }
+        
+        #responseOkBtn {
+            min-width: 120px;
+            margin: 0 auto;
+        }
+        
         .challenge-timer {
             position: absolute;
             top: 1rem;
@@ -570,58 +483,27 @@
             font-size: 0.9rem;
         }
         
-        .player-count-label {
-            color: #4A90E2;
-            font-size: 1.2rem;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 0.5rem;
-            font-family: 'Font', Arial, sans-serif;
-        }
-        
-        .player-count-value {
-            color: #00ff88;
-            font-size: 3rem;
-            font-weight: bold;
-            font-family: 'Font', Arial, sans-serif;
-            text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
-            animation: pulse 2s ease-in-out infinite;
-        }
-        
-        .player-count-refresh {
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 0.9rem;
-            margin-top: 0.5rem;
-            font-style: italic;
-        }
-        
-        @keyframes countUpdate {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.2); }
-            100% { transform: scale(1); }
-        }
-        
-        .player-count-value.updating {
-            animation: countUpdate 0.3s ease-out;
-        }
         
         /* Back button */
         .back-button {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
             background: linear-gradient(135deg, #666 0%, #444 100%);
             border: 2px solid #333;
-            border-radius: 10px;
+            border-radius: 8px;
             color: white;
-            font-size: 1rem;
+            font-size: clamp(0.8rem, 1.5vw, 0.9rem);
             font-weight: bold;
-            padding: 0.8rem 1.5rem;
+            padding: 0.6rem 1.2rem;
             cursor: pointer;
             transition: all 0.3s ease;
             text-transform: uppercase;
             letter-spacing: 1px;
-            font-family: 'Font', Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             text-decoration: none;
             display: inline-block;
+            z-index: 100;
         }
         
         .back-button:hover {
@@ -639,41 +521,83 @@
         
         /* Responsive design */
         @media (max-width: 768px) {
-            .page-title {
-                font-size: 3rem;
-                letter-spacing: 2px;
+            .main-container {
+                padding: 0.5rem;
             }
             
             .connection-container {
+                padding: 0.8rem;
+            }
+            
+            .player-list-header {
+                flex-direction: column;
+                gap: 0.5rem;
+                align-items: center;
+            }
+            
+            .challenge-modal-content {
                 padding: 1.5rem;
+                width: 95%;
             }
             
-            .connection-info {
-                grid-template-columns: 1fr;
-            }
-            
-            .test-button {
-                padding: 0.8rem 1.5rem;
-                font-size: 1rem;
+            .challenge-modal-buttons {
+                flex-direction: column;
+                gap: 0.8rem;
             }
         }
         
         @media (max-width: 480px) {
-            .page-title {
-                font-size: 2.5rem;
-                letter-spacing: 1px;
+            .main-container {
+                padding: 0.25rem;
             }
             
-            .subtitle {
-                font-size: 1rem;
+            .content-wrapper {
+                padding: 0 0.25rem;
             }
             
             .connection-container {
-                padding: 1rem;
+                padding: 0.5rem;
             }
             
-            .status-text {
-                font-size: 1.2rem;
+            .player-list-table th,
+            .player-list-table td {
+                padding: 0.5rem 0.3rem;
+                font-size: 0.8rem;
+            }
+            
+            .challenge-button {
+                padding: 0.3rem 0.6rem;
+                font-size: 0.7rem;
+            }
+            
+        }
+        
+        @media (max-width: 320px) {
+            .player-list-table th:nth-child(3),
+            .player-list-table td:nth-child(3) {
+                display: none;
+            }
+            
+            .player-list-table {
+                min-width: 300px;
+            }
+        }
+        
+        @media (max-height: 600px) {
+            .page-title {
+                font-size: clamp(1.5rem, 3vw, 2rem);
+                margin-bottom: 0.25rem;
+            }
+            
+            .subtitle {
+                font-size: 0.8rem;
+                margin-bottom: 0.5rem;
+            }
+            
+            
+            .challenge-status {
+                padding: 0.5rem;
+                margin-bottom: 0.5rem;
             }
         }
     </style>
@@ -683,80 +607,47 @@
         <canvas id="backgroundCanvas"></canvas>
         
         <div class="content-wrapper">
-            <h1 class="page-title">Multiplayer Selection</h1>
-            <p class="subtitle">Choose players to challenge or start a match</p>
+            <!-- Back Button -->
+            <a href="mode-selection.html" class="back-button">← Back</a>
             
-            <div class="connection-container">
-                <!-- Connection Status -->
-                <div class="connection-status">
-                    <div class="status-indicator disconnected" id="statusIndicator"></div>
-                    <div class="status-text disconnected" id="statusText">Disconnected</div>
-                </div>
-                
-                <!-- Current User Info -->
-                <div class="user-info" id="userInfo" style="display: none;">
-                    <div class="user-label">👤 Current User</div>
-                    <div class="user-value" id="currentUser">Not logged in</div>
-                </div>
-                
-                <!-- Challenge Status -->
-                <div class="challenge-status" id="challengeStatus">
-                    <div class="challenge-label">⚔️ Challenge Sent To</div>
-                    <div class="challenge-username" id="challengeUsername">---</div>
-                    <div class="challenge-timer" id="challengeTimer">Waiting for response...</div>
-                </div>
-                
-                <!-- Connection Info -->
-                <div class="connection-info">
-                    <div class="info-item">
-                        <div class="info-label">Socket ID</div>
-                        <div class="info-value" id="socketId">N/A</div>
-                    </div>
-                    <div class="info-item">
-                        <div class="info-label">Server Status</div>
-                        <div class="info-value" id="serverStatus">Unknown</div>
-                    </div>
-                </div>
-                
-                <!-- Player Count Display -->
-                <div class="player-count-container" id="playerCountContainer" style="display: none;">
-                    <div class="player-count-label">Players Online</div>
-                    <div class="player-count-value" id="playerCount">0</div>
-                    <div class="player-count-refresh">🔄 Auto-refresh every 5 seconds</div>
-                </div>
-                
-                <!-- Player List Display -->
-                <div class="player-list-container" id="playerListContainer" style="display: none;">
-                    <div class="player-list-header">
-                        <h3 class="player-list-title">👥 Connected Players</h3>
-                        <button class="refresh-button" id="refreshListBtn">🔄 Refresh</button>
-                    </div>
-                    <div class="player-list-table-wrapper">
-                        <table class="player-list-table" id="playerListTable">
-                            <thead>
-                                <tr>
-                                    <th>Username</th>
-                                    <th>Status</th>
-                                    <th>Connected</th>
-                                    <th>Challenge</th>
-                                </tr>
-                            </thead>
-                            <tbody id="playerListBody">
-                                <!-- Player rows will be inserted here -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="player-list-footer">
-                        <span class="last-updated" id="lastUpdated">Last updated: Never</span>
-                    </div>
-                </div>
-                
-                <!-- Test Connection Button -->
-                <button class="test-button" id="testButton">Test Connection</button>
+            <div class="header-section">
+                <h1 class="page-title">Multiplayer Selection</h1>
+                <p class="subtitle">Choose players to challenge or start a match</p>
             </div>
             
-            <!-- Back Button -->
-            <a href="mode-selection.html" class="back-button">← Back to Mode Selection</a>
+            <!-- Challenge Status -->
+            <div class="challenge-status" id="challengeStatus">
+                <div class="challenge-label">⚔️ Challenge Sent To</div>
+                <div class="challenge-username" id="challengeUsername">---</div>
+                <div class="challenge-timer" id="challengeTimer">Waiting for response...</div>
+            </div>
+            
+            <!-- Player List Display -->
+            <div class="player-list-container" id="playerListContainer" style="display: none;">
+                <div class="player-list-header">
+                    <h3 class="player-list-title">👥 Connected Players</h3>
+                </div>
+                <div class="player-list-table-wrapper">
+                    <table class="player-list-table" id="playerListTable">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Status</th>
+                                <th>Connected</th>
+                                <th>Challenge</th>
+                            </tr>
+                        </thead>
+                        <tbody id="playerListBody">
+                            <!-- Player rows will be inserted here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="player-list-footer">
+                    <span class="last-updated" id="lastUpdated">Last updated: Never</span>
+                </div>
+            </div>
+            
+            
         </div>
     </div>
 
@@ -775,6 +666,20 @@
             </div>
         </div>
     </div>
+    
+    <!-- Challenge Response Modal -->
+    <div class="challenge-modal" id="challengeResponseModal">
+        <div class="challenge-modal-content">
+            <h2 class="challenge-modal-title" id="responseModalTitle">Challenge Accepted!</h2>
+            <div class="challenge-modal-message">
+                <div class="challenge-modal-challenger" id="responsePlayerName">Player Name</div>
+                <span id="responseMessage">has accepted your challenge!</span>
+            </div>
+            <div class="challenge-modal-buttons">
+                <button class="challenge-accept-btn" id="responseOkBtn">OK</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script src="js/config.js"></script>
@@ -788,23 +693,11 @@
                 console.log('🔍 DEBUG: ConnectionTest constructor called');
                 this.socket = null;
                 this.isConnected = false;
-                this.playerCountInterval = null;
                 this.playerListInterval = null;
-                this.lastPlayerCount = 0;
                 
                 // Get DOM elements
-                this.statusIndicator = document.getElementById('statusIndicator');
-                this.statusText = document.getElementById('statusText');
-                this.userInfo = document.getElementById('userInfo');
-                this.currentUser = document.getElementById('currentUser');
-                this.socketId = document.getElementById('socketId');
-                this.serverStatus = document.getElementById('serverStatus');
-                this.testButton = document.getElementById('testButton');
-                this.playerCountContainer = document.getElementById('playerCountContainer');
-                this.playerCountValue = document.getElementById('playerCount');
                 this.playerListContainer = document.getElementById('playerListContainer');
                 this.playerListBody = document.getElementById('playerListBody');
-                this.refreshListBtn = document.getElementById('refreshListBtn');
                 this.lastUpdated = document.getElementById('lastUpdated');
                 
                 // Challenge modal elements
@@ -814,6 +707,13 @@
                 this.acceptChallengeBtn = document.getElementById('acceptChallengeBtn');
                 this.declineChallengeBtn = document.getElementById('declineChallengeBtn');
                 
+                // Challenge response modal elements
+                this.challengeResponseModal = document.getElementById('challengeResponseModal');
+                this.responseModalTitle = document.getElementById('responseModalTitle');
+                this.responsePlayerName = document.getElementById('responsePlayerName');
+                this.responseMessage = document.getElementById('responseMessage');
+                this.responseOkBtn = document.getElementById('responseOkBtn');
+                
                 // Challenge state
                 this.currentChallenge = null;
                 this.challengeTimerInterval = null;
@@ -821,11 +721,6 @@
                 // Setup event listeners
                 this.setupEventListeners();
                 
-                // Setup player list refresh button
-                this.refreshListBtn.addEventListener('click', () => {
-                    this.requestPlayerList();
-                    this.playClickSound();
-                });
                 
                 // Setup challenge modal buttons
                 this.acceptChallengeBtn.addEventListener('click', () => {
@@ -834,6 +729,11 @@
                 
                 this.declineChallengeBtn.addEventListener('click', () => {
                     this.respondToChallenge('decline');
+                });
+                
+                // Setup response modal OK button
+                this.responseOkBtn.addEventListener('click', () => {
+                    this.hideResponseModal();
                 });
                 
                 // Initialize background animation
@@ -847,24 +747,11 @@
             }
             
             setupEventListeners() {
-                this.testButton.addEventListener('click', () => {
-                    if (this.isConnected) {
-                        this.disconnectFromServer();
-                    } else {
-                        this.connectToServer();
-                    }
-                });
+                // Auto-connect functionality - no manual button needed
             }
             
             updateUserInfo() {
-                if (window.authManager && window.authManager.isAuthenticated()) {
-                    const user = window.authManager.getCurrentUser();
-                    this.userInfo.style.display = 'block';
-                    this.currentUser.textContent = user.display_name || user.username;
-                } else {
-                    this.userInfo.style.display = 'block';
-                    this.currentUser.textContent = 'Not logged in (Guest mode)';
-                }
+                // User info display removed - functionality kept for authentication
             }
             
             authenticateWithServer() {
@@ -903,7 +790,6 @@
                         // Listen for authentication response
                         this.socket.on('authenticated', (response) => {
                             console.log('✅ Authentication successful:', response);
-                            this.updateUserInfo(); // Refresh user display
                         });
                         
                         this.socket.on('auth_error', (error) => {
@@ -978,7 +864,6 @@
                     // Listen for authentication response
                     this.socket.on('authenticated', (response) => {
                         console.log('✅ Fallback authentication successful:', response);
-                        this.updateUserInfo(); // Refresh user display
                     });
                     
                     this.socket.on('auth_error', (error) => {
@@ -990,9 +875,7 @@
             }
             
             connectToServer() {
-                this.updateStatus('connecting', 'Connecting...');
-                this.testButton.disabled = true;
-                this.testButton.textContent = 'Connecting...';
+                console.log('Connecting to server...');
                 
                 // Get server URL from config
                 const serverUrl = window.CONFIG?.SERVER_URL || 'https://head-soccer-production.up.railway.app';
@@ -1012,24 +895,13 @@
                         console.log('🔍 DEBUG: Socket connect event fired');
                         console.log('Connected to server:', this.socket.id);
                         this.isConnected = true;
-                        this.updateStatus('connected', 'Connected');
-                        this.socketId.textContent = this.socket.id;
-                        this.serverStatus.textContent = 'Online';
-                        this.testButton.disabled = false;
-                        this.testButton.textContent = 'Disconnect';
                         
                         // Authenticate with server if user is logged in
                         console.log('🔍 DEBUG: About to call authenticateWithServer');
                         this.authenticateWithServer();
                         
-                        // Show player count container
-                        this.playerCountContainer.style.display = 'block';
-                        
                         // Show player list container
                         this.playerListContainer.style.display = 'block';
-                        
-                        // Start player count updates
-                        this.startPlayerCountUpdates();
                         
                         // Start player list updates
                         this.startPlayerListUpdates();
@@ -1042,11 +914,6 @@
                     this.socket.on('connect_error', (error) => {
                         console.error('Connection error:', error);
                         this.isConnected = false;
-                        this.updateStatus('disconnected', 'Connection Failed');
-                        this.socketId.textContent = 'N/A';
-                        this.serverStatus.textContent = 'Error: ' + error.message;
-                        this.testButton.disabled = false;
-                        this.testButton.textContent = 'Retry Connection';
                         
                         // Play error sound
                         this.playErrorSound();
@@ -1056,29 +923,14 @@
                     this.socket.on('disconnect', (reason) => {
                         console.log('Disconnected:', reason);
                         this.isConnected = false;
-                        this.updateStatus('disconnected', 'Disconnected');
-                        this.socketId.textContent = 'N/A';
-                        this.serverStatus.textContent = 'Offline';
-                        this.testButton.disabled = false;
-                        this.testButton.textContent = 'Test Connection';
-                        
-                        // Stop player count updates
-                        this.stopPlayerCountUpdates();
                         
                         // Stop player list updates
                         this.stopPlayerListUpdates();
-                        
-                        // Hide player count container
-                        this.playerCountContainer.style.display = 'none';
                         
                         // Hide player list container
                         this.playerListContainer.style.display = 'none';
                     });
                     
-                    // Listen for player count updates
-                    this.socket.on('playerCount', (count) => {
-                        this.updatePlayerCount(count);
-                    });
                     
                     // Listen for player list updates
                     this.socket.on('playerList', (playerList) => {
@@ -1098,14 +950,18 @@
                     this.socket.on('challenge_accepted', (data) => {
                         console.log('🎉 Challenge accepted:', data);
                         this.hideChallengeStatus(); // Hide the challenge status
-                        alert(`${data.opponentUsername} accepted your challenge! Preparing match...`);
-                        // TODO: Phase 3.2 - Redirect to game
+                        this.showResponseModal(data.opponentUsername, 'accepted');
+                        
+                        // Redirect to pregame lobby after a short delay
+                        setTimeout(() => {
+                            this.redirectToPregameLobby(data);
+                        }, 2000);
                     });
                     
                     this.socket.on('challenge_declined', (data) => {
                         console.log('😔 Challenge declined:', data);
                         this.hideChallengeStatus(); // Hide the challenge status
-                        alert(`${data.opponentUsername} declined your challenge.`);
+                        this.showResponseModal(data.opponentUsername, 'declined');
                     });
                     
                     this.socket.on('challenge_expired', (data) => {
@@ -1132,24 +988,14 @@
                         alert(`Challenge error: ${error.reason}`);
                     });
                     
-                    // Handle connection errors
-                    this.socket.on('connect_error', (error) => {
-                        console.log('Connection error, player count unavailable');
-                        this.playerCountValue.textContent = 'N/A';
-                    });
                     
                     // Other socket events
                     this.socket.on('error', (error) => {
                         console.error('Socket error:', error);
-                        this.serverStatus.textContent = 'Error: ' + error;
                     });
                     
                 } catch (error) {
                     console.error('Failed to create socket:', error);
-                    this.updateStatus('disconnected', 'Connection Failed');
-                    this.serverStatus.textContent = 'Failed to connect';
-                    this.testButton.disabled = false;
-                    this.testButton.textContent = 'Retry Connection';
                     this.playErrorSound();
                 }
             }
@@ -1160,33 +1006,14 @@
                     this.socket = null;
                 }
                 this.isConnected = false;
-                this.updateStatus('disconnected', 'Disconnected');
-                this.socketId.textContent = 'N/A';
-                this.serverStatus.textContent = 'Offline';
-                this.testButton.textContent = 'Test Connection';
-                
-                // Stop player count updates
-                this.stopPlayerCountUpdates();
                 
                 // Stop player list updates
                 this.stopPlayerListUpdates();
-                
-                // Hide player count container
-                this.playerCountContainer.style.display = 'none';
                 
                 // Hide player list container
                 this.playerListContainer.style.display = 'none';
             }
             
-            startPlayerCountUpdates() {
-                // Request initial player count
-                this.requestPlayerCount();
-                
-                // Set up interval for auto-refresh every 5 seconds
-                this.playerCountInterval = setInterval(() => {
-                    this.requestPlayerCount();
-                }, 5000);
-            }
             
             startPlayerListUpdates() {
                 // Request initial player list
@@ -1198,12 +1025,6 @@
                 }, 5000);
             }
             
-            stopPlayerCountUpdates() {
-                if (this.playerCountInterval) {
-                    clearInterval(this.playerCountInterval);
-                    this.playerCountInterval = null;
-                }
-            }
             
             stopPlayerListUpdates() {
                 if (this.playerListInterval) {
@@ -1212,12 +1033,6 @@
                 }
             }
             
-            requestPlayerCount() {
-                if (this.socket && this.isConnected) {
-                    // Request player count from server
-                    this.socket.emit('getPlayerCount');
-                }
-            }
             
             requestPlayerList() {
                 if (this.socket && this.isConnected) {
@@ -1378,25 +1193,6 @@
                 this.playClickSound();
             }
             
-            updatePlayerCount(count) {
-                // Update the display
-                this.playerCountValue.textContent = count;
-                
-                // Add animation if count changed
-                if (count !== this.lastPlayerCount) {
-                    this.playerCountValue.classList.add('updating');
-                    setTimeout(() => {
-                        this.playerCountValue.classList.remove('updating');
-                    }, 300);
-                    
-                    // Play a subtle sound if count increased
-                    if (count > this.lastPlayerCount) {
-                        this.playCountIncreaseSound();
-                    }
-                }
-                
-                this.lastPlayerCount = count;
-            }
             
             // Challenge Modal Methods
             showChallengeModal(challengeData) {
@@ -1536,6 +1332,52 @@
                 }
             }
             
+            showResponseModal(playerName, response) {
+                // Update modal content based on response
+                if (response === 'accepted') {
+                    this.responseModalTitle.textContent = '🎉 Challenge Accepted!';
+                    this.responseModalTitle.style.color = '#00ff88';
+                    this.responsePlayerName.textContent = playerName;
+                    this.responseMessage.textContent = 'has accepted your challenge! Preparing match...';
+                    this.playSuccessSound();
+                } else {
+                    this.responseModalTitle.textContent = '😔 Challenge Declined';
+                    this.responseModalTitle.style.color = '#ff4444';
+                    this.responsePlayerName.textContent = playerName;
+                    this.responseMessage.textContent = 'declined your challenge.';
+                    this.playErrorSound();
+                }
+                
+                // Show the modal
+                this.challengeResponseModal.classList.add('show');
+            }
+            
+            hideResponseModal() {
+                this.challengeResponseModal.classList.remove('show');
+            }
+            
+            redirectToPregameLobby(data) {
+                // Prepare match data for pregame lobby
+                const currentUser = window.authManager?.getCurrentUser();
+                const currentUsername = currentUser?.username || 'Player';
+                
+                // Determine player order
+                const isPlayer1 = data.challengerId === (currentUser?.id || currentUsername);
+                
+                const params = new URLSearchParams({
+                    mode: 'multiplayer',
+                    matchId: data.matchId || 'match-' + Date.now(),
+                    player1Id: isPlayer1 ? data.challengerId : data.opponentId,
+                    player2Id: isPlayer1 ? data.opponentId : data.challengerId,
+                    player1: isPlayer1 ? currentUsername : data.opponentUsername,
+                    player2: isPlayer1 ? data.opponentUsername : currentUsername,
+                    isPlayer1: isPlayer1
+                });
+                
+                // Redirect directly to character selection
+                window.location.href = `character-selection-multiplayer.html?${params.toString()}`;
+            }
+            
             playChallengeReceivedSound() {
                 if (window.AudioContext || window.webkitAudioContext) {
                     try {
@@ -1562,39 +1404,7 @@
                 }
             }
             
-            playCountIncreaseSound() {
-                if (window.AudioContext || window.webkitAudioContext) {
-                    try {
-                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                        const oscillator = audioContext.createOscillator();
-                        const gainNode = audioContext.createGain();
-                        
-                        oscillator.connect(gainNode);
-                        gainNode.connect(audioContext.destination);
-                        
-                        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                        oscillator.frequency.exponentialRampToValueAtTime(1200, audioContext.currentTime + 0.1);
-                        gainNode.gain.setValueAtTime(0.05, audioContext.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-                        
-                        oscillator.start(audioContext.currentTime);
-                        oscillator.stop(audioContext.currentTime + 0.1);
-                    } catch (e) {
-                        // Ignore audio errors
-                    }
-                }
-            }
             
-            updateStatus(status, text) {
-                // Remove all status classes
-                this.statusIndicator.classList.remove('connected', 'disconnected', 'connecting');
-                this.statusText.classList.remove('connected', 'disconnected', 'connecting');
-                
-                // Add new status class
-                this.statusIndicator.classList.add(status);
-                this.statusText.classList.add(status);
-                this.statusText.textContent = text;
-            }
             
             playSuccessSound() {
                 if (window.AudioContext || window.webkitAudioContext) {

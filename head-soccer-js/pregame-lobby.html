@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Head Soccer - Match Found!</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            height: 100vh;
+            color: white;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        /* Main container */
+        .main-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #0c0c2e 0%, #1a0c3e 25%, #2d1b5e 50%, #0c0c2e 75%, #000 100%);
+        }
+        
+        /* Canvas for animated background */
+        #backgroundCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        /* Content wrapper */
+        .content-wrapper {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            animation: fadeIn 1s ease-out;
+            max-width: 1000px;
+            width: 100%;
+            padding: 2rem;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Match found title */
+        .match-found-title {
+            font-size: clamp(2.5rem, 6vw, 4rem);
+            font-weight: bold;
+            letter-spacing: 3px;
+            margin-bottom: 2rem;
+            color: #00ff88;
+            text-shadow: 
+                0 0 20px rgba(0, 255, 136, 0.8),
+                0 0 40px rgba(0, 255, 136, 0.6),
+                0 0 60px rgba(0, 255, 136, 0.4);
+            text-transform: uppercase;
+            font-family: 'Font', Arial, sans-serif;
+            animation: pulse 2s ease-in-out infinite, matchFoundAnimation 0.5s ease-out;
+        }
+        
+        @keyframes matchFoundAnimation {
+            0% {
+                transform: scale(0);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.2);
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        /* Players container */
+        .players-container {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+            align-items: center;
+        }
+        
+        /* Player card */
+        .player-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        .player-card.player1 {
+            animation-delay: 0.2s;
+        }
+        
+        .player-card.player2 {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .player-card.player2 {
+            animation-name: slideInRight;
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .player-label {
+            color: #4A90E2;
+            font-size: 1rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-bottom: 0.5rem;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        .player-name {
+            color: white;
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .player-character {
+            width: 120px;
+            height: 120px;
+            margin: 1rem auto;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+        }
+        
+        .player-stats {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            margin-top: 1rem;
+        }
+        
+        /* VS text */
+        .vs-text {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #ff6b35;
+            text-shadow: 
+                0 0 20px rgba(255, 107, 53, 0.8),
+                0 0 40px rgba(255, 107, 53, 0.6);
+            font-family: 'Font', Arial, sans-serif;
+            animation: vsAnimation 1s ease-out;
+        }
+        
+        @keyframes vsAnimation {
+            0% {
+                transform: scale(0) rotate(0deg);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.5) rotate(180deg);
+            }
+            100% {
+                transform: scale(1) rotate(360deg);
+                opacity: 1;
+            }
+        }
+        
+        /* Countdown section */
+        .countdown-section {
+            margin-bottom: 3rem;
+        }
+        
+        .countdown-label {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+        }
+        
+        .countdown-timer {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #ffaa00;
+            text-shadow: 
+                0 0 20px rgba(255, 170, 0, 0.8),
+                0 0 40px rgba(255, 170, 0, 0.6);
+            font-family: 'Font', Arial, sans-serif;
+            animation: countdownPulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes countdownPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .countdown-timer.urgent {
+            color: #ff4444;
+            text-shadow: 
+                0 0 20px rgba(255, 68, 68, 0.8),
+                0 0 40px rgba(255, 68, 68, 0.6);
+            animation: urgentPulse 0.5s ease-in-out infinite;
+        }
+        
+        @keyframes urgentPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        
+        /* Action buttons */
+        .action-buttons {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-top: 2rem;
+        }
+        
+        .select-character-btn {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+            border: 3px solid #00aa44;
+            border-radius: 15px;
+            color: white;
+            font-size: 1.2rem;
+            font-weight: bold;
+            padding: 1rem 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 10px 30px rgba(0, 255, 136, 0.3);
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .select-character-btn:hover {
+            background: linear-gradient(135deg, #22ff99 0%, #11dd77 100%);
+            transform: translateY(-3px) scale(1.05);
+            box-shadow: 0 15px 40px rgba(0, 255, 136, 0.4);
+        }
+        
+        .leave-btn {
+            background: linear-gradient(135deg, #666 0%, #444 100%);
+            border: 2px solid #333;
+            border-radius: 10px;
+            color: white;
+            font-size: 1rem;
+            font-weight: bold;
+            padding: 0.8rem 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .leave-btn:hover {
+            background: linear-gradient(135deg, #888 0%, #666 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* Loading fonts */
+        @font-face {
+            font-family: 'Font';
+            src: url('./assets/Font.TTF') format('truetype');
+            font-display: swap;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .players-container {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .vs-text {
+                margin: 1rem 0;
+            }
+            
+            .player-card {
+                padding: 1.5rem;
+            }
+            
+            .countdown-timer {
+                font-size: 3rem;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <canvas id="backgroundCanvas"></canvas>
+        
+        <div class="content-wrapper">
+            <h1 class="match-found-title">Match Found!</h1>
+            
+            <div class="players-container">
+                <div class="player-card player1">
+                    <div class="player-label">Player 1</div>
+                    <div class="player-name" id="player1Name">Loading...</div>
+                    <div class="player-character" id="player1Character">🏃</div>
+                    <div class="player-stats" id="player1Stats">Ready to play!</div>
+                </div>
+                
+                <div class="vs-text">VS</div>
+                
+                <div class="player-card player2">
+                    <div class="player-label">Player 2</div>
+                    <div class="player-name" id="player2Name">Loading...</div>
+                    <div class="player-character" id="player2Character">🏃</div>
+                    <div class="player-stats" id="player2Stats">Ready to play!</div>
+                </div>
+            </div>
+            
+            <div class="countdown-section">
+                <div class="countdown-label">Match starts in</div>
+                <div class="countdown-timer" id="countdownTimer">10</div>
+            </div>
+            
+            <div class="action-buttons">
+                <a href="#" class="select-character-btn" id="selectCharacterBtn">Select Character</a>
+                <button class="leave-btn" id="leaveBtn">Leave Match</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/auth-manager.js"></script>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <script>
+        class PregameLobby {
+            constructor() {
+                // Get DOM elements
+                this.player1Name = document.getElementById('player1Name');
+                this.player2Name = document.getElementById('player2Name');
+                this.player1Character = document.getElementById('player1Character');
+                this.player2Character = document.getElementById('player2Character');
+                this.player1Stats = document.getElementById('player1Stats');
+                this.player2Stats = document.getElementById('player2Stats');
+                this.countdownTimer = document.getElementById('countdownTimer');
+                this.selectCharacterBtn = document.getElementById('selectCharacterBtn');
+                this.leaveBtn = document.getElementById('leaveBtn');
+                
+                // Parse URL parameters for match data
+                this.parseMatchData();
+                
+                // Initialize countdown
+                this.countdown = 10;
+                this.countdownInterval = null;
+                
+                // Setup event listeners
+                this.setupEventListeners();
+                
+                // Initialize background animation
+                this.initializeBackground();
+                
+                // Connect to server
+                this.connectToServer();
+                
+                // Start countdown
+                this.startCountdown();
+                
+                // Play match found sound
+                this.playMatchFoundSound();
+            }
+            
+            parseMatchData() {
+                const urlParams = new URLSearchParams(window.location.search);
+                this.matchId = urlParams.get('matchId') || 'test-match';
+                this.player1Id = urlParams.get('player1Id') || 'player1';
+                this.player2Id = urlParams.get('player2Id') || 'player2';
+                this.player1Username = urlParams.get('player1') || 'Player 1';
+                this.player2Username = urlParams.get('player2') || 'Player 2';
+                
+                // Update UI with player names
+                this.player1Name.textContent = this.player1Username;
+                this.player2Name.textContent = this.player2Username;
+                
+                // Determine which player is the current user
+                const currentUser = window.authManager?.getCurrentUser();
+                if (currentUser) {
+                    this.isPlayer1 = currentUser.username === this.player1Username;
+                } else {
+                    // Default to player 1 if no auth
+                    this.isPlayer1 = true;
+                }
+            }
+            
+            setupEventListeners() {
+                // Character selection button
+                this.selectCharacterBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.goToCharacterSelection();
+                });
+                
+                // Leave button
+                this.leaveBtn.addEventListener('click', () => {
+                    if (confirm('Are you sure you want to leave the match?')) {
+                        this.leaveMatch();
+                    }
+                });
+            }
+            
+            connectToServer() {
+                const serverUrl = window.CONFIG?.SERVER_URL || 'https://head-soccer-production.up.railway.app';
+                
+                try {
+                    this.socket = io(serverUrl, {
+                        transports: ['websocket', 'polling'],
+                        timeout: 10000
+                    });
+                    
+                    this.socket.on('connect', () => {
+                        console.log('Connected to server');
+                        // Join the match room
+                        this.socket.emit('join_pregame_lobby', {
+                            matchId: this.matchId,
+                            playerId: this.isPlayer1 ? this.player1Id : this.player2Id,
+                            username: this.isPlayer1 ? this.player1Username : this.player2Username
+                        });
+                    });
+                    
+                    // Listen for character updates
+                    this.socket.on('character_selected', (data) => {
+                        this.updateCharacterDisplay(data.playerId, data.character);
+                    });
+                    
+                    // Listen for player leaving
+                    this.socket.on('player_left_match', (data) => {
+                        alert(`${data.username} left the match!`);
+                        window.location.href = 'multiplayer-selection.html';
+                    });
+                    
+                } catch (error) {
+                    console.error('Failed to connect:', error);
+                }
+            }
+            
+            startCountdown() {
+                this.countdownInterval = setInterval(() => {
+                    this.countdown--;
+                    this.countdownTimer.textContent = this.countdown;
+                    
+                    // Add urgent class for last 3 seconds
+                    if (this.countdown <= 3) {
+                        this.countdownTimer.classList.add('urgent');
+                        this.playCountdownSound();
+                    }
+                    
+                    // When countdown reaches 0, go to character selection
+                    if (this.countdown <= 0) {
+                        clearInterval(this.countdownInterval);
+                        this.goToCharacterSelection();
+                    }
+                }, 1000);
+            }
+            
+            goToCharacterSelection() {
+                // Pass match data to character selection
+                const params = new URLSearchParams({
+                    mode: 'multiplayer',
+                    matchId: this.matchId,
+                    player1Id: this.player1Id,
+                    player2Id: this.player2Id,
+                    player1: this.player1Username,
+                    player2: this.player2Username,
+                    isPlayer1: this.isPlayer1
+                });
+                
+                window.location.href = `character-selection-multiplayer.html?${params.toString()}`;
+            }
+            
+            leaveMatch() {
+                if (this.socket) {
+                    this.socket.emit('leave_match', {
+                        matchId: this.matchId,
+                        playerId: this.isPlayer1 ? this.player1Id : this.player2Id,
+                        username: this.isPlayer1 ? this.player1Username : this.player2Username
+                    });
+                }
+                
+                // Return to multiplayer selection
+                window.location.href = 'multiplayer-selection.html';
+            }
+            
+            updateCharacterDisplay(playerId, character) {
+                // This will be used when we have character selection integration
+                if (playerId === this.player1Id) {
+                    this.player1Character.textContent = character.emoji || '🏃';
+                } else if (playerId === this.player2Id) {
+                    this.player2Character.textContent = character.emoji || '🏃';
+                }
+            }
+            
+            playMatchFoundSound() {
+                if (window.AudioContext || window.webkitAudioContext) {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        // Victory fanfare sound
+                        oscillator.frequency.setValueAtTime(440, audioContext.currentTime);
+                        oscillator.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.2);
+                        oscillator.frequency.setValueAtTime(660, audioContext.currentTime + 0.3);
+                        oscillator.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.5);
+                        
+                        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.5);
+                    } catch (e) {
+                        // Ignore audio errors
+                    }
+                }
+            }
+            
+            playCountdownSound() {
+                if (window.AudioContext || window.webkitAudioContext) {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        const oscillator = audioContext.createOscillator();
+                        const gainNode = audioContext.createGain();
+                        
+                        oscillator.connect(gainNode);
+                        gainNode.connect(audioContext.destination);
+                        
+                        oscillator.frequency.setValueAtTime(600, audioContext.currentTime);
+                        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                        
+                        oscillator.start(audioContext.currentTime);
+                        oscillator.stop(audioContext.currentTime + 0.1);
+                    } catch (e) {
+                        // Ignore audio errors
+                    }
+                }
+            }
+            
+            initializeBackground() {
+                const canvas = document.getElementById('backgroundCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Set canvas size
+                function resizeCanvas() {
+                    canvas.width = canvas.offsetWidth;
+                    canvas.height = canvas.offsetHeight;
+                }
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+                
+                // Simple particle system
+                const particles = [];
+                const numParticles = 50;
+                
+                class Particle {
+                    constructor() {
+                        this.x = Math.random() * canvas.width;
+                        this.y = Math.random() * canvas.height;
+                        this.vx = (Math.random() - 0.5) * 1;
+                        this.vy = (Math.random() - 0.5) * 1;
+                        this.size = Math.random() * 3 + 1;
+                        this.opacity = Math.random() * 0.8 + 0.2;
+                        this.color = this.getRandomColor();
+                    }
+                    
+                    getRandomColor() {
+                        const colors = ['#00ff88', '#4A90E2', '#ff6b35', '#ffaa00'];
+                        return colors[Math.floor(Math.random() * colors.length)];
+                    }
+                    
+                    update() {
+                        this.x += this.vx;
+                        this.y += this.vy;
+                        
+                        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+                    }
+                    
+                    draw() {
+                        ctx.save();
+                        ctx.globalAlpha = this.opacity;
+                        ctx.fillStyle = this.color;
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = this.color;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+                
+                // Initialize particles
+                for (let i = 0; i < numParticles; i++) {
+                    particles.push(new Particle());
+                }
+                
+                // Animation loop
+                function animate() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    particles.forEach(particle => {
+                        particle.update();
+                        particle.draw();
+                    });
+                    
+                    requestAnimationFrame(animate);
+                }
+                
+                animate();
+            }
+        }
+        
+        // Initialize pregame lobby when page loads
+        window.addEventListener('load', () => {
+            new PregameLobby();
+        });
+    </script>
+</body>
+</html>

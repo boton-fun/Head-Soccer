@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Head Soccer - Multiplayer Character Selection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            min-height: 100vh;
+            color: white;
+            overflow: hidden;
+        }
+        
+        /* Main container */
+        .main-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            background: linear-gradient(135deg, #0c0c2e 0%, #1a0c3e 25%, #2d1b5e 50%, #0c0c2e 75%, #000 100%);
+        }
+        
+        /* Canvas for animated background */
+        #backgroundCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        
+        /* Header */
+        .header {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .game-title {
+            font-size: 3rem;
+            font-weight: bold;
+            letter-spacing: 5px;
+            margin-bottom: 0.5rem;
+            color: white;
+            text-shadow: 
+                0 0 10px rgba(255, 255, 255, 0.5),
+                0 0 20px rgba(255, 255, 255, 0.3),
+                0 0 30px rgba(255, 255, 255, 0.1);
+            text-transform: uppercase;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        .multiplayer-status {
+            color: #00ff88;
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            font-weight: bold;
+        }
+        
+        /* Main content area */
+        .content-wrapper {
+            position: relative;
+            z-index: 10;
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 2rem;
+            padding: 0 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+        }
+        
+        /* Player sections */
+        .player-section {
+            background: rgba(26, 26, 46, 0.9);
+            border-radius: 25px;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(10px);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+        
+        .player-section.current-player {
+            border-color: #00ff88;
+            box-shadow: 0 15px 35px rgba(0, 255, 136, 0.3);
+        }
+        
+        .player-section.opponent {
+            border-color: #4A90E2;
+            box-shadow: 0 15px 35px rgba(74, 144, 226, 0.3);
+        }
+        
+        .player-label {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-family: 'Font', Arial, sans-serif;
+        }
+        
+        .player-label.current {
+            color: #00ff88;
+        }
+        
+        .player-label.opponent {
+            color: #4A90E2;
+        }
+        
+        .ready-status {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            padding: 0.5rem 1rem;
+            border-radius: 10px;
+            text-transform: uppercase;
+        }
+        
+        .ready-status.ready {
+            background: rgba(0, 255, 136, 0.2);
+            color: #00ff88;
+            border: 2px solid #00ff88;
+        }
+        
+        .ready-status.selecting {
+            background: rgba(255, 170, 0, 0.2);
+            color: #ffaa00;
+            border: 2px solid #ffaa00;
+        }
+        
+        .ready-status.waiting {
+            background: rgba(128, 128, 128, 0.2);
+            color: #ccc;
+            border: 2px solid #888;
+        }
+        
+        /* Character grid */
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin: 2rem 0;
+            width: 100%;
+            max-width: 320px;
+        }
+        
+        .character-item {
+            width: 70px;
+            height: 70px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .character-item:hover {
+            transform: scale(1.05);
+            border-color: rgba(255, 255, 255, 0.6);
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .character-item.selected {
+            border-color: #00ff88;
+            background: rgba(0, 255, 136, 0.2);
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+        
+        .character-item.opponent-selected {
+            border-color: #ff6b35;
+            background: rgba(255, 107, 53, 0.2);
+            box-shadow: 0 0 20px rgba(255, 107, 53, 0.5);
+        }
+        
+        .character-item.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .character-item img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
+        
+        /* Character preview */
+        .character-preview {
+            width: 150px;
+            height: 150px;
+            border-radius: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 1rem 0;
+        }
+        
+        .character-preview img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+        }
+        
+        .character-name {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin: 1rem 0;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Center section */
+        .center-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+        
+        .vs-text {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #ff6b35;
+            text-shadow: 
+                0 0 20px rgba(255, 107, 53, 0.8),
+                0 0 40px rgba(255, 107, 53, 0.6);
+            font-family: 'Font', Arial, sans-serif;
+            animation: pulse 2s ease-in-out infinite;
+            margin: 2rem 0;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        /* Ready button */
+        .ready-button {
+            background: linear-gradient(135deg, #4A90E2 0%, #2E5BBA 100%);
+            border: 4px solid #1E3A8A;
+            border-radius: 25px;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            padding: 1rem 2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-family: 'Font', Arial, sans-serif;
+            margin-top: 2rem;
+            min-width: 200px;
+        }
+        
+        .ready-button:hover {
+            transform: translateY(-3px) scale(1.05);
+            background: linear-gradient(135deg, #5BA3F5 0%, #3A6CCD 100%);
+            border-color: #2563EB;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+        }
+        
+        .ready-button.ready {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+            border-color: #00aa44;
+        }
+        
+        .ready-button.waiting {
+            background: linear-gradient(135deg, #666 0%, #444 100%);
+            border-color: #333;
+            cursor: not-allowed;
+        }
+        
+        .ready-button.both-ready {
+            background: linear-gradient(135deg, #ff6b35 0%, #e55a2b 100%);
+            border-color: #cc4125;
+            animation: readyPulse 1s ease-in-out infinite;
+        }
+        
+        @keyframes readyPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        /* Back Button */
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 20;
+            background: linear-gradient(135deg, #666, #444);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: normal;
+            font-family: Arial, sans-serif;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .back-button:hover {
+            background: linear-gradient(135deg, #777, #555);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+        }
+        
+        /* Loading fonts */
+        @font-face {
+            font-family: 'Font';
+            src: url('./assets/Font.TTF') format('truetype');
+            font-display: swap;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .content-wrapper {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .center-section {
+                order: -1;
+            }
+            
+            .vs-text {
+                font-size: 3rem;
+                margin: 1rem 0;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .game-title {
+                font-size: 2rem;
+                letter-spacing: 2px;
+            }
+            
+            .player-section {
+                padding: 1rem;
+            }
+            
+            .character-grid {
+                max-width: 280px;
+            }
+            
+            .character-item {
+                width: 60px;
+                height: 60px;
+            }
+            
+            .character-preview {
+                width: 120px;
+                height: 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <canvas id="backgroundCanvas"></canvas>
+        
+        <a href="multiplayer-selection.html" class="back-button">← Back</a>
+        
+        <div class="header">
+            <h1 class="game-title">Multiplayer Character Selection</h1>
+            <div class="multiplayer-status">Select your character and ready up!</div>
+        </div>
+        
+        <div class="content-wrapper">
+            <!-- Current Player Section -->
+            <div class="player-section current-player" id="currentPlayerSection">
+                <div class="player-label current" id="currentPlayerLabel">You</div>
+                <div class="ready-status selecting" id="currentPlayerStatus">Selecting...</div>
+                
+                <div class="character-preview" id="currentPlayerPreview">
+                    <div style="color: #ccc; font-size: 1rem;">Select Character</div>
+                </div>
+                
+                <div class="character-name" id="currentPlayerCharacterName">-</div>
+                
+                <div class="character-grid" id="currentPlayerGrid">
+                    <!-- Character options will be populated by JavaScript -->
+                </div>
+                
+                <button class="ready-button" id="readyButton">Ready Up!</button>
+            </div>
+            
+            <!-- Center VS Section -->
+            <div class="center-section">
+                <div class="vs-text">VS</div>
+                <div id="matchInfo" style="text-align: center; color: #ccc; font-size: 1rem;">
+                    <div>Match ID: <span id="matchId">-</span></div>
+                    <div style="margin-top: 0.5rem;">Waiting for both players...</div>
+                </div>
+            </div>
+            
+            <!-- Opponent Section -->
+            <div class="player-section opponent" id="opponentSection">
+                <div class="player-label opponent" id="opponentLabel">Opponent</div>
+                <div class="ready-status waiting" id="opponentStatus">Connecting...</div>
+                
+                <div class="character-preview" id="opponentPreview">
+                    <div style="color: #ccc; font-size: 1rem;">Waiting...</div>
+                </div>
+                
+                <div class="character-name" id="opponentCharacterName">-</div>
+                
+                <div class="character-grid" id="opponentGrid">
+                    <!-- Character options will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load configuration and utilities first -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    
+    <!-- Socket.IO for multiplayer support -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <script>
+        class MultiplayerCharacterSelection {
+            constructor() {
+                // Parse URL parameters
+                this.parseMultiplayerData();
+                
+                // Character selection state
+                this.currentPlayerSelectedHead = null;
+                this.opponentSelectedHead = null;
+                this.currentPlayerReady = false;
+                this.opponentReady = false;
+                
+                // WebSocket connection
+                this.socket = null;
+                
+                // DOM elements
+                this.initializeElements();
+                
+                // Initialize UI
+                this.setupUI();
+                
+                // Connect to server
+                this.connectToServer();
+                
+                // Initialize background animation
+                this.initializeBackground();
+            }
+            
+            parseMultiplayerData() {
+                const urlParams = new URLSearchParams(window.location.search);
+                this.matchId = urlParams.get('matchId') || 'test-match';
+                this.player1Id = urlParams.get('player1Id') || 'player1';
+                this.player2Id = urlParams.get('player2Id') || 'player2';
+                this.player1Username = urlParams.get('player1') || 'Player 1';
+                this.player2Username = urlParams.get('player2') || 'Player 2';
+                this.isPlayer1 = urlParams.get('isPlayer1') === 'true';
+                
+                console.log('Multiplayer character selection initialized:', {
+                    matchId: this.matchId,
+                    currentPlayer: this.isPlayer1 ? this.player1Username : this.player2Username,
+                    opponent: this.isPlayer1 ? this.player2Username : this.player1Username,
+                    isPlayer1: this.isPlayer1
+                });
+            }
+            
+            initializeElements() {
+                this.currentPlayerLabel = document.getElementById('currentPlayerLabel');
+                this.opponentLabel = document.getElementById('opponentLabel');
+                this.currentPlayerStatus = document.getElementById('currentPlayerStatus');
+                this.opponentStatus = document.getElementById('opponentStatus');
+                this.currentPlayerPreview = document.getElementById('currentPlayerPreview');
+                this.opponentPreview = document.getElementById('opponentPreview');
+                this.currentPlayerCharacterName = document.getElementById('currentPlayerCharacterName');
+                this.opponentCharacterName = document.getElementById('opponentCharacterName');
+                this.currentPlayerGrid = document.getElementById('currentPlayerGrid');
+                this.opponentGrid = document.getElementById('opponentGrid');
+                this.readyButton = document.getElementById('readyButton');
+                this.matchIdElement = document.getElementById('matchId');
+            }
+            
+            setupUI() {
+                // Set player names
+                this.currentPlayerLabel.textContent = `${this.isPlayer1 ? this.player1Username : this.player2Username} (You)`;
+                this.opponentLabel.textContent = this.isPlayer1 ? this.player2Username : this.player1Username;
+                this.matchIdElement.textContent = this.matchId;
+                
+                // Create character grids
+                this.createCharacterGrid();
+                
+                // Setup ready button
+                this.readyButton.addEventListener('click', () => {
+                    this.toggleReady();
+                });
+            }
+            
+            createCharacterGrid() {
+                // Clear existing grids
+                this.currentPlayerGrid.innerHTML = '';
+                this.opponentGrid.innerHTML = '';
+                
+                // Create character items for both grids
+                if (window.CONFIG && CONFIG.CHARACTER_HEADS) {
+                    CONFIG.CHARACTER_HEADS.forEach((headName, index) => {
+                        // Current player grid
+                        const currentItem = this.createCharacterItem(headName, index, true);
+                        this.currentPlayerGrid.appendChild(currentItem);
+                        
+                        // Opponent grid (read-only)
+                        const opponentItem = this.createCharacterItem(headName, index, false);
+                        this.opponentGrid.appendChild(opponentItem);
+                    });
+                } else {
+                    // Fallback if CONFIG not loaded
+                    for (let i = 0; i < 8; i++) {
+                        const currentItem = this.createCharacterItem(`Character${i + 1}`, i, true);
+                        this.currentPlayerGrid.appendChild(currentItem);
+                        
+                        const opponentItem = this.createCharacterItem(`Character${i + 1}`, i, false);
+                        this.opponentGrid.appendChild(opponentItem);
+                    }
+                }
+            }
+            
+            createCharacterItem(headName, index, isClickable) {
+                const item = document.createElement('div');
+                item.className = 'character-item';
+                item.dataset.index = index;
+                item.dataset.headName = headName;
+                
+                // Add character image or placeholder
+                const img = document.createElement('div');
+                img.style.width = '50px';
+                img.style.height = '50px';
+                img.style.background = `hsl(${index * 45}, 70%, 60%)`;
+                img.style.borderRadius = '50%';
+                img.style.display = 'flex';
+                img.style.alignItems = 'center';
+                img.style.justifyContent = 'center';
+                img.style.fontSize = '0.8rem';
+                img.style.fontWeight = 'bold';
+                img.textContent = headName.charAt(0);
+                
+                item.appendChild(img);
+                
+                if (isClickable) {
+                    item.addEventListener('click', () => {
+                        this.selectCharacter(index, headName);
+                    });
+                }
+                
+                return item;
+            }
+            
+            selectCharacter(index, headName) {
+                if (this.currentPlayerReady) return; // Can't change if already ready
+                
+                this.currentPlayerSelectedHead = index;
+                this.updateCharacterSelection();
+                this.emitCharacterSelection(index, headName);
+            }
+            
+            updateCharacterSelection() {
+                // Update current player grid
+                this.currentPlayerGrid.querySelectorAll('.character-item').forEach((item, index) => {
+                    item.classList.remove('selected', 'opponent-selected', 'locked');
+                    
+                    if (index === this.currentPlayerSelectedHead) {
+                        item.classList.add('selected');
+                    } else if (index === this.opponentSelectedHead) {
+                        item.classList.add('locked');
+                    }
+                });
+                
+                // Update opponent grid
+                this.opponentGrid.querySelectorAll('.character-item').forEach((item, index) => {
+                    item.classList.remove('selected', 'opponent-selected');
+                    
+                    if (index === this.opponentSelectedHead) {
+                        item.classList.add('opponent-selected');
+                    } else if (index === this.currentPlayerSelectedHead) {
+                        item.classList.add('selected');
+                    }
+                });
+                
+                // Update previews
+                this.updatePreviews();
+            }
+            
+            updatePreviews() {
+                // Update current player preview
+                if (this.currentPlayerSelectedHead !== null) {
+                    const headName = CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[this.currentPlayerSelectedHead] : `Character${this.currentPlayerSelectedHead + 1}`;
+                    this.currentPlayerPreview.innerHTML = `<div style="width: 120px; height: 120px; background: hsl(${this.currentPlayerSelectedHead * 45}, 70%, 60%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold;">${headName.charAt(0)}</div>`;
+                    this.currentPlayerCharacterName.textContent = headName;
+                } else {
+                    this.currentPlayerPreview.innerHTML = '<div style="color: #ccc; font-size: 1rem;">Select Character</div>';
+                    this.currentPlayerCharacterName.textContent = '-';
+                }
+                
+                // Update opponent preview
+                if (this.opponentSelectedHead !== null) {
+                    const headName = CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[this.opponentSelectedHead] : `Character${this.opponentSelectedHead + 1}`;
+                    this.opponentPreview.innerHTML = `<div style="width: 120px; height: 120px; background: hsl(${this.opponentSelectedHead * 45}, 70%, 60%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold;">${headName.charAt(0)}</div>`;
+                    this.opponentCharacterName.textContent = headName;
+                } else {
+                    this.opponentPreview.innerHTML = '<div style="color: #ccc; font-size: 1rem;">Waiting...</div>';
+                    this.opponentCharacterName.textContent = '-';
+                }
+            }
+            
+            toggleReady() {
+                if (this.currentPlayerSelectedHead === null) {
+                    alert('Please select a character first!');
+                    return;
+                }
+                
+                this.currentPlayerReady = !this.currentPlayerReady;
+                this.updateUI();
+                this.emitReadyStatus();
+            }
+            
+            updateUI() {
+                // Update current player status
+                if (this.currentPlayerReady) {
+                    this.currentPlayerStatus.className = 'ready-status ready';
+                    this.currentPlayerStatus.textContent = '✓ Ready';
+                } else {
+                    this.currentPlayerStatus.className = 'ready-status selecting';
+                    this.currentPlayerStatus.textContent = 'Selecting...';
+                }
+                
+                // Update opponent status
+                if (this.opponentReady) {
+                    this.opponentStatus.className = 'ready-status ready';
+                    this.opponentStatus.textContent = '✓ Ready';
+                } else {
+                    this.opponentStatus.className = 'ready-status selecting';
+                    this.opponentStatus.textContent = 'Selecting...';
+                }
+                
+                // Update ready button
+                const bothReady = this.currentPlayerReady && this.opponentReady;
+                
+                if (bothReady) {
+                    this.readyButton.className = 'ready-button both-ready';
+                    this.readyButton.textContent = 'Starting Match...';
+                    this.readyButton.disabled = true;
+                } else if (this.currentPlayerReady) {
+                    this.readyButton.className = 'ready-button waiting';
+                    this.readyButton.textContent = 'Waiting for Opponent';
+                } else {
+                    this.readyButton.className = 'ready-button';
+                    this.readyButton.textContent = this.currentPlayerSelectedHead !== null ? 'Ready Up!' : 'Select Character';
+                    this.readyButton.disabled = false;
+                }
+            }
+            
+            connectToServer() {
+                const serverUrl = window.CONFIG?.SERVER_URL || 'https://head-soccer-production.up.railway.app';
+                
+                try {
+                    this.socket = io(serverUrl, {
+                        transports: ['websocket', 'polling'],
+                        timeout: 10000
+                    });
+                    
+                    this.socket.on('connect', () => {
+                        console.log('Connected to server for character selection');
+                        // Join character selection room
+                        this.socket.emit('join_character_selection', {
+                            matchId: this.matchId,
+                            playerId: this.isPlayer1 ? this.player1Id : this.player2Id,
+                            username: this.isPlayer1 ? this.player1Username : this.player2Username
+                        });
+                    });
+                    
+                    // Listen for opponent joining
+                    this.socket.on('opponent_joined', (data) => {
+                        console.log('Opponent joined character selection:', data);
+                        this.opponentStatus.className = 'ready-status selecting';
+                        this.opponentStatus.textContent = 'Selecting...';
+                    });
+                    
+                    // Listen for opponent character selection
+                    this.socket.on('character_select', (data) => {
+                        console.log('Received character_select event:', data);
+                        console.log('Current player ID:', this.isPlayer1 ? this.player1Id : this.player2Id);
+                        if (data.playerId !== (this.isPlayer1 ? this.player1Id : this.player2Id)) {
+                            console.log('Processing opponent selection:', data.characterIndex);
+                            this.opponentSelectedHead = data.characterIndex;
+                            this.updateCharacterSelection();
+                            console.log('Opponent selected character:', data.characterData.name);
+                        } else {
+                            console.log('Ignoring own character selection event');
+                        }
+                    });
+                    
+                    // Listen for opponent ready status
+                    this.socket.on('player_ready', (data) => {
+                        if (data.playerId !== (this.isPlayer1 ? this.player1Id : this.player2Id)) {
+                            this.opponentReady = data.ready;
+                            this.updateUI();
+                        }
+                    });
+                    
+                    // Listen for both players ready
+                    this.socket.on('selection_complete', (data) => {
+                        console.log('Both players ready, transitioning to pregame lobby');
+                        setTimeout(() => {
+                            this.goToPregameLobby(data);
+                        }, 2000);
+                    });
+                    
+                    // Handle opponent disconnect
+                    this.socket.on('player_left_match', (data) => {
+                        alert(`${data.username} left the match!`);
+                        window.location.href = 'multiplayer-selection.html';
+                    });
+                    
+                } catch (error) {
+                    console.error('Failed to connect to server:', error);
+                }
+            }
+            
+            emitCharacterSelection(index, headName) {
+                if (this.socket && this.socket.connected) {
+                    const selectionData = {
+                        matchId: this.matchId,
+                        playerId: this.isPlayer1 ? this.player1Id : this.player2Id,
+                        characterType: 'head',
+                        characterIndex: index,
+                        characterData: {
+                            type: 'head',
+                            index: index,
+                            name: headName
+                        }
+                    };
+                    console.log('Emitting character_select:', selectionData);
+                    this.socket.emit('character_select', selectionData);
+                } else {
+                    console.log('Socket not connected, cannot emit character selection');
+                }
+            }
+            
+            emitReadyStatus() {
+                if (this.socket && this.socket.connected) {
+                    this.socket.emit('player_ready', {
+                        matchId: this.matchId,
+                        playerId: this.isPlayer1 ? this.player1Id : this.player2Id,
+                        ready: this.currentPlayerReady,
+                        selectedHead: this.currentPlayerSelectedHead,
+                        selectedCleat: 0 // Default cleat for now
+                    });
+                }
+            }
+            
+            goToPregameLobby(data) {
+                // Pass match data and selections to pregame lobby
+                const params = new URLSearchParams({
+                    matchId: this.matchId,
+                    player1Id: this.player1Id,
+                    player2Id: this.player2Id,
+                    player1: this.player1Username,
+                    player2: this.player2Username,
+                    player1Head: CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[this.isPlayer1 ? this.currentPlayerSelectedHead : this.opponentSelectedHead] : `Character${(this.isPlayer1 ? this.currentPlayerSelectedHead : this.opponentSelectedHead) + 1}`,
+                    player2Head: CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[this.isPlayer1 ? this.opponentSelectedHead : this.currentPlayerSelectedHead] : `Character${(this.isPlayer1 ? this.opponentSelectedHead : this.currentPlayerSelectedHead) + 1}`,
+                    player1Cleat: 'Basic',
+                    player2Cleat: 'Basic'
+                });
+                
+                window.location.href = `pregame-lobby.html?${params.toString()}`;
+            }
+            
+            initializeBackground() {
+                const canvas = document.getElementById('backgroundCanvas');
+                const ctx = canvas.getContext('2d');
+                
+                // Set canvas size
+                function resizeCanvas() {
+                    canvas.width = canvas.offsetWidth;
+                    canvas.height = canvas.offsetHeight;
+                }
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+                
+                // Simple particle system
+                const particles = [];
+                const numParticles = 50;
+                
+                class Particle {
+                    constructor() {
+                        this.x = Math.random() * canvas.width;
+                        this.y = Math.random() * canvas.height;
+                        this.vx = (Math.random() - 0.5) * 1;
+                        this.vy = (Math.random() - 0.5) * 1;
+                        this.size = Math.random() * 3 + 1;
+                        this.opacity = Math.random() * 0.8 + 0.2;
+                        this.color = this.getRandomColor();
+                    }
+                    
+                    getRandomColor() {
+                        const colors = ['#00ff88', '#4A90E2', '#ff6b35', '#ffaa00'];
+                        return colors[Math.floor(Math.random() * colors.length)];
+                    }
+                    
+                    update() {
+                        this.x += this.vx;
+                        this.y += this.vy;
+                        
+                        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+                    }
+                    
+                    draw() {
+                        ctx.save();
+                        ctx.globalAlpha = this.opacity;
+                        ctx.fillStyle = this.color;
+                        ctx.shadowBlur = 10;
+                        ctx.shadowColor = this.color;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+                
+                // Initialize particles
+                for (let i = 0; i < numParticles; i++) {
+                    particles.push(new Particle());
+                }
+                
+                // Animation loop
+                function animate() {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    particles.forEach(particle => {
+                        particle.update();
+                        particle.draw();
+                    });
+                    
+                    requestAnimationFrame(animate);
+                }
+                
+                animate();
+            }
+        }
+        
+        // Initialize when page loads
+        window.addEventListener('load', () => {
+            new MultiplayerCharacterSelection();
+        });
+    </script>
+</body>
+</html>
