@@ -771,8 +771,12 @@
                         const user = window.authManager.getCurrentUser();
                         console.log('🔍 DEBUG: Current user object:', user);
                         
-                        // Ensure playerId is a string, not an array
-                        let playerId = user.id || user.username;
+                        // Ensure playerId is a string, not an array, and generate UUID if needed
+                        let playerId = user.id;
+                        if (!playerId || playerId === 'undefined') {
+                            playerId = Utils.generateUUID();
+                            console.log('🆔 Generated new UUID for user:', playerId);
+                        }
                         if (Array.isArray(playerId)) {
                             console.warn('⚠️ playerId was an array, taking first element:', playerId);
                             playerId = playerId[0];
@@ -853,7 +857,7 @@
                 // Authenticate with fallback data
                 if (username) {
                     const authData = {
-                        playerId: username.toLowerCase(),
+                        playerId: Utils.generateUUID(),
                         username: username,
                         token: 'fallback-token'
                     };

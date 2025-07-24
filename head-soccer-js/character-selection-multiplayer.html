@@ -474,11 +474,21 @@
             parseMultiplayerData() {
                 const urlParams = new URLSearchParams(window.location.search);
                 this.matchId = urlParams.get('matchId') || 'test-match';
-                this.player1Id = urlParams.get('player1Id') || 'player1';
-                this.player2Id = urlParams.get('player2Id') || 'player2';
+                this.player1Id = urlParams.get('player1Id') || Utils.generateUUID();
+                this.player2Id = urlParams.get('player2Id') || Utils.generateUUID();
                 this.player1Username = urlParams.get('player1') || 'Player 1';
                 this.player2Username = urlParams.get('player2') || 'Player 2';
                 this.isPlayer1 = urlParams.get('isPlayer1') === 'true';
+                
+                // Ensure player IDs are not "undefined" string
+                if (this.player1Id === 'undefined' || !this.player1Id) {
+                    this.player1Id = Utils.generateUUID();
+                    console.log('🆔 Generated new UUID for player1:', this.player1Id);
+                }
+                if (this.player2Id === 'undefined' || !this.player2Id) {
+                    this.player2Id = Utils.generateUUID();
+                    console.log('🆔 Generated new UUID for player2:', this.player2Id);
+                }
                 
                 console.log('Multiplayer character selection initialized:', {
                     matchId: this.matchId,
