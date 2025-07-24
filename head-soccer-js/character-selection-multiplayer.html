@@ -535,12 +535,21 @@
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     
+    <!-- Load asset loader -->
+    <script src="js/assetLoader.js"></script>
+    
     <!-- Socket.IO for multiplayer support -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     
     <script>
         class MultiplayerCharacterSelection {
             constructor() {
+                // Debug: Check if CONFIG and assetLoader are loaded
+                console.log('=== MultiplayerCharacterSelection Debug ===');
+                console.log('CONFIG loaded:', window.CONFIG);
+                console.log('CHARACTER_HEADS:', window.CONFIG ? window.CONFIG.CHARACTER_HEADS : 'Not loaded');
+                console.log('assetLoader available:', window.assetLoader ? 'Yes' : 'No');
+                
                 // Parse URL parameters
                 this.parseMultiplayerData();
                 
@@ -673,72 +682,73 @@
                 item.dataset.itemName = itemName;
                 item.dataset.type = type;
                 
-                // Try to load actual image first
-                const img = document.createElement('img');
+                // Check if assetLoader has the image
+                let imageName;
                 if (type === 'head') {
-                    // Try multiple possible paths for head images
-                    const possiblePaths = [
-                        `./assets/${itemName}_Head.png`,
-                        `assets/${itemName}_Head.png`,
-                        `./${itemName}_Head.png`
-                    ];
-                    img.src = possiblePaths[0];
-                    console.log(`Attempting to load head image: ${img.src}`);
+                    imageName = `${itemName}_Head.png`;
                 } else {
-                    img.src = `./assets/Cleat ${itemName}.png`;
-                    console.log(`Attempting to load cleat image: ./assets/Cleat ${itemName}.png`);
+                    imageName = `Cleat ${itemName}.png`;
                 }
                 
-                img.style.width = '70%';
-                img.style.height = '70%';
-                img.style.objectFit = 'contain';
+                const loadedImage = window.assetLoader ? assetLoader.getImage(imageName) : null;
                 
-                // Fallback if image fails to load
-                img.onerror = () => {
-                    console.error(`Failed to load ${type} image: ${img.src}`);
-                    
-                    // For heads, try alternative paths before falling back to placeholder
+                if (loadedImage) {
+                    // Use pre-loaded image
+                    const img = document.createElement('img');
+                    img.src = loadedImage.src;
+                    img.style.width = '70%';
+                    img.style.height = '70%';
+                    img.style.objectFit = 'contain';
+                    item.appendChild(img);
+                    console.log(`Using pre-loaded ${type} image: ${imageName}`);
+                } else {
+                    // Try to load image directly as fallback
+                    const img = document.createElement('img');
                     if (type === 'head') {
-                        const currentSrc = img.src;
-                        if (currentSrc.includes('./assets/')) {
-                            img.src = `assets/${itemName}_Head.png`;
-                            console.log(`Retrying head image with: ${img.src}`);
-                            return;
-                        } else if (currentSrc.includes('assets/') && !currentSrc.includes('./assets/')) {
-                            img.src = `${itemName}_Head.png`;
-                            console.log(`Retrying head image with: ${img.src}`);
-                            return;
-                        }
-                    }
-                    
-                    // If all paths fail, show placeholder
-                    img.style.display = 'none';
-                    const placeholder = document.createElement('div');
-                    placeholder.style.width = '70%';
-                    placeholder.style.height = '70%';
-                    if (type === 'head') {
-                        placeholder.style.background = `hsl(${index * 45}, 70%, 60%)`;
-                        placeholder.style.borderRadius = '50%';
+                        img.src = `./assets/${itemName}_Head.png`;
+                        console.log(`Attempting to load head image: ${img.src}`);
                     } else {
-                        placeholder.style.background = '#8B4513';
-                        placeholder.style.borderRadius = '15%';
+                        img.src = `./assets/Cleat ${itemName}.png`;
+                        console.log(`Attempting to load cleat image: ${img.src}`);
                     }
-                    placeholder.style.display = 'flex';
-                    placeholder.style.alignItems = 'center';
-                    placeholder.style.justifyContent = 'center';
-                    placeholder.style.fontSize = '0.8rem';
-                    placeholder.style.fontWeight = 'bold';
-                    placeholder.style.color = 'white';
-                    placeholder.textContent = type === 'head' ? itemName.charAt(0) : itemName;
-                    item.appendChild(placeholder);
-                };
-                
-                // Success callback for debugging
-                img.onload = () => {
-                    console.log(`Successfully loaded ${type} image: ${img.src}`);
-                };
-                
-                item.appendChild(img);
+                    
+                    img.style.width = '70%';
+                    img.style.height = '70%';
+                    img.style.objectFit = 'contain';
+                    
+                    // Fallback if image fails to load
+                    img.onerror = () => {
+                        console.error(`Failed to load ${type} image: ${img.src}`);
+                        
+                        // Show placeholder
+                        img.style.display = 'none';
+                        const placeholder = document.createElement('div');
+                        placeholder.style.width = '70%';
+                        placeholder.style.height = '70%';
+                        if (type === 'head') {
+                            placeholder.style.background = `hsl(${index * 45}, 70%, 60%)`;
+                            placeholder.style.borderRadius = '50%';
+                        } else {
+                            placeholder.style.background = '#8B4513';
+                            placeholder.style.borderRadius = '15%';
+                        }
+                        placeholder.style.display = 'flex';
+                        placeholder.style.alignItems = 'center';
+                        placeholder.style.justifyContent = 'center';
+                        placeholder.style.fontSize = '0.8rem';
+                        placeholder.style.fontWeight = 'bold';
+                        placeholder.style.color = 'white';
+                        placeholder.textContent = type === 'head' ? itemName.charAt(0) : itemName;
+                        item.appendChild(placeholder);
+                    };
+                    
+                    // Success callback for debugging
+                    img.onload = () => {
+                        console.log(`Successfully loaded ${type} image: ${img.src}`);
+                    };
+                    
+                    item.appendChild(img);
+                }
                 
                 if (isClickable) {
                     item.addEventListener('click', () => {
@@ -807,26 +817,43 @@
                         ? window.CONFIG.CHARACTER_HEADS[this.currentPlayerSelectedHead] 
                         : `Character${this.currentPlayerSelectedHead + 1}`;
                     
-                    // Try to load actual head image
-                    const img = document.createElement('img');
-                    img.src = `./assets/${headName}_Head.png`;
-                    console.log(`Attempting to load preview head image: ./assets/${headName}_Head.png`);
-                    img.style.width = '80px';
-                    img.style.height = '80px';
-                    img.style.objectFit = 'contain';
-                    img.style.borderRadius = '50%';
+                    // Check if assetLoader has the image
+                    const imageName = `${headName}_Head.png`;
+                    const loadedImage = window.assetLoader ? assetLoader.getImage(imageName) : null;
                     
-                    // Fallback to placeholder if image fails
-                    img.onerror = () => {
-                        console.error(`Failed to load preview head image: ${img.src}`);
-                        this.currentPlayerPreview.innerHTML = `<div style="width: 100px; height: 100px; background: hsl(${this.currentPlayerSelectedHead * 45}, 70%, 60%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);">${headName.charAt(0)}</div>`;
-                    };
-                    
-                    img.onload = () => {
-                        console.log(`Successfully loaded preview head image: ${img.src}`);
+                    if (loadedImage) {
+                        // Use pre-loaded image
+                        const img = document.createElement('img');
+                        img.src = loadedImage.src;
+                        img.style.width = '80px';
+                        img.style.height = '80px';
+                        img.style.objectFit = 'contain';
+                        img.style.borderRadius = '50%';
                         this.currentPlayerPreview.innerHTML = '';
                         this.currentPlayerPreview.appendChild(img);
-                    };
+                        console.log(`Using pre-loaded preview head image: ${imageName}`);
+                    } else {
+                        // Try to load image directly as fallback
+                        const img = document.createElement('img');
+                        img.src = `./assets/${headName}_Head.png`;
+                        console.log(`Attempting to load preview head image: ./assets/${headName}_Head.png`);
+                        img.style.width = '80px';
+                        img.style.height = '80px';
+                        img.style.objectFit = 'contain';
+                        img.style.borderRadius = '50%';
+                        
+                        // Fallback to placeholder if image fails
+                        img.onerror = () => {
+                            console.error(`Failed to load preview head image: ${img.src}`);
+                            this.currentPlayerPreview.innerHTML = `<div style="width: 100px; height: 100px; background: hsl(${this.currentPlayerSelectedHead * 45}, 70%, 60%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);">${headName.charAt(0)}</div>`;
+                        };
+                        
+                        img.onload = () => {
+                            console.log(`Successfully loaded preview head image: ${img.src}`);
+                            this.currentPlayerPreview.innerHTML = '';
+                            this.currentPlayerPreview.appendChild(img);
+                        };
+                    }
                     
                     this.currentPlayerPreview.classList.remove('empty');
                     this.currentPlayerCharacterName.textContent = headName;
@@ -842,23 +869,40 @@
                         ? window.CONFIG.CHARACTER_HEADS[this.opponentSelectedHead] 
                         : `Character${this.opponentSelectedHead + 1}`;
                     
-                    // Try to load actual head image
-                    const img = document.createElement('img');
-                    img.src = `./assets/${headName}_Head.png`;
-                    img.style.width = '80px';
-                    img.style.height = '80px';
-                    img.style.objectFit = 'contain';
-                    img.style.borderRadius = '50%';
+                    // Check if assetLoader has the image
+                    const imageName = `${headName}_Head.png`;
+                    const loadedImage = window.assetLoader ? assetLoader.getImage(imageName) : null;
                     
-                    // Fallback to placeholder if image fails
-                    img.onerror = () => {
-                        this.opponentPreview.innerHTML = `<div style="width: 100px; height: 100px; background: hsl(${this.opponentSelectedHead * 45}, 70%, 60%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);">${headName.charAt(0)}</div>`;
-                    };
-                    
-                    img.onload = () => {
+                    if (loadedImage) {
+                        // Use pre-loaded image
+                        const img = document.createElement('img');
+                        img.src = loadedImage.src;
+                        img.style.width = '80px';
+                        img.style.height = '80px';
+                        img.style.objectFit = 'contain';
+                        img.style.borderRadius = '50%';
                         this.opponentPreview.innerHTML = '';
                         this.opponentPreview.appendChild(img);
-                    };
+                        console.log(`Using pre-loaded opponent preview head image: ${imageName}`);
+                    } else {
+                        // Try to load image directly as fallback
+                        const img = document.createElement('img');
+                        img.src = `./assets/${headName}_Head.png`;
+                        img.style.width = '80px';
+                        img.style.height = '80px';
+                        img.style.objectFit = 'contain';
+                        img.style.borderRadius = '50%';
+                        
+                        // Fallback to placeholder if image fails
+                        img.onerror = () => {
+                            this.opponentPreview.innerHTML = `<div style="width: 100px; height: 100px; background: hsl(${this.opponentSelectedHead * 45}, 70%, 60%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);">${headName.charAt(0)}</div>`;
+                        };
+                        
+                        img.onload = () => {
+                            this.opponentPreview.innerHTML = '';
+                            this.opponentPreview.appendChild(img);
+                        };
+                    }
                     
                     this.opponentPreview.classList.remove('empty');
                     this.opponentCharacterName.textContent = headName;
@@ -1146,7 +1190,16 @@
         }
         
         // Initialize when page loads
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
+            // Load assets first if assetLoader is available
+            if (window.assetLoader) {
+                console.log('Loading assets...');
+                await assetLoader.loadAllAssets((progress, total) => {
+                    console.log(`Loading progress: ${progress}/${total}`);
+                });
+                console.log('Assets loaded successfully!');
+            }
+            
             new MultiplayerCharacterSelection();
         });
     </script>
