@@ -1222,16 +1222,27 @@ class SocketHandler extends EventEmitter {
 
       if (response === 'accept') {
         // Challenge accepted - proceed to match setup
+        const matchId = `match-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Send complete match data to both players
         challengerConnection.socket.emit('challenge_accepted', {
           challengeId: challengeId,
+          matchId: matchId,
+          challengerId: challengerConnection.playerId,
+          challengerUsername: challengerConnection.username,
+          opponentId: responderConnection.playerId,
           opponentUsername: responderConnection.username,
-          opponentPlayerId: responderConnection.playerId
+          isChallenger: true
         });
 
         socket.emit('challenge_accepted', {
           challengeId: challengeId,
-          opponentUsername: challengerConnection.username,
-          opponentPlayerId: challengerConnection.playerId
+          matchId: matchId,
+          challengerId: challengerConnection.playerId,
+          challengerUsername: challengerConnection.username,
+          opponentId: responderConnection.playerId,
+          opponentUsername: responderConnection.username,
+          isChallenger: false
         });
 
         console.log(`✅ Challenge accepted: ${challengerConnection.username} vs ${responderConnection.username}`);

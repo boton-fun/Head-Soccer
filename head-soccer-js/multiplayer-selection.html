@@ -1357,22 +1357,23 @@
             }
             
             redirectToPregameLobby(data) {
-                // Prepare match data for pregame lobby
-                const currentUser = window.authManager?.getCurrentUser();
-                const currentUsername = currentUser?.username || 'Player';
+                // Use the complete match data from backend
+                console.log('Redirecting with match data:', data);
                 
-                // Determine player order
-                const isPlayer1 = data.challengerId === (currentUser?.id || currentUsername);
+                // Determine if we're player 1 or player 2 based on isChallenger
+                const isPlayer1 = data.isChallenger;
                 
                 const params = new URLSearchParams({
                     mode: 'multiplayer',
-                    matchId: data.matchId || 'match-' + Date.now(),
-                    player1Id: isPlayer1 ? data.challengerId : data.opponentId,
-                    player2Id: isPlayer1 ? data.opponentId : data.challengerId,
-                    player1: isPlayer1 ? currentUsername : data.opponentUsername,
-                    player2: isPlayer1 ? data.opponentUsername : currentUsername,
-                    isPlayer1: isPlayer1
+                    matchId: data.matchId,
+                    player1Id: data.challengerId,
+                    player2Id: data.opponentId,
+                    player1: data.challengerUsername,
+                    player2: data.opponentUsername,
+                    isPlayer1: isPlayer1.toString()
                 });
+                
+                console.log('Redirect params:', params.toString());
                 
                 // Redirect directly to character selection
                 window.location.href = `character-selection-multiplayer.html?${params.toString()}`;
