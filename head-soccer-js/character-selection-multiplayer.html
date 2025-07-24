@@ -613,6 +613,7 @@
                 this.opponentSelectedCleat = 0;
                 this.currentPlayerReady = false;
                 this.opponentReady = false;
+                this.countdownStarted = false;
                 
                 // WebSocket connection
                 this.socket = null;
@@ -1010,6 +1011,22 @@
                     this.readyButton.className = 'ready-button both-ready';
                     this.readyButton.textContent = 'Starting Match...';
                     this.readyButton.disabled = true;
+                    
+                    // Debug: Check if both players are ready
+                    console.log('🎮 Both players ready detected:', {
+                        currentPlayerReady: this.currentPlayerReady,
+                        opponentReady: this.opponentReady,
+                        socketConnected: this.socket ? this.socket.connected : false
+                    });
+                    
+                    // Fallback: Start countdown if server doesn't emit selection_complete
+                    if (!this.countdownStarted) {
+                        this.countdownStarted = true;
+                        console.log('🚀 Starting fallback countdown timer...');
+                        setTimeout(() => {
+                            this.startCountdown({});
+                        }, 1000); // Give server 1 second to emit selection_complete
+                    }
                 } else if (this.currentPlayerReady) {
                     this.readyButton.className = 'ready-button waiting';
                     this.readyButton.textContent = 'Waiting for Opponent';
@@ -1101,16 +1118,23 @@
                     
                     // Listen for opponent ready status
                     this.socket.on('player_ready', (data) => {
+                        console.log('🔄 Received player_ready event:', data);
                         if (data.playerId !== (this.isPlayer1 ? this.player1Id : this.player2Id)) {
+                            console.log('👥 Opponent ready status changed to:', data.ready);
                             this.opponentReady = data.ready;
                             this.updateUI();
+                        } else {
+                            console.log('✋ Ignoring own ready status event');
                         }
                     });
                     
                     // Listen for both players ready
                     this.socket.on('selection_complete', (data) => {
-                        console.log('Both players ready, starting countdown');
-                        this.startCountdown(data);
+                        console.log('🎯 Server emitted selection_complete, starting countdown');
+                        if (!this.countdownStarted) {
+                            this.countdownStarted = true;
+                            this.startCountdown(data);
+                        }
                     });
                     
                     // Handle opponent disconnect
