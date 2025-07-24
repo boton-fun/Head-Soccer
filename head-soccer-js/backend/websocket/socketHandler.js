@@ -1612,11 +1612,9 @@ class SocketHandler extends EventEmitter {
       connection.roomId = roomId;
       
       // Update connection state
-      this.connectionManager.updateConnection(socket.id, {
-        roomId: roomId,
-        gameState: 'character_selection',
-        matchId: matchId
-      });
+      connection.roomId = roomId;
+      connection.gameState = 'character_selection';
+      connection.matchId = matchId;
 
       // Broadcast to other players in the room
       this.connectionManager.broadcastToRoom(roomId, 'opponent_joined', {
@@ -1722,7 +1720,8 @@ class SocketHandler extends EventEmitter {
       });
 
       // Check if all players in the match are ready
-      const roomConnections = this.connectionManager.getConnectionsByRoomId(roomId);
+      const roomConnectionIds = this.connectionManager.getRoomConnections(roomId);
+      const roomConnections = roomConnectionIds ? Array.from(roomConnectionIds).map(id => this.connectionManager.getConnectionBySocketId(id)).filter(conn => conn) : [];
       const readyPlayers = [];
       
       // Count ready players (this is simplified - in production you'd track ready state per connection)
