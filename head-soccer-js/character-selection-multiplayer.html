@@ -1197,10 +1197,21 @@
         }
         
         // Initialize when page loads
-        window.addEventListener('load', async () => {
-            // Wait a moment for CONFIG to be fully loaded
+        window.addEventListener('DOMContentLoaded', async () => {
+            // Add a small delay to ensure all scripts are fully parsed
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Log CONFIG status
+            console.log('=== Initialization Debug ===');
+            console.log('CONFIG exists:', !!window.CONFIG);
+            console.log('CHARACTER_HEADS:', window.CONFIG ? window.CONFIG.CHARACTER_HEADS : undefined);
+            console.log('assetLoader exists:', !!window.assetLoader);
+            
+            // Double-check CONFIG is available
             if (!window.CONFIG || !window.CONFIG.CHARACTER_HEADS) {
-                console.log('Waiting for CONFIG to load...');
+                console.error('CONFIG or CHARACTER_HEADS not available!');
+                console.log('Attempting to wait for CONFIG...');
+                
                 // Wait up to 1 second for CONFIG to load
                 let retries = 0;
                 while ((!window.CONFIG || !window.CONFIG.CHARACTER_HEADS) && retries < 10) {
@@ -1209,24 +1220,29 @@
                 }
                 
                 if (!window.CONFIG || !window.CONFIG.CHARACTER_HEADS) {
-                    console.error('CONFIG failed to load after 1 second');
+                    console.error('CONFIG failed to load after 1 second, using fallback');
+                } else {
+                    console.log('CONFIG loaded successfully after waiting');
                 }
             }
-            
-            console.log('CONFIG status at initialization:', {
-                configExists: !!window.CONFIG,
-                characterHeads: window.CONFIG ? window.CONFIG.CHARACTER_HEADS : 'N/A'
-            });
             
             // Load assets first if assetLoader is available
             if (window.assetLoader) {
                 console.log('Loading assets...');
-                await assetLoader.loadAllAssets((progress, total) => {
-                    console.log(`Loading progress: ${progress}/${total}`);
-                });
-                console.log('Assets loaded successfully!');
+                try {
+                    await assetLoader.loadAllAssets((progress, total) => {
+                        console.log(`Loading progress: ${progress}/${total}`);
+                    });
+                    console.log('Assets loaded successfully!');
+                } catch (error) {
+                    console.error('Asset loading failed:', error);
+                }
             }
             
+            // Final CONFIG check before initialization
+            console.log('Final CONFIG.CHARACTER_HEADS:', window.CONFIG ? window.CONFIG.CHARACTER_HEADS : 'Not available');
+            
+            // Initialize the character selection
             new MultiplayerCharacterSelection();
         });
     </script>
