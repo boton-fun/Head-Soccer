@@ -1622,8 +1622,13 @@ class SocketHandler extends EventEmitter {
       socket.join(roomId); // IMPORTANT: Actually join the Socket.IO room
       connection.roomId = roomId;
       
+      // Track room connections properly
+      if (!this.connectionManager.roomConnections.has(roomId)) {
+        this.connectionManager.roomConnections.set(roomId, new Set());
+      }
+      this.connectionManager.roomConnections.get(roomId).add(socket.id);
+      
       // Update connection state
-      connection.roomId = roomId;
       connection.gameState = 'character_selection';
       connection.matchId = matchId;
 
