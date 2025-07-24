@@ -1608,6 +1608,7 @@ class SocketHandler extends EventEmitter {
       
       // Join the character selection room
       const roomId = `character_selection_${matchId}`;
+      socket.join(roomId); // IMPORTANT: Actually join the Socket.IO room
       connection.roomId = roomId;
       
       // Update connection state
