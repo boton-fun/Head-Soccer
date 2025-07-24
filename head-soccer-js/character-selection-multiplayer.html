@@ -413,6 +413,59 @@
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
         }
         
+        /* Countdown Overlay */
+        .countdown-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .countdown-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .countdown-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #00ff88;
+            text-shadow: 
+                0 0 20px rgba(0, 255, 136, 0.8),
+                0 0 40px rgba(0, 255, 136, 0.6);
+            font-family: 'Font', Arial, sans-serif;
+            margin-bottom: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+        
+        .countdown-number {
+            font-size: 8rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 
+                0 0 30px rgba(255, 255, 255, 0.8),
+                0 0 60px rgba(255, 255, 255, 0.6);
+            font-family: 'Font', Arial, sans-serif;
+            animation: countdownPulse 1s ease-in-out;
+        }
+        
+        @keyframes countdownPulse {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.2); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        
         /* Loading fonts */
         @font-face {
             font-family: 'Font';
@@ -1056,10 +1109,8 @@
                     
                     // Listen for both players ready
                     this.socket.on('selection_complete', (data) => {
-                        console.log('Both players ready, transitioning to pregame lobby');
-                        setTimeout(() => {
-                            this.goToPregameLobby(data);
-                        }, 2000);
+                        console.log('Both players ready, starting countdown');
+                        this.startCountdown(data);
                     });
                     
                     // Handle opponent disconnect
@@ -1105,8 +1156,50 @@
                 }
             }
             
-            goToPregameLobby(data) {
-                // Pass match data and selections to pregame lobby
+            startCountdown(data) {
+                // Create countdown overlay
+                const overlay = document.createElement('div');
+                overlay.className = 'countdown-overlay';
+                overlay.innerHTML = `
+                    <div class="countdown-title">Match Starting</div>
+                    <div class="countdown-number" id="countdownNumber">5</div>
+                `;
+                document.body.appendChild(overlay);
+                
+                // Show overlay
+                setTimeout(() => {
+                    overlay.classList.add('show');
+                }, 100);
+                
+                // Start countdown
+                let count = 5;
+                const countdownNumber = document.getElementById('countdownNumber');
+                
+                const countdownInterval = setInterval(() => {
+                    count--;
+                    if (count > 0) {
+                        countdownNumber.textContent = count;
+                        // Trigger animation by removing and adding class
+                        countdownNumber.style.animation = 'none';
+                        setTimeout(() => {
+                            countdownNumber.style.animation = 'countdownPulse 1s ease-in-out';
+                        }, 10);
+                    } else {
+                        clearInterval(countdownInterval);
+                        countdownNumber.textContent = 'GO!';
+                        countdownNumber.style.color = '#ff6b35';
+                        countdownNumber.style.textShadow = '0 0 30px rgba(255, 107, 53, 0.8), 0 0 60px rgba(255, 107, 53, 0.6)';
+                        
+                        // Transition to gameplay after showing GO!
+                        setTimeout(() => {
+                            this.goToMultiplayerGameplay(data);
+                        }, 1000);
+                    }
+                }, 1000);
+            }
+            
+            goToMultiplayerGameplay(data) {
+                // Pass match data and selections to multiplayer gameplay
                 const params = new URLSearchParams({
                     matchId: this.matchId,
                     player1Id: this.player1Id,
@@ -1116,10 +1209,11 @@
                     player1Head: CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[this.isPlayer1 ? this.currentPlayerSelectedHead : this.opponentSelectedHead] : `Character${(this.isPlayer1 ? this.currentPlayerSelectedHead : this.opponentSelectedHead) + 1}`,
                     player2Head: CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[this.isPlayer1 ? this.opponentSelectedHead : this.currentPlayerSelectedHead] : `Character${(this.isPlayer1 ? this.opponentSelectedHead : this.currentPlayerSelectedHead) + 1}`,
                     player1Cleat: 'Basic',
-                    player2Cleat: 'Basic'
+                    player2Cleat: 'Basic',
+                    isPlayer1: this.isPlayer1
                 });
                 
-                window.location.href = `pregame-lobby.html?${params.toString()}`;
+                window.location.href = `gameplay-multiplayer.html?${params.toString()}`;
             }
             
             initializeBackground() {
