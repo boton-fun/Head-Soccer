@@ -898,6 +898,11 @@ class GameScene extends Phaser.Scene {
         // Update the HTML score display
         this.updateScoreDisplay();
         
+        // Send score update to multiplayer system for synchronization
+        if (this.isMultiplayer && this.multiplayerGame) {
+            this.multiplayerGame.sendScoreUpdate(this.score.player1, this.score.player2);
+        }
+        
         // Log the goal
         console.log(`Score: Player 1: ${this.score.player1} - Player 2: ${this.score.player2}`);
         
@@ -1007,6 +1012,12 @@ class GameScene extends Phaser.Scene {
         // Stop player movement
         if (this.player1) this.player1.velocity = { x: 0, y: 0 };
         if (this.player2) this.player2.velocity = { x: 0, y: 0 };
+        
+        // Send game end to multiplayer system for synchronization (if not already sent)
+        if (this.isMultiplayer && this.multiplayerGame && !this.gameEndSent) {
+            this.gameEndSent = true; // Prevent multiple sends
+            this.multiplayerGame.sendGameEnd(result);
+        }
         
         // Show game over screen
         this.showGameOverScreen(result);

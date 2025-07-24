@@ -589,6 +589,7 @@
                 // Game state
                 this.player1Score = 0;
                 this.player2Score = 0;
+                this.gameEndSent = false; // Track if game end was sent to prevent duplicates
                 
                 this.initializeUI();
                 this.connectToServer();
@@ -675,11 +676,24 @@
                     });
                     
                     this.socket.on('score_update', (data) => {
+                        console.log('📊 Received score update:', data);
                         this.updateScore(data.player1Score, data.player2Score);
+                        // Also update game scene score
+                        if (this.gameScene && this.gameScene.score) {
+                            this.gameScene.score.player1 = data.player1Score;
+                            this.gameScene.score.player2 = data.player2Score;
+                            this.gameScene.updateScoreDisplay();
+                        }
                     });
                     
                     this.socket.on('timer_sync', (data) => {
+                        console.log('⏱️ Received timer sync:', data);
                         this.syncTimer(data.timeRemaining);
+                    });
+                    
+                    this.socket.on('game_ended', (data) => {
+                        console.log('🏁 Received game ended:', data);
+                        this.handleGameEnd(data);
                     });
                     
                     this.socket.on('player_disconnected', (data) => {
@@ -785,8 +799,18 @@
             }
             
             syncTimer(serverTime) {
-                this.timeRemaining = serverTime;
-                this.updateTimerDisplay();
+                // Only sync if there's a significant difference (more than 2 seconds)
+                const timeDifference = Math.abs(this.timeRemaining - serverTime);
+                if (timeDifference > 2) {
+                    console.log(`⏱️ Syncing timer: ${this.timeRemaining} → ${serverTime} (diff: ${timeDifference}s)`);
+                    this.timeRemaining = serverTime;
+                    this.updateTimerDisplay();
+                    
+                    // Also sync with game scene if available
+                    if (this.gameScene && this.gameScene.timeRemaining !== undefined) {
+                        this.gameScene.timeRemaining = serverTime;
+                    }
+                }
             }
             
             startTimer() {
@@ -799,6 +823,11 @@
                 if (!this.timerPaused) {
                     this.timeRemaining = Math.max(0, this.timeRemaining - 1);
                     this.updateTimerDisplay();
+                    
+                    // Send timer update to server every 5 seconds or when critical time
+                    if (this.timeRemaining % 5 === 0 || this.timeRemaining <= 10) {
+                        this.sendTimerUpdate(this.timeRemaining);
+                    }
                     
                     if (this.timeRemaining <= 0) {
                         this.handleTimeExpired();
@@ -815,6 +844,21 @@
             
             handleTimeExpired() {
                 clearInterval(this.timerInterval);
+                
+                // Determine winner and send to server for synchronization
+                let result;
+                if (this.player1Score > this.player2Score) {
+                    result = 'player1';
+                } else if (this.player2Score > this.player1Score) {
+                    result = 'player2';
+                } else {
+                    result = 'tie';
+                }
+                
+                // Send game end event to server for synchronization
+                this.sendGameEnd(result);
+                
+                // Also trigger local game end (will be overridden by server response)
                 if (this.gameScene) {
                     this.gameScene.onTimeExpired();
                 }
@@ -841,6 +885,58 @@
                         input: inputData,
                         timestamp: Date.now()
                     });
+                }
+            }
+            
+            sendScoreUpdate(player1Score, player2Score) {
+                if (this.socket && this.socket.connected) {
+                    console.log('📊 Sending score update:', { player1Score, player2Score });
+                    this.socket.emit('score_update', {
+                        matchId: this.matchData.matchId,
+                        playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
+                        player1Score: player1Score,
+                        player2Score: player2Score,
+                        timestamp: Date.now()
+                    });
+                }
+            }
+            
+            sendTimerUpdate(timeRemaining) {
+                if (this.socket && this.socket.connected) {
+                    console.log('⏱️ Sending timer update:', timeRemaining);
+                    this.socket.emit('timer_update', {
+                        matchId: this.matchData.matchId,
+                        playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
+                        timeRemaining: timeRemaining,
+                        timestamp: Date.now()
+                    });
+                }
+            }
+            
+            sendGameEnd(result) {
+                if (this.socket && this.socket.connected) {
+                    console.log('🏁 Sending game end:', result);
+                    this.socket.emit('game_end', {
+                        matchId: this.matchData.matchId,
+                        playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
+                        result: result,
+                        finalScore: {
+                            player1: this.player1Score,
+                            player2: this.player2Score
+                        },
+                        timestamp: Date.now()
+                    });
+                }
+            }
+            
+            handleGameEnd(data) {
+                console.log('🏁 Handling synchronized game end:', data);
+                clearInterval(this.timerInterval);
+                clearInterval(this.pingInterval);
+                
+                // Trigger game scene end
+                if (this.gameScene) {
+                    this.gameScene.endGame(data.result);
                 }
             }
             
