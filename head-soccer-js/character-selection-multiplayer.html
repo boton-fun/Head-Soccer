@@ -651,15 +651,15 @@
                 // Clear existing grid
                 this.mainCleatGrid.innerHTML = '';
                 
-                // Create cleat items for main selection grid
+                // Create cleat items for main selection grid - limit to 4 cleats
                 if (window.CONFIG && window.CONFIG.CLEAT_TYPES) {
-                    window.CONFIG.CLEAT_TYPES.forEach((cleatType, index) => {
+                    window.CONFIG.CLEAT_TYPES.slice(0, 4).forEach((cleatType, index) => {
                         const item = this.createCharacterItem(cleatType, index, true, 'cleat');
                         this.mainCleatGrid.appendChild(item);
                     });
                 } else {
-                    // Fallback if CONFIG not loaded
-                    for (let i = 1; i <= 8; i++) {
+                    // Fallback if CONFIG not loaded - limit to 4 cleats
+                    for (let i = 1; i <= 4; i++) {
                         const item = this.createCharacterItem(i.toString(), i - 1, true, 'cleat');
                         this.mainCleatGrid.appendChild(item);
                     }
@@ -776,7 +776,25 @@
                     const headName = (window.CONFIG && window.CONFIG.CHARACTER_HEADS && window.CONFIG.CHARACTER_HEADS[this.currentPlayerSelectedHead]) 
                         ? window.CONFIG.CHARACTER_HEADS[this.currentPlayerSelectedHead] 
                         : `Character${this.currentPlayerSelectedHead + 1}`;
-                    this.currentPlayerPreview.innerHTML = `<div style="width: 100px; height: 100px; background: hsl(${this.currentPlayerSelectedHead * 45}, 70%, 60%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);">${headName.charAt(0)}</div>`;
+                    
+                    // Try to load actual head image
+                    const img = document.createElement('img');
+                    img.src = `./assets/${headName}_Head.png`;
+                    img.style.width = '80px';
+                    img.style.height = '80px';
+                    img.style.objectFit = 'contain';
+                    img.style.borderRadius = '50%';
+                    
+                    // Fallback to placeholder if image fails
+                    img.onerror = () => {
+                        this.currentPlayerPreview.innerHTML = `<div style="width: 100px; height: 100px; background: hsl(${this.currentPlayerSelectedHead * 45}, 70%, 60%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);">${headName.charAt(0)}</div>`;
+                    };
+                    
+                    img.onload = () => {
+                        this.currentPlayerPreview.innerHTML = '';
+                        this.currentPlayerPreview.appendChild(img);
+                    };
+                    
                     this.currentPlayerPreview.classList.remove('empty');
                     this.currentPlayerCharacterName.textContent = headName;
                 } else {
@@ -790,7 +808,25 @@
                     const headName = (window.CONFIG && window.CONFIG.CHARACTER_HEADS && window.CONFIG.CHARACTER_HEADS[this.opponentSelectedHead]) 
                         ? window.CONFIG.CHARACTER_HEADS[this.opponentSelectedHead] 
                         : `Character${this.opponentSelectedHead + 1}`;
-                    this.opponentPreview.innerHTML = `<div style="width: 100px; height: 100px; background: hsl(${this.opponentSelectedHead * 45}, 70%, 60%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);">${headName.charAt(0)}</div>`;
+                    
+                    // Try to load actual head image
+                    const img = document.createElement('img');
+                    img.src = `./assets/${headName}_Head.png`;
+                    img.style.width = '80px';
+                    img.style.height = '80px';
+                    img.style.objectFit = 'contain';
+                    img.style.borderRadius = '50%';
+                    
+                    // Fallback to placeholder if image fails
+                    img.onerror = () => {
+                        this.opponentPreview.innerHTML = `<div style="width: 100px; height: 100px; background: hsl(${this.opponentSelectedHead * 45}, 70%, 60%); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);">${headName.charAt(0)}</div>`;
+                    };
+                    
+                    img.onload = () => {
+                        this.opponentPreview.innerHTML = '';
+                        this.opponentPreview.appendChild(img);
+                    };
+                    
                     this.opponentPreview.classList.remove('empty');
                     this.opponentCharacterName.textContent = headName;
                 } else {
