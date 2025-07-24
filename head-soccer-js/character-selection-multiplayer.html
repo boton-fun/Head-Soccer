@@ -696,13 +696,25 @@
                     this.socket.on('connect', () => {
                         console.log('Connected to server for character selection');
                         // Join character selection room
-                        this.socket.emit('join_character_selection', {
+                        const joinData = {
                             matchId: this.matchId,
                             playerId: this.isPlayer1 ? this.player1Id : this.player2Id,
                             username: this.isPlayer1 ? this.player1Username : this.player2Username
-                        });
+                        };
+                        console.log('Emitting join_character_selection:', joinData);
+                        this.socket.emit('join_character_selection', joinData);
                     });
                     
+                    // Listen for join confirmation
+                    this.socket.on('character_selection_joined', (data) => {
+                        console.log('Successfully joined character selection room:', data);
+                    });
+
+                    // Listen for errors
+                    this.socket.on('character_selection_error', (data) => {
+                        console.error('Character selection error:', data);
+                    });
+
                     // Listen for opponent joining
                     this.socket.on('opponent_joined', (data) => {
                         console.log('Opponent joined character selection:', data);
