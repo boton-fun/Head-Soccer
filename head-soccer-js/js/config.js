@@ -178,6 +178,9 @@ const CONFIG = {
     }
 };
 
+// Make CONFIG globally available
+window.CONFIG = CONFIG;
+
 // Utility functions are now defined in utils.js
 
 // Global game state variables
