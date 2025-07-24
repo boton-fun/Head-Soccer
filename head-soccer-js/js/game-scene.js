@@ -1298,12 +1298,33 @@ class GameScene extends Phaser.Scene {
     setMultiplayerMode(multiplayerGame) {
         console.log('Setting multiplayer mode with data:', multiplayerGame.matchData);
         
+        // Store the multiplayer game reference for later use
+        this.multiplayerGame = multiplayerGame;
+        
+        // Map character indices to names if needed
+        const characterNames = ['Nuwan', 'Mihir', 'Dad'];
+        
         // Override character selections with multiplayer data
         if (multiplayerGame.matchData.player1Head && multiplayerGame.matchData.player1Head !== 'Unknown') {
-            this.player1Head = multiplayerGame.matchData.player1Head;
+            const player1Head = multiplayerGame.matchData.player1Head;
+            // Check if it's a numeric index or already a name
+            if (!isNaN(player1Head) && player1Head >= 0 && player1Head < characterNames.length) {
+                this.player1Head = characterNames[parseInt(player1Head)];
+                console.log(`Mapped player1 head index ${player1Head} to ${this.player1Head}`);
+            } else if (typeof player1Head === 'string' && characterNames.includes(player1Head)) {
+                this.player1Head = player1Head;
+            }
         }
+        
         if (multiplayerGame.matchData.player2Head && multiplayerGame.matchData.player2Head !== 'Unknown') {
-            this.player2Head = multiplayerGame.matchData.player2Head;
+            const player2Head = multiplayerGame.matchData.player2Head;
+            // Check if it's a numeric index or already a name
+            if (!isNaN(player2Head) && player2Head >= 0 && player2Head < characterNames.length) {
+                this.player2Head = characterNames[parseInt(player2Head)];
+                console.log(`Mapped player2 head index ${player2Head} to ${this.player2Head}`);
+            } else if (typeof player2Head === 'string' && characterNames.includes(player2Head)) {
+                this.player2Head = player2Head;
+            }
         }
         
         console.log('Multiplayer character selections applied:', {
@@ -1311,8 +1332,12 @@ class GameScene extends Phaser.Scene {
             player2Head: this.player2Head
         });
         
-        // Recreate player sprites with new character data
-        this.recreatePlayerSprites();
+        // Only recreate sprites if players already exist, otherwise this will be handled in createPlayers
+        if (this.player1 && this.player2) {
+            this.recreatePlayerSprites();
+        } else {
+            console.log('Players not yet created, character selections will be applied during createPlayers');
+        }
     }
     
     recreatePlayerSprites() {
