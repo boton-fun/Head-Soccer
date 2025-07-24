@@ -641,14 +641,21 @@
                 // Clear existing grid
                 this.mainCharacterGrid.innerHTML = '';
                 
+                // Debug CONFIG loading
+                console.log('Creating character grid...');
+                console.log('window.CONFIG exists:', !!window.CONFIG);
+                console.log('window.CONFIG.CHARACTER_HEADS:', window.CONFIG ? window.CONFIG.CHARACTER_HEADS : 'CONFIG not loaded');
+                
                 // Create character items for main selection grid
                 if (window.CONFIG && window.CONFIG.CHARACTER_HEADS) {
+                    console.log('Using CONFIG.CHARACTER_HEADS:', window.CONFIG.CHARACTER_HEADS);
                     window.CONFIG.CHARACTER_HEADS.forEach((headName, index) => {
                         const item = this.createCharacterItem(headName, index, true, 'head');
                         this.mainCharacterGrid.appendChild(item);
                     });
                 } else {
                     // Fallback if CONFIG not loaded
+                    console.warn('CONFIG not loaded, using fallback character names');
                     for (let i = 0; i < 6; i++) {
                         const item = this.createCharacterItem(`Character${i + 1}`, i, true, 'head');
                         this.mainCharacterGrid.appendChild(item);
