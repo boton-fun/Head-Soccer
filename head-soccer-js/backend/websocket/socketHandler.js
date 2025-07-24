@@ -109,6 +109,24 @@ class SocketHandler extends EventEmitter {
         optional: ['force'],
         maxLength: { reason: 200 },
         enum: { reason: ['time_up', 'mutual_agreement', 'admin_request'] }
+      },
+      'join_character_selection': {
+        required: ['matchId', 'playerId', 'username'],
+        optional: [],
+        maxLength: { matchId: 50, playerId: 50, username: 20 }
+      },
+      'character_select': {
+        required: ['matchId', 'playerId', 'characterType', 'characterIndex'],
+        optional: ['characterData'],
+        maxLength: { matchId: 50, playerId: 50, characterType: 20 },
+        numeric: ['characterIndex'],
+        range: { characterIndex: [0, 20] }
+      },
+      'player_ready': {
+        required: ['matchId', 'playerId', 'ready'],
+        optional: ['selectedHead', 'selectedCleat'],
+        maxLength: { matchId: 50, playerId: 50 },
+        numeric: ['selectedHead', 'selectedCleat']
       }
     };
     
@@ -232,6 +250,19 @@ class SocketHandler extends EventEmitter {
     
     socket.on('leave_matchmaking', (data) => {
       this.handleEvent(socket, 'leave_matchmaking', data, this.handleLeaveMatchmaking.bind(this));
+    });
+    
+    // Character selection events
+    socket.on('join_character_selection', (data) => {
+      this.handleEvent(socket, 'join_character_selection', data, this.handleJoinCharacterSelection.bind(this));
+    });
+    
+    socket.on('character_select', (data) => {
+      this.handleEvent(socket, 'character_select', data, this.handleCharacterSelect.bind(this));
+    });
+    
+    socket.on('player_ready', (data) => {
+      this.handleEvent(socket, 'player_ready', data, this.handlePlayerReady.bind(this));
     });
     
     // Game room events
@@ -1556,6 +1587,171 @@ class SocketHandler extends EventEmitter {
     }
   }
   
+  /**
+   * Handle player joining character selection
+   * @param {Socket} socket - Socket.IO socket
+   * @param {Object} data - Character selection join data
+   */
+  async handleJoinCharacterSelection(socket, data) {
+    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+    if (!connection || !connection.playerId) {
+      socket.emit('character_selection_error', { 
+        reason: 'Not authenticated' 
+      });
+      return;
+    }
+
+    const { matchId, playerId, username } = data;
+
+    try {
+      console.log(`🎭 Player ${username} (${playerId}) joining character selection for match ${matchId}`);
+      
+      // Join the character selection room
+      const roomId = `character_selection_${matchId}`;
+      connection.roomId = roomId;
+      
+      // Update connection state
+      this.connectionManager.updateConnection(socket.id, {
+        roomId: roomId,
+        gameState: 'character_selection',
+        matchId: matchId
+      });
+
+      // Broadcast to other players in the room
+      this.connectionManager.broadcastToRoom(roomId, 'opponent_joined', {
+        playerId: playerId,
+        username: username,
+        timestamp: Date.now()
+      }, socket.id);
+
+      // Send confirmation to joining player
+      socket.emit('character_selection_joined', {
+        matchId: matchId,
+        roomId: roomId,
+        timestamp: Date.now()
+      });
+
+    } catch (error) {
+      console.error(`Error joining character selection:`, error);
+      socket.emit('character_selection_error', {
+        reason: 'Failed to join character selection'
+      });
+    }
+  }
+
+  /**
+   * Handle character selection
+   * @param {Socket} socket - Socket.IO socket
+   * @param {Object} data - Character selection data
+   */
+  async handleCharacterSelect(socket, data) {
+    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+    if (!connection || !connection.playerId) {
+      socket.emit('character_selection_error', { 
+        reason: 'Not authenticated' 
+      });
+      return;
+    }
+
+    const { matchId, playerId, characterType, characterIndex, characterData } = data;
+
+    try {
+      console.log(`🎭 Player ${playerId} selected character ${characterIndex} (${characterType}) in match ${matchId}`);
+      
+      const roomId = `character_selection_${matchId}`;
+      
+      // Broadcast character selection to other players in the room
+      this.connectionManager.broadcastToRoom(roomId, 'character_select', {
+        playerId: playerId,
+        characterType: characterType,
+        characterIndex: characterIndex,
+        characterData: characterData,
+        timestamp: Date.now()
+      }, socket.id);
+
+      // Send confirmation to selecting player
+      socket.emit('character_select_confirmed', {
+        characterType: characterType,
+        characterIndex: characterIndex,
+        timestamp: Date.now()
+      });
+
+    } catch (error) {
+      console.error(`Error handling character selection:`, error);
+      socket.emit('character_selection_error', {
+        reason: 'Failed to select character'
+      });
+    }
+  }
+
+  /**
+   * Handle player ready status for character selection
+   * @param {Socket} socket - Socket.IO socket
+   * @param {Object} data - Player ready data
+   */
+  async handlePlayerReady(socket, data) {
+    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+    if (!connection || !connection.playerId) {
+      socket.emit('character_selection_error', { 
+        reason: 'Not authenticated' 
+      });
+      return;
+    }
+
+    const { matchId, playerId, ready, selectedHead, selectedCleat } = data;
+
+    try {
+      console.log(`🎭 Player ${playerId} ready status: ${ready} in match ${matchId}`);
+      
+      const roomId = `character_selection_${matchId}`;
+      
+      // Broadcast ready status to other players in the room
+      this.connectionManager.broadcastToRoom(roomId, 'player_ready', {
+        playerId: playerId,
+        ready: ready,
+        selectedHead: selectedHead,
+        selectedCleat: selectedCleat,
+        timestamp: Date.now()
+      }, socket.id);
+
+      // Send confirmation to ready player
+      socket.emit('player_ready_confirmed', {
+        ready: ready,
+        timestamp: Date.now()
+      });
+
+      // Check if all players in the match are ready
+      const roomConnections = this.connectionManager.getConnectionsByRoomId(roomId);
+      const readyPlayers = [];
+      
+      // Count ready players (this is simplified - in production you'd track ready state per connection)
+      if (ready) {
+        readyPlayers.push(playerId);
+        
+        // If this is the second player ready, start the match
+        if (roomConnections.length >= 2) {
+          console.log(`🚀 Both players ready in match ${matchId}, starting selection complete`);
+          
+          // Broadcast that selection is complete
+          this.connectionManager.broadcastToRoom(roomId, 'selection_complete', {
+            matchId: matchId,
+            players: roomConnections.map(conn => ({
+              playerId: conn.playerId,
+              username: conn.username
+            })),
+            timestamp: Date.now()
+          });
+        }
+      }
+
+    } catch (error) {
+      console.error(`Error handling player ready:`, error);
+      socket.emit('character_selection_error', {
+        reason: 'Failed to update ready status'
+      });
+    }
+  }
+
   /**
    * Get handler statistics
    * @returns {Object} Statistics

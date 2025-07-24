@@ -50,7 +50,8 @@
       "Bash(SERVER_URL=\"http://localhost:3002\" node test/auth-api-test.js)",
       "Bash(SERVER_URL=https://head-soccer-production.up.railway.app node test/simple-login-test.js)",
       "Bash(SERVER_URL=https://head-soccer-production.up.railway.app node test/production-auth-test.js)",
-      "Bash(PORT=3003 timeout 10s node server.js)"
+      "Bash(PORT=3003 timeout 10s node server.js)",
+      "Bash(git checkout:*)"
     ],
     "deny": []
   }
