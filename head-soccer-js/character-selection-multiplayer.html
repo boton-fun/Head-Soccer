@@ -1198,6 +1198,26 @@
         
         // Initialize when page loads
         window.addEventListener('load', async () => {
+            // Wait a moment for CONFIG to be fully loaded
+            if (!window.CONFIG || !window.CONFIG.CHARACTER_HEADS) {
+                console.log('Waiting for CONFIG to load...');
+                // Wait up to 1 second for CONFIG to load
+                let retries = 0;
+                while ((!window.CONFIG || !window.CONFIG.CHARACTER_HEADS) && retries < 10) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    retries++;
+                }
+                
+                if (!window.CONFIG || !window.CONFIG.CHARACTER_HEADS) {
+                    console.error('CONFIG failed to load after 1 second');
+                }
+            }
+            
+            console.log('CONFIG status at initialization:', {
+                configExists: !!window.CONFIG,
+                characterHeads: window.CONFIG ? window.CONFIG.CHARACTER_HEADS : 'N/A'
+            });
+            
             // Load assets first if assetLoader is available
             if (window.assetLoader) {
                 console.log('Loading assets...');
