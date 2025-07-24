@@ -1295,6 +1295,151 @@ class GameScene extends Phaser.Scene {
         console.log('Positions reset');
     }
     
+    setMultiplayerMode(multiplayerGame) {
+        console.log('Setting multiplayer mode with data:', multiplayerGame.matchData);
+        
+        // Override character selections with multiplayer data
+        if (multiplayerGame.matchData.player1Head && multiplayerGame.matchData.player1Head !== 'Unknown') {
+            this.player1Head = multiplayerGame.matchData.player1Head;
+        }
+        if (multiplayerGame.matchData.player2Head && multiplayerGame.matchData.player2Head !== 'Unknown') {
+            this.player2Head = multiplayerGame.matchData.player2Head;
+        }
+        
+        console.log('Multiplayer character selections applied:', {
+            player1Head: this.player1Head,
+            player2Head: this.player2Head
+        });
+        
+        // Recreate player sprites with new character data
+        this.recreatePlayerSprites();
+    }
+    
+    recreatePlayerSprites() {
+        // Remove existing sprites
+        if (this.player1Sprite) {
+            this.player1Sprite.destroy();
+        }
+        if (this.player2Sprite) {
+            this.player2Sprite.destroy();
+        }
+        if (this.player1Foot) {
+            this.player1Foot.destroy();
+        }
+        if (this.player2Foot) {
+            this.player2Foot.destroy();
+        }
+        
+        // Recreate Player 1 Head
+        const player1HeadKey = this.player1Head + 'Head';
+        
+        if (this.textures.exists(player1HeadKey)) {
+            console.log('Recreating Player 1 head:', player1HeadKey);
+            this.player1Sprite = this.add.image(
+                this.player1.x + this.player1.width / 2,
+                this.player1.y + this.player1.height / 4,
+                player1HeadKey
+            );
+            
+            const headScales = {
+                'Nuwan': [1, 1],
+                'Mihir': [1.05, 1.12],
+                'Dad': [0.97, 1]
+            };
+            const player1Scale = headScales[this.player1Head] || [1, 1];
+            const headSize = 80;
+            this.player1Sprite.setScale(
+                (headSize / this.player1Sprite.width) * player1Scale[0],
+                (headSize / this.player1Sprite.height) * player1Scale[1]
+            );
+        } else {
+            this.player1Sprite = this.add.circle(
+                this.player1.x + this.player1.width / 2,
+                this.player1.y + this.player1.height / 4,
+                25,
+                0x0088ff
+            );
+        }
+        this.player1Sprite.setDepth(10);
+        
+        // Recreate Player 2 Head
+        const player2HeadKey = this.player2Head + 'Head';
+        
+        if (this.textures.exists(player2HeadKey)) {
+            console.log('Recreating Player 2 head:', player2HeadKey);
+            this.player2Sprite = this.add.image(
+                this.player2.x + this.player2.width / 2,
+                this.player2.y + this.player2.height / 4,
+                player2HeadKey
+            );
+            
+            const headScales = {
+                'Nuwan': [1, 1],
+                'Mihir': [1.05, 1.12],
+                'Dad': [0.97, 1]
+            };
+            const player2Scale = headScales[this.player2Head] || [1, 1];
+            const headSize = 80;
+            this.player2Sprite.setScale(
+                (headSize / this.player2Sprite.width) * player2Scale[0],
+                (headSize / this.player2Sprite.height) * player2Scale[1]
+            );
+        } else {
+            this.player2Sprite = this.add.circle(
+                this.player2.x + this.player2.width / 2,
+                this.player2.y + this.player2.height / 4,
+                25,
+                0xff4444
+            );
+        }
+        this.player2Sprite.setDepth(10);
+        
+        // Recreate cleats
+        const player1CleatKey = `cleat${this.player1Cleat}`;
+        if (this.textures.exists(player1CleatKey)) {
+            this.player1Foot = this.add.image(
+                this.player1.x + this.player1.width / 2,
+                this.player1.y + this.player1.height - 5,
+                player1CleatKey
+            );
+            const cleatSize = 40;
+            this.player1Foot.setScale(cleatSize / this.player1Foot.width);
+            this.player1Foot.setDepth(8);
+        } else {
+            this.player1Foot = this.add.rectangle(
+                this.player1.x + this.player1.width / 2,
+                this.player1.y + this.player1.height - 5,
+                30,
+                15,
+                0x000000
+            );
+            this.player1Foot.setDepth(8);
+        }
+        
+        const player2CleatKey = `cleat${this.player2Cleat}`;
+        if (this.textures.exists(player2CleatKey)) {
+            this.player2Foot = this.add.image(
+                this.player2.x + this.player2.width / 2,
+                this.player2.y + this.player2.height - 5,
+                player2CleatKey
+            );
+            const cleatSize = 40;
+            this.player2Foot.setScale(cleatSize / this.player2Foot.width);
+            this.player2Foot.setDepth(8);
+        } else {
+            this.player2Foot = this.add.rectangle(
+                this.player2.x + this.player2.width / 2,
+                this.player2.y + this.player2.height - 5,
+                30,
+                15,
+                0x000000
+            );
+            this.player2Foot.setDepth(8);
+        }
+        
+        console.log('Player sprites recreated with multiplayer character selections');
+    }
+
     updateAI(currentTime) {
         if (!this.ball || !this.player1) return;
         
