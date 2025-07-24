@@ -517,35 +517,85 @@ class GameScene extends Phaser.Scene {
         // Get input based on player side
         let moveLeft, moveRight, jump, kick;
         
-        if (side === 'left') {
-            // Player 1 controls (AI or WASD)
-            if (this.aiEnabled) {
-                // Use AI decisions with movement threshold
-                const playerCenterX = player.x + player.width / 2;
-                const distanceToTarget = Math.abs(this.ai.targetX - playerCenterX);
-                const movementThreshold = 10; // Minimum distance before moving
-                
-                moveLeft = this.ai.targetX < playerCenterX - movementThreshold;
-                moveRight = this.ai.targetX > playerCenterX + movementThreshold;
-                jump = this.ai.shouldJump;
-                kick = this.ai.shouldKick;
+        if (this.isMultiplayer) {
+            // In multiplayer mode, both players use arrow keys and take turns
+            // The current player controls with arrow keys
+            const isCurrentPlayerTurn = this.multiplayerGame ? 
+                (side === 'left' && this.multiplayerGame.matchData.isPlayer1) ||
+                (side === 'right' && !this.multiplayerGame.matchData.isPlayer1) : false;
+            
+            if (isCurrentPlayerTurn) {
+                // This player uses arrow keys
+                moveLeft = this.cursors.left.isDown;
+                moveRight = this.cursors.right.isDown;
+                jump = this.cursors.up.isDown;
+                kick = this.cursors.down.isDown;
             } else {
-                // Human controls (WASD)
-                moveLeft = this.keys.A.isDown;
-                moveRight = this.keys.D.isDown;
-                jump = this.keys.W.isDown;
-                kick = this.keys.S.isDown;
+                // Other player controlled by network input
+                if (this.opponentInput && this.opponentInput.side === side) {
+                    moveLeft = this.opponentInput.moveLeft;
+                    moveRight = this.opponentInput.moveRight;
+                    jump = this.opponentInput.jump;
+                    kick = this.opponentInput.kick;
+                    // Clear opponent input after use to prevent sticking
+                    this.opponentInput = null;
+                } else {
+                    moveLeft = false;
+                    moveRight = false;
+                    jump = false;
+                    kick = false;
+                }
             }
         } else {
-            // Player 2 controls (Arrows)
-            moveLeft = this.cursors.left.isDown;
-            moveRight = this.cursors.right.isDown;
-            jump = this.cursors.up.isDown;
-            kick = this.cursors.down.isDown;
+            // Single player mode - original controls
+            if (side === 'left') {
+                // Player 1 controls (AI or WASD)
+                if (this.aiEnabled) {
+                    // Use AI decisions with movement threshold
+                    const playerCenterX = player.x + player.width / 2;
+                    const distanceToTarget = Math.abs(this.ai.targetX - playerCenterX);
+                    const movementThreshold = 10; // Minimum distance before moving
+                    
+                    moveLeft = this.ai.targetX < playerCenterX - movementThreshold;
+                    moveRight = this.ai.targetX > playerCenterX + movementThreshold;
+                    jump = this.ai.shouldJump;
+                    kick = this.ai.shouldKick;
+                } else {
+                    // Human controls (WASD)
+                    moveLeft = this.keys.A.isDown;
+                    moveRight = this.keys.D.isDown;
+                    jump = this.keys.W.isDown;
+                    kick = this.keys.S.isDown;
+                }
+            } else {
+                // Player 2 controls (Arrows)
+                moveLeft = this.cursors.left.isDown;
+                moveRight = this.cursors.right.isDown;
+                jump = this.cursors.up.isDown;
+                kick = this.cursors.down.isDown;
+            }
         }
         
         // Store kick state on player for collision detection
         player.isKicking = kick;
+        
+        // Send input to multiplayer system if enabled
+        if (this.isMultiplayer && this.multiplayerGame) {
+            const isCurrentPlayer = (side === 'left' && this.multiplayerGame.matchData.isPlayer1) ||
+                                  (side === 'right' && !this.multiplayerGame.matchData.isPlayer1);
+            
+            if (isCurrentPlayer && (moveLeft || moveRight || jump || kick)) {
+                // Send input data to server
+                this.multiplayerGame.sendPlayerInput({
+                    moveLeft,
+                    moveRight,
+                    jump,
+                    kick,
+                    side,
+                    timestamp: Date.now()
+                });
+            }
+        }
         
         // Trigger kick animation on button press (not collision)
         if (side === 'left') {
@@ -1301,6 +1351,13 @@ class GameScene extends Phaser.Scene {
         // Store the multiplayer game reference for later use
         this.multiplayerGame = multiplayerGame;
         
+        // Disable AI for multiplayer mode
+        this.aiEnabled = false;
+        console.log('AI disabled for multiplayer mode');
+        
+        // Set multiplayer flag
+        this.isMultiplayer = true;
+        
         // Map character indices to names if needed
         const characterNames = ['Nuwan', 'Mihir', 'Dad'];
         
@@ -1463,6 +1520,33 @@ class GameScene extends Phaser.Scene {
         }
         
         console.log('Player sprites recreated with multiplayer character selections');
+    }
+    
+    handleOpponentInput(inputData) {
+        // Handle input from opponent player via network
+        if (!this.isMultiplayer || !inputData) return;
+        
+        console.log('Received opponent input:', inputData);
+        
+        // Store opponent input to be used in next update cycle
+        this.opponentInput = {
+            moveLeft: inputData.input.moveLeft,
+            moveRight: inputData.input.moveRight,
+            jump: inputData.input.jump,
+            kick: inputData.input.kick,
+            side: inputData.input.side,
+            timestamp: inputData.timestamp
+        };
+    }
+    
+    handleServerUpdate(gameStateData) {
+        // Handle game state updates from server
+        if (!this.isMultiplayer || !gameStateData) return;
+        
+        console.log('Received server game state update:', gameStateData);
+        
+        // Sync positions, scores, etc. based on server state
+        // This ensures both clients stay synchronized
     }
 
     updateAI(currentTime) {
