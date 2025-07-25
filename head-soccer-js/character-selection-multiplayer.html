@@ -650,6 +650,20 @@
                     console.log('🆔 Generated new UUID for player2:', this.player2Id);
                 }
                 
+                // CRITICAL FIX: Ensure player IDs are different (server bug workaround)
+                if (this.player1Id === this.player2Id) {
+                    console.warn('🚨 CRITICAL: Both players have the same ID! Generating unique IDs...');
+                    console.warn('Original player1Id:', this.player1Id);
+                    console.warn('Original player2Id:', this.player2Id);
+                    
+                    // Generate new unique IDs
+                    this.player1Id = Utils.generateUUID();
+                    this.player2Id = Utils.generateUUID();
+                    
+                    console.log('🔧 Fixed player1Id:', this.player1Id);
+                    console.log('🔧 Fixed player2Id:', this.player2Id);
+                }
+                
                 console.log('Multiplayer character selection initialized:', {
                     matchId: this.matchId,
                     currentPlayer: this.isPlayer1 ? this.player1Username : this.player2Username,
