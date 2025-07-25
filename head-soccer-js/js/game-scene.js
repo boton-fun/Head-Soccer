@@ -1540,11 +1540,35 @@ class GameScene extends Phaser.Scene {
         });
         
         // Always recreate sprites to apply the new character selections
+        console.log('📊 setMultiplayerMode sprite recreation check:', {
+            player1Exists: !!this.player1,
+            player2Exists: !!this.player2,
+            player1SpriteExists: !!this.player1Sprite,
+            player2SpriteExists: !!this.player2Sprite
+        });
+        
         if (this.player1 && this.player2) {
-            console.log('Recreating player sprites with new character selections');
+            console.log('🔄 Recreating player sprites with new character selections');
             this.recreatePlayerSprites();
         } else {
-            console.log('Players not yet created, character selections will be applied during createPlayers');
+            console.log('⏳ Players not yet created, character selections will be applied during createPlayers');
+            
+            // Force sprite recreation after a short delay to ensure players are created
+            setTimeout(() => {
+                console.log('🕐 Delayed sprite recreation check:', {
+                    player1Exists: !!this.player1,
+                    player2Exists: !!this.player2,
+                    player1SpriteExists: !!this.player1Sprite,
+                    player2SpriteExists: !!this.player2Sprite
+                });
+                
+                if (this.player1 && this.player2) {
+                    console.log('🔄 Delayed recreation of player sprites with multiplayer selections');
+                    this.recreatePlayerSprites();
+                } else {
+                    console.error('❌ Players still not created after delay - sprites will use defaults');
+                }
+            }, 100);
         }
     }
     
