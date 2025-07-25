@@ -1324,6 +1324,22 @@
                     CHARACTER_HEADS: CONFIG.CHARACTER_HEADS
                 });
                 
+                // Debug: Character assignment logic
+                const player1HeadIndex = this.isPlayer1 ? this.currentPlayerSelectedHead : this.opponentSelectedHead;
+                const player2HeadIndex = this.isPlayer1 ? this.opponentSelectedHead : this.currentPlayerSelectedHead;
+                const player1CleatIndex = this.isPlayer1 ? this.currentPlayerSelectedCleat : this.opponentSelectedCleat;  
+                const player2CleatIndex = this.isPlayer1 ? this.opponentSelectedCleat : this.currentPlayerSelectedCleat;
+                
+                console.log('🎭 Character assignment logic:', {
+                    isPlayer1: this.isPlayer1,
+                    currentPlayerSelectedHead: this.currentPlayerSelectedHead,
+                    opponentSelectedHead: this.opponentSelectedHead,
+                    player1HeadIndex,
+                    player2HeadIndex,
+                    'player1Head will be': CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[player1HeadIndex] : `Character${player1HeadIndex + 1}`,
+                    'player2Head will be': CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[player2HeadIndex] : `Character${player2HeadIndex + 1}`
+                });
+                
                 // Pass match data and selections to multiplayer gameplay
                 const params = new URLSearchParams({
                     matchId: this.matchId,
@@ -1331,10 +1347,10 @@
                     player2Id: this.player2Id,
                     player1: this.player1Username,
                     player2: this.player2Username,
-                    player1Head: CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[this.isPlayer1 ? this.currentPlayerSelectedHead : this.opponentSelectedHead] : `Character${(this.isPlayer1 ? this.currentPlayerSelectedHead : this.opponentSelectedHead) + 1}`,
-                    player2Head: CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[this.isPlayer1 ? this.opponentSelectedHead : this.currentPlayerSelectedHead] : `Character${(this.isPlayer1 ? this.opponentSelectedHead : this.currentPlayerSelectedHead) + 1}`,
-                    player1Cleat: this.isPlayer1 ? this.currentPlayerSelectedCleat : this.opponentSelectedCleat,
-                    player2Cleat: this.isPlayer1 ? this.opponentSelectedCleat : this.currentPlayerSelectedCleat,
+                    player1Head: CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[player1HeadIndex] : `Character${player1HeadIndex + 1}`,
+                    player2Head: CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[player2HeadIndex] : `Character${player2HeadIndex + 1}`,
+                    player1Cleat: player1CleatIndex,
+                    player2Cleat: player2CleatIndex,
                     isPlayer1: this.isPlayer1
                 });
                 
