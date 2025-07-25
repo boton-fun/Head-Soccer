@@ -292,6 +292,62 @@ class SocketHandler extends EventEmitter {
       this.handleEvent(socket, 'chat_message', data, this.handleChatMessage.bind(this), 'chat');
     });
     
+    // MISSING GAMEPLAY SYNC EVENTS - Adding score and timer sync handlers
+    socket.on('score_update', (data, callback) => {
+      console.log('📊 Server received score update:', data);
+      const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+      if (connection && connection.roomId && data.matchId) {
+        // Relay score update to other players in the room
+        this.connectionManager.broadcastToRoom(`match_${data.matchId}`, 'score_update', data, socket.id);
+        
+        // Send acknowledgment back to sender
+        if (callback) {
+          callback({ success: true, timestamp: Date.now() });
+        }
+      } else {
+        if (callback) {
+          callback({ success: false, reason: 'Not in valid room or missing matchId' });
+        }
+      }
+    });
+
+    socket.on('timer_update', (data) => {
+      console.log('⏱️ Server received timer update:', data);
+      const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+      if (connection && connection.roomId && data.matchId) {
+        // Relay timer update to other players in the room
+        this.connectionManager.broadcastToRoom(`match_${data.matchId}`, 'timer_sync', data, socket.id);
+      }
+    });
+
+    socket.on('join_gameplay', (data) => {
+      console.log('🎮 Player joining gameplay room:', data);
+      const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+      if (connection && data.matchId) {
+        // Join the gameplay room
+        const gameplayRoomId = `match_${data.matchId}`;
+        socket.join(gameplayRoomId);
+        connection.roomId = gameplayRoomId;
+        
+        // Track room connections properly
+        if (!this.connectionManager.roomConnections.has(gameplayRoomId)) {
+          this.connectionManager.roomConnections.set(gameplayRoomId, new Set());
+        }
+        this.connectionManager.roomConnections.get(gameplayRoomId).add(socket.id);
+        
+        console.log(`✅ Player ${connection.playerId} joined gameplay room: ${gameplayRoomId}`);
+      }
+    });
+
+    socket.on('game_state_sync', (data) => {
+      console.log('🔄 Server received game state sync:', data);
+      const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+      if (connection && connection.roomId && data.matchId) {
+        // Relay full game state to other players in the room
+        this.connectionManager.broadcastToRoom(`match_${data.matchId}`, 'game_state_sync', data, socket.id);
+      }
+    });
+
     // Game control events
     socket.on('pause_request', (data) => {
       this.handleEvent(socket, 'pause_request', data, this.handlePauseRequest.bind(this));
