@@ -736,6 +736,24 @@
                     this.socket.on('player_update', (data) => handleScoreSync(data, 'player_update'));
                     this.socket.on('direct_score_broadcast', (data) => handleScoreSync(data, 'direct_score_broadcast'));
                     
+                    // HACK: Listen for character_select events that contain score data  
+                    this.socket.on('character_select', (data) => {
+                        console.log('🔥 Received character_select event:', data);
+                        if (data.type === 'SCORE_HACK' && data.matchId === this.matchData.matchId) {
+                            console.log('🔥 SCORE HACK detected in character_select!');
+                            // Only accept if it's from a different player
+                            if (data.playerId !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id)) {
+                                console.log('🔥 Applying hacked score update:', { p1: data.player1Score, p2: data.player2Score });
+                                this.updateScore(data.player1Score, data.player2Score);
+                                if (this.gameScene && this.gameScene.score) {
+                                    this.gameScene.score.player1 = data.player1Score;
+                                    this.gameScene.score.player2 = data.player2Score;
+                                    this.gameScene.updateScoreDisplay();
+                                }
+                            }
+                        }
+                    });
+                    
                     this.socket.on('timer_sync', (data) => {
                         console.log('⏱️ Received timer sync:', data);
                         this.syncTimer(data.timeRemaining);
@@ -820,6 +838,53 @@
                             };
                         } catch (e) {
                             console.warn('📡 BroadcastChannel setup failed:', e);
+                        }
+                    }
+                    
+                    // Listen for URL hash changes (cross-device sync)
+                    window.addEventListener('hashchange', () => {
+                        const hash = window.location.hash;
+                        if (hash.startsWith('#score_')) {
+                            console.log('🌐 Hash change detected:', hash);
+                            const parts = hash.replace('#score_', '').split('_');
+                            if (parts.length >= 3) {
+                                const [player1Score, player2Score, timestamp] = parts;
+                                const scoreData = {
+                                    player1Score: parseInt(player1Score),
+                                    player2Score: parseInt(player2Score),
+                                    timestamp: parseInt(timestamp),
+                                    source: 'url_hash'
+                                };
+                                
+                                // Only sync if this is a newer update
+                                if (!this.lastHashUpdate || timestamp > this.lastHashUpdate) {
+                                    console.log('🌐 Syncing scores from URL hash:', scoreData);
+                                    this.updateScore(scoreData.player1Score, scoreData.player2Score);
+                                    if (this.gameScene && this.gameScene.score) {
+                                        this.gameScene.score.player1 = scoreData.player1Score;
+                                        this.gameScene.score.player2 = scoreData.player2Score;
+                                        this.gameScene.updateScoreDisplay();
+                                    }
+                                    this.lastHashUpdate = timestamp;
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Also check hash on page load
+                    const hash = window.location.hash;
+                    if (hash.startsWith('#score_')) {
+                        const parts = hash.replace('#score_', '').split('_');
+                        if (parts.length >= 3) {
+                            const [player1Score, player2Score, timestamp] = parts;
+                            console.log('🌐 Initial hash score detected:', { player1Score, player2Score });
+                            this.updateScore(parseInt(player1Score), parseInt(player2Score));
+                            if (this.gameScene && this.gameScene.score) {
+                                this.gameScene.score.player1 = parseInt(player1Score);
+                                this.gameScene.score.player2 = parseInt(player2Score);
+                                this.gameScene.updateScoreDisplay();
+                            }
+                            this.lastHashUpdate = parseInt(timestamp);
                         }
                     }
                     
@@ -1059,6 +1124,13 @@
                     }
                 }
                 
+                // EMERGENCY FALLBACK: Use URL hash for cross-device sync
+                // This works because both players access the same match URL
+                const currentUrl = new URL(window.location.href);
+                currentUrl.hash = `#score_${player1Score}_${player2Score}_${Date.now()}`;
+                console.log('🌐 Updated URL hash for cross-device sync:', currentUrl.hash);
+                window.history.replaceState(null, '', currentUrl.toString());
+                
                 if (this.socket && this.socket.connected) {
                     const scoreData = {
                         matchId: this.matchData.matchId,
@@ -1106,8 +1178,16 @@
                             // Try using a message format similar to existing events
                             this.socket.emit('message', JSON.stringify(customMessage));
                             
-                            // As a fallback, broadcast to all sockets (this might work if server has basic relay)
-                            this.socket.broadcast?.emit('score_sync', customMessage);
+                            // HACK: Use character_select event to send score data (server DOES relay this!)
+                            console.log('🔥 HACK: Using character_select to send score data');
+                            this.socket.emit('character_select', {
+                                matchId: this.matchData.matchId,
+                                playerId: scoreData.playerId,
+                                type: 'SCORE_HACK',
+                                player1Score: scoreData.player1Score,
+                                player2Score: scoreData.player2Score,
+                                timestamp: Date.now()
+                            });
                         } else {
                             console.log('✅ Server acknowledged score_update within timeout');
                         }
