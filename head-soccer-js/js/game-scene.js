@@ -1828,18 +1828,40 @@ class GameScene extends Phaser.Scene {
         // Determine which player is controlled by this client
         let localPlayer, localSprite, playerNumber;
         if (this.multiplayerGame.matchData.isPlayer1) {
-            localPlayer = this.player2; // Player 1 controls player 2 (right side)
-            localSprite = this.player2Sprite;
-            playerNumber = 2;
-        } else {
-            localPlayer = this.player1; // Player 2 controls player 1 (left side) 
+            localPlayer = this.player1; // Player 1 controls player 1 (left side)
             localSprite = this.player1Sprite;
             playerNumber = 1;
+        } else {
+            localPlayer = this.player2; // Player 2 controls player 2 (right side) 
+            localSprite = this.player2Sprite;
+            playerNumber = 2;
         }
         
         if (!localPlayer || !localSprite) return;
         
+        // Store last position to avoid sending duplicates
+        if (!this.lastSentPosition) {
+            this.lastSentPosition = { x: 0, y: 0 };
+        }
+        
+        // Only send if position actually changed
+        const positionChanged = Math.abs(localPlayer.x - this.lastSentPosition.x) > 1 || 
+                               Math.abs(localPlayer.y - this.lastSentPosition.y) > 1 ||
+                               Math.abs(localPlayer.velocity.x) > 0.1 ||
+                               Math.abs(localPlayer.velocity.y) > 0.1;
+        
+        if (!positionChanged) return;
+        
+        // Update last sent position
+        this.lastSentPosition.x = localPlayer.x;
+        this.lastSentPosition.y = localPlayer.y;
+        
         // Send movement data to server
+        console.log(`🏃 Sending movement for player ${playerNumber}:`, {
+            position: { x: localPlayer.x, y: localPlayer.y },
+            velocity: { x: localPlayer.velocity.x, y: localPlayer.velocity.y }
+        });
+        
         this.multiplayerGame.sendMovementUpdate({
             playerNumber: playerNumber,
             position: {
@@ -1856,6 +1878,8 @@ class GameScene extends Phaser.Scene {
     }
     
     handleOpponentMovement(movementData) {
+        console.log(`🏃 Received opponent movement for player ${movementData.playerNumber}:`, movementData);
+        
         // Determine which player is the opponent
         let opponentPlayer, opponentSprite;
         if (movementData.playerNumber === 1) {
@@ -1866,7 +1890,10 @@ class GameScene extends Phaser.Scene {
             opponentSprite = this.player2Sprite;
         }
         
-        if (!opponentPlayer || !opponentSprite) return;
+        if (!opponentPlayer || !opponentSprite) {
+            console.log(`❌ Opponent player ${movementData.playerNumber} not found!`);
+            return;
+        }
         
         // Update opponent position directly (basic version - no interpolation yet)
         opponentPlayer.x = movementData.position.x;
@@ -1879,6 +1906,10 @@ class GameScene extends Phaser.Scene {
         opponentSprite.x = opponentPlayer.x;
         opponentSprite.y = opponentPlayer.y;
         
-        console.log(`🏃 Updated opponent player ${movementData.playerNumber} position:`, movementData.position);
+        console.log(`✅ Updated opponent player ${movementData.playerNumber} position to:`, {
+            x: opponentPlayer.x, 
+            y: opponentPlayer.y,
+            velocity: opponentPlayer.velocity
+        });
     }
 }
