@@ -270,9 +270,16 @@ class GameScene extends Phaser.Scene {
         // Player 1 Head
         const player1HeadKey = this.player1Head + 'Head';
         
+        console.log('🎭 Creating Player 1 sprite:', {
+            player1Head: this.player1Head,
+            player1HeadKey: player1HeadKey,
+            textureExists: this.textures.exists(player1HeadKey),
+            availableTextures: this.textures.list
+        });
+        
         // Check if the texture exists before trying to use it
         if (this.textures.exists(player1HeadKey)) {
-            console.log('Loading Player 1 head:', player1HeadKey);
+            console.log('✅ Loading Player 1 head:', player1HeadKey);
             this.player1Sprite = this.add.image(
                 this.player1.x + this.player1.width / 2,
                 this.player1.y + this.player1.height / 4, // Moved up from height/2
@@ -309,9 +316,16 @@ class GameScene extends Phaser.Scene {
         // Player 2 Head
         const player2HeadKey = this.player2Head + 'Head';
         
+        console.log('🎭 Creating Player 2 sprite:', {
+            player2Head: this.player2Head,
+            player2HeadKey: player2HeadKey,
+            textureExists: this.textures.exists(player2HeadKey),
+            availableTextures: this.textures.list
+        });
+        
         // Check if the texture exists before trying to use it
         if (this.textures.exists(player2HeadKey)) {
-            console.log('Loading Player 2 head:', player2HeadKey);
+            console.log('✅ Loading Player 2 head:', player2HeadKey);
             this.player2Sprite = this.add.image(
                 this.player2.x + this.player2.width / 2,
                 this.player2.y + this.player2.height / 4, // Moved up from height/2
