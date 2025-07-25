@@ -1588,7 +1588,12 @@ class GameScene extends Phaser.Scene {
             
             // Force sprite recreation after a short delay to ensure players are created
             setTimeout(() => {
-                console.log('🕐 Delayed sprite recreation check:', {
+                console.log('🕐 Delayed sprite recreation check at timestamp:', Date.now());
+                console.log('🕐 Current character heads during delay:', {
+                    player1Head: this.player1Head,
+                    player2Head: this.player2Head
+                });
+                console.log('🕐 Player existence check:', {
                     player1Exists: !!this.player1,
                     player2Exists: !!this.player2,
                     player1SpriteExists: !!this.player1Sprite,
