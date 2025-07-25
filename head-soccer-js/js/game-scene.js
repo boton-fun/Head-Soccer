@@ -35,6 +35,10 @@ class GameScene extends Phaser.Scene {
         this.player2Head = 'Nuwan';
         this.player1Cleat = 8;
         this.player2Cleat = 3;
+        
+        // Goal state tracking to prevent multiple goals
+        this.goalCooldown = 0;
+        this.goalCooldownDuration = 120; // 2 seconds at 60fps
     }
     
     preload() {
@@ -103,6 +107,9 @@ class GameScene extends Phaser.Scene {
         
         // Initialize score
         this.initializeScore();
+        
+        // Initialize goal cooldown to prevent multiple goal triggers
+        this.goalCooldown = 0;
         
         // Initialize game state
         this.gameState = 'playing'; // 'playing', 'paused', 'ended'
@@ -937,15 +944,23 @@ class GameScene extends Phaser.Scene {
     checkGoals() {
         if (!this.ball) return;
         
+        // Update goal cooldown
+        if (this.goalCooldown > 0) {
+            this.goalCooldown--;
+            return; // Skip goal detection during cooldown
+        }
+        
         // Check left goal (Player 2 scores)
         if (PHYSICS_CONSTANTS.UTILS.isCollide(this.ball, this.leftGoal)) {
             this.handleGoal('player2');
+            this.goalCooldown = this.goalCooldownDuration; // Start cooldown
             return;
         }
         
         // Check right goal (Player 1 scores)  
         if (PHYSICS_CONSTANTS.UTILS.isCollide(this.ball, this.rightGoal)) {
             this.handleGoal('player1');
+            this.goalCooldown = this.goalCooldownDuration; // Start cooldown
             return;
         }
     }
@@ -958,28 +973,39 @@ class GameScene extends Phaser.Scene {
             this.score = { player1: 0, player2: 0 };
         }
         
-        // Update score
-        this.score[scoringPlayer]++;
-        
-        // Update the HTML score display
-        this.updateScoreDisplay();
-        
-        // Send goal event to multiplayer system for synchronization
         if (this.isMultiplayer && this.multiplayerGame) {
-            console.log('🎯 Sending goal event and score update by', scoringPlayer, '- New scores:', this.score);
-            // Send both goal event for reset sync and score update
-            this.multiplayerGame.sendGoalScored(scoringPlayer, this.score.player1, this.score.player2);
-            this.multiplayerGame.sendScoreUpdate(this.score.player1, this.score.player2);
+            // MULTIPLAYER: Send goal event to server, let server handle score updates
+            console.log('🎯 MULTIPLAYER: Sending goal event to server for', scoringPlayer);
+            
+            // Calculate what the new score should be (don't update locally yet)
+            const newScores = {
+                player1: this.score.player1 + (scoringPlayer === 'player1' ? 1 : 0),
+                player2: this.score.player2 + (scoringPlayer === 'player2' ? 1 : 0)
+            };
+            
+            // Send goal event to server - server will broadcast back with score update
+            this.multiplayerGame.sendGoalScored(scoringPlayer, newScores.player1, newScores.player2);
+            
+            // Don't update score locally - wait for server response
+            // Don't reset positions locally - wait for server response
+            console.log('🎯 Goal event sent to server, waiting for synchronized response');
+            
         } else {
-            console.log('🎯 Not sending goal event - isMultiplayer:', this.isMultiplayer, 'multiplayerGame:', !!this.multiplayerGame);
-            // In single player, immediately reset positions
+            // SINGLE PLAYER: Handle everything locally
+            console.log('🎯 SINGLE PLAYER: Handling goal locally');
+            
+            // Update score locally
+            this.score[scoringPlayer]++;
+            this.updateScoreDisplay();
+            
+            // Reset positions immediately
             this.resetPositions();
+            
+            // Log the goal
+            console.log(`Score: Player 1: ${this.score.player1} - Player 2: ${this.score.player2}`);
         }
         
-        // Log the goal
-        console.log(`Score: Player 1: ${this.score.player1} - Player 2: ${this.score.player2}`);
-        
-        // Trigger goal celebration
+        // Trigger goal celebration (both modes)
         this.celebrateGoal(scoringPlayer);
     }
     
@@ -1505,6 +1531,9 @@ class GameScene extends Phaser.Scene {
             this.ball.velocity = { x: 0, y: 0 };
         }
         
+        // Reset goal cooldown to allow new goals after reset
+        this.goalCooldown = 0;
+        
         console.log('Positions reset');
     }
     
@@ -1773,13 +1802,14 @@ class GameScene extends Phaser.Scene {
         
         console.log('🎯 Received goal event from server:', goalData);
         
-        // Update score if provided
+        // Update score from server (authoritative)
         if (goalData.scores) {
             this.score = {
                 player1: goalData.scores.player1,
                 player2: goalData.scores.player2
             };
             this.updateScoreDisplay();
+            console.log('🎯 Score updated from server:', this.score);
         }
         
         // Reset positions for both players simultaneously
