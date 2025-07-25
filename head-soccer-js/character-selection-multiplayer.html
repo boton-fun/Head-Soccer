@@ -1123,9 +1123,18 @@
                     // Listen for opponent character/cleat selection
                     this.socket.on('character_select', (data) => {
                         console.log('Received character_select event:', data);
-                        console.log('Current player ID:', this.isPlayer1 ? this.player1Id : this.player2Id);
-                        if (data.playerId !== (this.isPlayer1 ? this.player1Id : this.player2Id)) {
-                            console.log('Processing opponent selection:', data.characterIndex, data.characterType);
+                        const currentPlayerId = this.isPlayer1 ? this.player1Id : this.player2Id;
+                        console.log('🔍 Player ID comparison:', {
+                            'data.playerId': data.playerId,
+                            'currentPlayerId': currentPlayerId,
+                            'isPlayer1': this.isPlayer1,
+                            'player1Id': this.player1Id,
+                            'player2Id': this.player2Id,
+                            'match': data.playerId === currentPlayerId ? 'SAME (ignore)' : 'DIFFERENT (process)'
+                        });
+                        
+                        if (data.playerId !== currentPlayerId) {
+                            console.log('✅ Processing opponent selection:', data.characterIndex, data.characterType);
                             if (data.characterType === 'head') {
                                 this.opponentSelectedHead = data.characterIndex;
                                 this.updateCharacterSelection();
@@ -1140,7 +1149,7 @@
                                 console.log('Opponent selected cleat:', data.characterData.name, 'Index:', this.opponentSelectedCleat);
                             }
                         } else {
-                            console.log('Ignoring own selection event');
+                            console.log('❌ Ignoring own selection event');
                         }
                     });
                     
