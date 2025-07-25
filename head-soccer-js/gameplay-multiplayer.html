@@ -706,32 +706,122 @@
                         }
                     });
                     
-                    // Direct peer-to-peer score broadcast (when server doesn't handle it)
-                    this.socket.on('direct_score_broadcast', (data) => {
-                        console.log('🎯 ===== DIRECT SCORE BROADCAST RECEIVED =====');
+                    // Custom score sync handlers for multiple event types
+                    const handleScoreSync = (data, eventType) => {
+                        console.log(`🎯 ===== ${eventType.toUpperCase()} RECEIVED =====`);
                         console.log('🎯 Data:', data);
-                        console.log('🎯 My Match ID:', this.matchData.matchId, 'Received Match ID:', data.matchId);
-                        console.log('🎯 My Player ID:', this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id, 'Sender ID:', data.playerId);
                         
-                        // Only accept if it's from the same match but different player
-                        if (data.matchId === this.matchData.matchId && data.playerId !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id)) {
-                            console.log('🎯 ✅ ACCEPTING peer score update - syncing scores!');
-                            this.updateScore(data.player1Score, data.player2Score);
-                            if (this.gameScene && this.gameScene.score) {
-                                this.gameScene.score.player1 = data.player1Score;
-                                this.gameScene.score.player2 = data.player2Score;
-                                this.gameScene.updateScoreDisplay();
+                        if (data.type === 'score_sync') {
+                            console.log('🎯 My Match ID:', this.matchData.matchId, 'Received Match ID:', data.matchId);
+                            console.log('🎯 My Player ID:', this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id, 'Sender ID:', data.playerId);
+                            
+                            // Only accept if it's from the same match but different player
+                            if (data.matchId === this.matchData.matchId && data.playerId !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id)) {
+                                console.log('🎯 ✅ ACCEPTING score sync - updating scores!');
+                                this.updateScore(data.player1Score, data.player2Score);
+                                if (this.gameScene && this.gameScene.score) {
+                                    this.gameScene.score.player1 = data.player1Score;
+                                    this.gameScene.score.player2 = data.player2Score;
+                                    this.gameScene.updateScoreDisplay();
+                                }
+                            } else {
+                                console.log('🎯 ❌ REJECTING score sync - different match or same player');
                             }
-                        } else {
-                            console.log('🎯 ❌ REJECTING peer score update - different match or same player');
                         }
                         console.log('🎯 ========================================');
-                    });
+                    };
+                    
+                    this.socket.on('game_message', (data) => handleScoreSync(data, 'game_message'));
+                    this.socket.on('custom_event', (data) => handleScoreSync(data, 'custom_event'));
+                    this.socket.on('player_update', (data) => handleScoreSync(data, 'player_update'));
+                    this.socket.on('direct_score_broadcast', (data) => handleScoreSync(data, 'direct_score_broadcast'));
                     
                     this.socket.on('timer_sync', (data) => {
                         console.log('⏱️ Received timer sync:', data);
                         this.syncTimer(data.timeRemaining);
                     });
+                    
+                    // Listen for localStorage score changes (cross-tab sync)
+                    window.addEventListener('storage', (e) => {
+                        if (e.key && e.key.startsWith('score_') && e.key.includes(this.matchData.matchId)) {
+                            const scoreData = JSON.parse(e.newValue || '{}');
+                            console.log('💾 LocalStorage score change detected:', scoreData);
+                            
+                            // Only sync if it wasn't updated by this player
+                            if (scoreData.updatedBy !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id)) {
+                                console.log('💾 Syncing scores from localStorage:', scoreData);
+                                this.updateScore(scoreData.player1Score, scoreData.player2Score);
+                                if (this.gameScene && this.gameScene.score) {
+                                    this.gameScene.score.player1 = scoreData.player1Score;
+                                    this.gameScene.score.player2 = scoreData.player2Score;
+                                    this.gameScene.updateScoreDisplay();
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Polling fallback for localStorage sync (every 500ms)
+                    this.lastScoreCheck = { player1: 0, player2: 0, timestamp: 0 };
+                    this.scorePollingInterval = setInterval(() => {
+                        const scoreKey = `score_${this.matchData.matchId}`;
+                        const storedScore = localStorage.getItem(scoreKey);
+                        if (storedScore) {
+                            const scoreData = JSON.parse(storedScore);
+                            // Check if score is newer and from different player
+                            if (scoreData.timestamp > this.lastScoreCheck.timestamp && 
+                                scoreData.updatedBy !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id)) {
+                                console.log('🔄 Polling detected score update:', scoreData);
+                                this.updateScore(scoreData.player1Score, scoreData.player2Score);
+                                if (this.gameScene && this.gameScene.score) {
+                                    this.gameScene.score.player1 = scoreData.player1Score;
+                                    this.gameScene.score.player2 = scoreData.player2Score;
+                                    this.gameScene.updateScoreDisplay();
+                                }
+                                this.lastScoreCheck = scoreData;
+                            }
+                        }
+                    }, 500);
+                    
+                    // Listen for custom score update events
+                    window.addEventListener('scoreUpdate', (e) => {
+                        const scoreData = e.detail;
+                        console.log('🎯 Custom scoreUpdate event received:', scoreData);
+                        
+                        // Only sync if it wasn't updated by this player
+                        if (scoreData.updatedBy !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id)) {
+                            console.log('🎯 Syncing scores from custom event:', scoreData);
+                            this.updateScore(scoreData.player1Score, scoreData.player2Score);
+                            if (this.gameScene && this.gameScene.score) {
+                                this.gameScene.score.player1 = scoreData.player1Score;
+                                this.gameScene.score.player2 = scoreData.player2Score;
+                                this.gameScene.updateScoreDisplay();
+                            }
+                        }
+                    });
+                    
+                    // Initialize BroadcastChannel for cross-tab score sync
+                    if (typeof BroadcastChannel !== 'undefined') {
+                        try {
+                            this.scoreChannel = new BroadcastChannel(`head-soccer-scores-${this.matchData.matchId}`);
+                            this.scoreChannel.onmessage = (event) => {
+                                const scoreData = event.data;
+                                console.log('📡 BroadcastChannel score received:', scoreData);
+                                
+                                // Only sync if it wasn't updated by this player
+                                if (scoreData.updatedBy !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id)) {
+                                    console.log('📡 Syncing scores from BroadcastChannel:', scoreData);
+                                    this.updateScore(scoreData.player1Score, scoreData.player2Score);
+                                    if (this.gameScene && this.gameScene.score) {
+                                        this.gameScene.score.player1 = scoreData.player1Score;
+                                        this.gameScene.score.player2 = scoreData.player2Score;
+                                        this.gameScene.updateScoreDisplay();
+                                    }
+                                }
+                            };
+                        } catch (e) {
+                            console.warn('📡 BroadcastChannel setup failed:', e);
+                        }
+                    }
                     
                     this.socket.on('game_ended', (data) => {
                         console.log('🏁 Received game ended:', data);
@@ -931,6 +1021,44 @@
             }
             
             sendScoreUpdate(player1Score, player2Score) {
+                // Immediately update local scores and display
+                console.log('📊 Immediate local score update:', { player1Score, player2Score });
+                this.updateScore(player1Score, player2Score);
+                if (this.gameScene && this.gameScene.score) {
+                    this.gameScene.score.player1 = player1Score;
+                    this.gameScene.score.player2 = player2Score;
+                    this.gameScene.updateScoreDisplay();
+                }
+                
+                // Store in localStorage for cross-tab sync
+                const scoreKey = `score_${this.matchData.matchId}`;
+                const scoreData = {
+                    player1Score,
+                    player2Score,
+                    timestamp: Date.now(),
+                    updatedBy: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id
+                };
+                localStorage.setItem(scoreKey, JSON.stringify(scoreData));
+                console.log('💾 Stored score in localStorage:', scoreData);
+                
+                // Trigger a custom event for same-page instances (in case of iframes or multiple game instances)
+                window.dispatchEvent(new CustomEvent('scoreUpdate', { 
+                    detail: scoreData 
+                }));
+                
+                // Use BroadcastChannel for cross-tab communication (modern browsers)
+                if (typeof BroadcastChannel !== 'undefined') {
+                    try {
+                        if (!this.scoreChannel) {
+                            this.scoreChannel = new BroadcastChannel(`head-soccer-scores-${this.matchData.matchId}`);
+                        }
+                        this.scoreChannel.postMessage(scoreData);
+                        console.log('📡 Broadcast score via BroadcastChannel:', scoreData);
+                    } catch (e) {
+                        console.warn('📡 BroadcastChannel failed:', e);
+                    }
+                }
+                
                 if (this.socket && this.socket.connected) {
                     const scoreData = {
                         matchId: this.matchData.matchId,
@@ -955,12 +1083,31 @@
                         }
                     });
                     
-                    // Fallback: if no response in 200ms, use direct broadcast
+                    // Fallback: if no response in 200ms, use custom message format
                     setTimeout(() => {
                         if (!acknowledged) {
-                            console.log('🚨 Server timeout - no acknowledgment for score_update, using direct broadcast');
-                            console.log('🚨 Broadcasting score directly to peers:', scoreData);
-                            this.socket.emit('direct_score_broadcast', scoreData);
+                            console.log('🚨 Server timeout - no acknowledgment for score_update, using custom message');
+                            // Use a custom message that includes score data in a format the server might relay
+                            const customMessage = {
+                                type: 'score_sync',
+                                matchId: scoreData.matchId,
+                                playerId: scoreData.playerId,
+                                player1Score: scoreData.player1Score,
+                                player2Score: scoreData.player2Score,
+                                timestamp: Date.now()
+                            };
+                            console.log('🚨 Sending custom score sync message:', customMessage);
+                            
+                            // Try multiple event types that might work, including some that might be relayed
+                            this.socket.emit('game_message', customMessage);
+                            this.socket.emit('custom_event', customMessage);
+                            this.socket.emit('player_update', customMessage);
+                            
+                            // Try using a message format similar to existing events
+                            this.socket.emit('message', JSON.stringify(customMessage));
+                            
+                            // As a fallback, broadcast to all sockets (this might work if server has basic relay)
+                            this.socket.broadcast?.emit('score_sync', customMessage);
                         } else {
                             console.log('✅ Server acknowledged score_update within timeout');
                         }
