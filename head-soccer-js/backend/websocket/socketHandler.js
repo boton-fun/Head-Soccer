@@ -311,6 +311,24 @@ class SocketHandler extends EventEmitter {
       }
     });
 
+    socket.on('goal_scored', (data, callback) => {
+      console.log('🎯 Server received goal scored event:', data);
+      const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+      if (connection && connection.roomId && data.matchId) {
+        // Relay goal scored event to other players in the room
+        this.connectionManager.broadcastToRoom(`match_${data.matchId}`, 'goal_scored', data, socket.id);
+        
+        // Send acknowledgment back to sender
+        if (callback) {
+          callback({ success: true, timestamp: Date.now() });
+        }
+      } else {
+        if (callback) {
+          callback({ success: false, reason: 'Not in valid room or missing matchId' });
+        }
+      }
+    });
+
     socket.on('timer_update', (data) => {
       console.log('⏱️ Server received timer update:', data);
       const connection = this.connectionManager.getConnectionBySocketId(socket.id);

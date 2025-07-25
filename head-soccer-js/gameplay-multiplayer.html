@@ -824,6 +824,13 @@
                         this.syncTimer(data.timeRemaining);
                     });
                     
+                    this.socket.on('goal_scored', (data) => {
+                        console.log('🎯 Received goal_scored event from server:', data);
+                        if (this.gameScene && data.matchId === this.matchData.matchId) {
+                            this.gameScene.handleGoalScored(data);
+                        }
+                    });
+                    
                     // Listen for localStorage score changes (cross-tab sync)
                     window.addEventListener('storage', (e) => {
                         if (e.key && e.key.startsWith('score_') && e.key.includes(this.matchData.matchId)) {
@@ -1259,6 +1266,40 @@
                     }, 200);
                 } else {
                     console.error('📊 Cannot send score update - socket not connected:', {
+                        socketExists: !!this.socket,
+                        connected: this.socket?.connected
+                    });
+                }
+            }
+            
+            sendGoalScored(scoringPlayer, player1Score, player2Score) {
+                console.log('🎯 Sending goal scored event:', { scoringPlayer, player1Score, player2Score });
+                
+                if (this.socket && this.socket.connected) {
+                    const goalData = {
+                        matchId: this.matchData.matchId,
+                        playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
+                        scoringPlayer: scoringPlayer,
+                        scores: {
+                            player1: player1Score,
+                            player2: player2Score
+                        },
+                        timestamp: Date.now()
+                    };
+                    
+                    console.log('🎯 Emitting goal_scored event to server:', goalData);
+                    
+                    // Send goal scored event with acknowledgment
+                    this.socket.emit('goal_scored', goalData, (response) => {
+                        if (response) {
+                            console.log('🎯 Server acknowledged goal event:', response);
+                        } else {
+                            console.log('🎯 Server responded to goal event but no acknowledgment data');
+                        }
+                    });
+                    
+                } else {
+                    console.error('🎯 Cannot send goal event - socket not connected:', {
                         socketExists: !!this.socket,
                         connected: this.socket?.connected
                     });

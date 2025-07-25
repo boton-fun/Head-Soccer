@@ -964,19 +964,20 @@ class GameScene extends Phaser.Scene {
         // Update the HTML score display
         this.updateScoreDisplay();
         
-        // Send score update to multiplayer system for synchronization
+        // Send goal event to multiplayer system for synchronization
         if (this.isMultiplayer && this.multiplayerGame) {
-            console.log('🎯 Sending score update after goal by', scoringPlayer, '- New scores:', this.score);
+            console.log('🎯 Sending goal event and score update by', scoringPlayer, '- New scores:', this.score);
+            // Send both goal event for reset sync and score update
+            this.multiplayerGame.sendGoalScored(scoringPlayer, this.score.player1, this.score.player2);
             this.multiplayerGame.sendScoreUpdate(this.score.player1, this.score.player2);
         } else {
-            console.log('🎯 Not sending score update - isMultiplayer:', this.isMultiplayer, 'multiplayerGame:', !!this.multiplayerGame);
+            console.log('🎯 Not sending goal event - isMultiplayer:', this.isMultiplayer, 'multiplayerGame:', !!this.multiplayerGame);
+            // In single player, immediately reset positions
+            this.resetPositions();
         }
         
         // Log the goal
         console.log(`Score: Player 1: ${this.score.player1} - Player 2: ${this.score.player2}`);
-        
-        // Reset ball and player positions after goal
-        this.resetPositions();
         
         // Trigger goal celebration
         this.celebrateGoal(scoringPlayer);
@@ -1764,6 +1765,32 @@ class GameScene extends Phaser.Scene {
             side: inputData.input.side,
             timestamp: inputData.timestamp
         };
+    }
+    
+    handleGoalScored(goalData) {
+        // Handle synchronized goal events from multiplayer server
+        if (!this.isMultiplayer || !goalData) return;
+        
+        console.log('🎯 Received goal event from server:', goalData);
+        
+        // Update score if provided
+        if (goalData.scores) {
+            this.score = {
+                player1: goalData.scores.player1,
+                player2: goalData.scores.player2
+            };
+            this.updateScoreDisplay();
+        }
+        
+        // Reset positions for both players simultaneously
+        this.resetPositions();
+        
+        // Trigger goal celebration if scoring player is specified
+        if (goalData.scoringPlayer) {
+            this.celebrateGoal(goalData.scoringPlayer);
+        }
+        
+        console.log('🎯 Goal synchronized - positions reset for both players');
     }
     
     handleServerUpdate(gameStateData) {
