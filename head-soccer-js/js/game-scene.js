@@ -214,8 +214,12 @@ class GameScene extends Phaser.Scene {
     }
     
     loadCharacterSelections() {
+        console.log('📋 loadCharacterSelections() CALLED at timestamp:', Date.now());
+        console.log('📋 Current URL:', window.location.href);
+        
         // Check if this is a multiplayer game by looking at the page URL
         const isMultiplayerPage = window.location.href.includes('gameplay-multiplayer.html');
+        console.log('📋 isMultiplayerPage detected:', isMultiplayerPage);
         
         // Skip localStorage loading if this will be a multiplayer game
         // (multiplayer selections will be set via setMultiplayerMode)
