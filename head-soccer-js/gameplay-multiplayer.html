@@ -676,14 +676,56 @@
                     });
                     
                     this.socket.on('score_update', (data) => {
-                        console.log('📊 Received score update:', data);
+                        console.log('📊 Received score update from server:', data);
+                        console.log('📊 Current local scores before update:', { player1: this.player1Score, player2: this.player2Score });
+                        
+                        // Update local scores
                         this.updateScore(data.player1Score, data.player2Score);
-                        // Also update game scene score
+                        
+                        // Also update game scene score immediately
                         if (this.gameScene && this.gameScene.score) {
+                            console.log('📊 Updating game scene scores:', { from: this.gameScene.score, to: { player1: data.player1Score, player2: data.player2Score } });
                             this.gameScene.score.player1 = data.player1Score;
                             this.gameScene.score.player2 = data.player2Score;
                             this.gameScene.updateScoreDisplay();
                         }
+                        
+                        console.log('📊 Scores updated to:', { player1: this.player1Score, player2: this.player2Score });
+                    });
+                    
+                    // Alternative score sync method in case server doesn't handle score_update properly
+                    this.socket.on('game_state_sync', (data) => {
+                        console.log('🔄 Received game state sync:', data);
+                        if (data.scores) {
+                            this.updateScore(data.scores.player1, data.scores.player2);
+                            if (this.gameScene && this.gameScene.score) {
+                                this.gameScene.score.player1 = data.scores.player1;
+                                this.gameScene.score.player2 = data.scores.player2;
+                                this.gameScene.updateScoreDisplay();
+                            }
+                        }
+                    });
+                    
+                    // Direct peer-to-peer score broadcast (when server doesn't handle it)
+                    this.socket.on('direct_score_broadcast', (data) => {
+                        console.log('🎯 ===== DIRECT SCORE BROADCAST RECEIVED =====');
+                        console.log('🎯 Data:', data);
+                        console.log('🎯 My Match ID:', this.matchData.matchId, 'Received Match ID:', data.matchId);
+                        console.log('🎯 My Player ID:', this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id, 'Sender ID:', data.playerId);
+                        
+                        // Only accept if it's from the same match but different player
+                        if (data.matchId === this.matchData.matchId && data.playerId !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id)) {
+                            console.log('🎯 ✅ ACCEPTING peer score update - syncing scores!');
+                            this.updateScore(data.player1Score, data.player2Score);
+                            if (this.gameScene && this.gameScene.score) {
+                                this.gameScene.score.player1 = data.player1Score;
+                                this.gameScene.score.player2 = data.player2Score;
+                                this.gameScene.updateScoreDisplay();
+                            }
+                        } else {
+                            console.log('🎯 ❌ REJECTING peer score update - different match or same player');
+                        }
+                        console.log('🎯 ========================================');
                     });
                     
                     this.socket.on('timer_sync', (data) => {
@@ -890,12 +932,57 @@
             
             sendScoreUpdate(player1Score, player2Score) {
                 if (this.socket && this.socket.connected) {
-                    console.log('📊 Sending score update:', { player1Score, player2Score });
-                    this.socket.emit('score_update', {
+                    const scoreData = {
                         matchId: this.matchData.matchId,
                         playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
                         player1Score: player1Score,
                         player2Score: player2Score,
+                        timestamp: Date.now()
+                    };
+                    
+                    console.log('📊 Sending score update to server:', scoreData);
+                    console.log('📊 Socket details - ID:', this.socket.id, 'Connected:', this.socket.connected);
+                    
+                    // Send score update with acknowledgment and timeout
+                    let acknowledged = false;
+                    
+                    this.socket.emit('score_update', scoreData, (response) => {
+                        acknowledged = true;
+                        if (response) {
+                            console.log('📊 Server acknowledged score update:', response);
+                        } else {
+                            console.log('📊 Server responded but no acknowledgment data');
+                        }
+                    });
+                    
+                    // Fallback: if no response in 200ms, use direct broadcast
+                    setTimeout(() => {
+                        if (!acknowledged) {
+                            console.log('🚨 Server timeout - no acknowledgment for score_update, using direct broadcast');
+                            console.log('🚨 Broadcasting score directly to peers:', scoreData);
+                            this.socket.emit('direct_score_broadcast', scoreData);
+                        } else {
+                            console.log('✅ Server acknowledged score_update within timeout');
+                        }
+                    }, 200);
+                } else {
+                    console.error('📊 Cannot send score update - socket not connected:', {
+                        socketExists: !!this.socket,
+                        connected: this.socket?.connected
+                    });
+                }
+            }
+            
+            sendGameStateSync(scoreData) {
+                if (this.socket && this.socket.connected) {
+                    console.log('🔄 Sending game state sync as fallback:', scoreData);
+                    this.socket.emit('game_state_sync', {
+                        matchId: scoreData.matchId,
+                        playerId: scoreData.playerId,
+                        scores: {
+                            player1: scoreData.player1Score,
+                            player2: scoreData.player2Score
+                        },
                         timestamp: Date.now()
                     });
                 }
