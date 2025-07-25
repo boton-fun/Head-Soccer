@@ -722,6 +722,13 @@
                             this.hideMultiplayerPauseMessage();
                         }
                     });
+
+                    // Handle when other player leaves the game
+                    this.socket.on('player_left_game', (data) => {
+                        console.log('🚪 Other player left the game:', data);
+                        // Show notification and redirect both players
+                        this.handlePlayerLeftGame(data);
+                    });
                     
                     // Custom score sync handlers for multiple event types
                     const handleScoreSync = (data, eventType) => {
@@ -1281,12 +1288,35 @@
             }
             
             returnToMenu() {
-                if (this.socket) {
-                    this.socket.disconnect();
+                // In multiplayer, notify server that player is leaving
+                if (this.socket && this.socket.connected) {
+                    this.sendLeaveGameToServer();
+                    // Give server time to notify other player before disconnecting
+                    setTimeout(() => {
+                        this.socket.disconnect();
+                        clearInterval(this.timerInterval);
+                        clearInterval(this.pingInterval);
+                        window.location.href = 'multiplayer-selection.html';
+                    }, 100);
+                } else {
+                    // If not connected, just leave immediately
+                    clearInterval(this.timerInterval);
+                    clearInterval(this.pingInterval);
+                    window.location.href = 'multiplayer-selection.html';
                 }
-                clearInterval(this.timerInterval);
-                clearInterval(this.pingInterval);
-                window.location.href = 'multiplayer-selection.html';
+            }
+
+            sendLeaveGameToServer() {
+                if (this.socket && this.socket.connected) {
+                    console.log('🚪 Sending leave game request to server');
+                    this.socket.emit('leave_game_request', {
+                        matchId: this.matchData.matchId,
+                        playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
+                        username: this.matchData.isPlayer1 ? this.matchData.player1Username : this.matchData.player2Username,
+                        reason: 'menu_button',
+                        timestamp: Date.now()
+                    });
+                }
             }
 
             // Multiplayer pause synchronization methods
@@ -1351,6 +1381,43 @@
                 if (existingMessage) {
                     document.body.removeChild(existingMessage);
                 }
+            }
+
+            handlePlayerLeftGame(data) {
+                // Clear game intervals
+                clearInterval(this.timerInterval);
+                clearInterval(this.pingInterval);
+                
+                // Show notification about player leaving
+                const leaveMessage = document.createElement('div');
+                leaveMessage.style.position = 'fixed';
+                leaveMessage.style.top = '50%';
+                leaveMessage.style.left = '50%';
+                leaveMessage.style.transform = 'translate(-50%, -50%)';
+                leaveMessage.style.backgroundColor = 'rgba(0, 0, 0, 0.95)';
+                leaveMessage.style.color = 'white';
+                leaveMessage.style.padding = '30px 50px';
+                leaveMessage.style.borderRadius = '15px';
+                leaveMessage.style.fontSize = '20px';
+                leaveMessage.style.fontWeight = 'bold';
+                leaveMessage.style.textAlign = 'center';
+                leaveMessage.style.zIndex = '5000';
+                leaveMessage.style.border = '3px solid #f44336';
+                leaveMessage.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.8)';
+                leaveMessage.innerHTML = `
+                    <div style="margin-bottom: 15px;">🚪 ${data.username || 'Opponent'} left the game</div>
+                    <div style="font-size: 16px; color: #ccc;">Returning to menu...</div>
+                `;
+                
+                document.body.appendChild(leaveMessage);
+                
+                // Disconnect and redirect after showing message
+                setTimeout(() => {
+                    if (this.socket) {
+                        this.socket.disconnect();
+                    }
+                    window.location.href = 'multiplayer-selection.html';
+                }, 2000);
             }
             
             attemptReconnection() {

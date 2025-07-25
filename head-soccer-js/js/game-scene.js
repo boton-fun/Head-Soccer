@@ -1098,7 +1098,12 @@ class GameScene extends Phaser.Scene {
             menuBtn.style.borderRadius = '5px';
             menuBtn.style.cursor = 'pointer';
             menuBtn.onclick = () => {
-                window.location.href = 'multiplayer-selection.html';
+                // In multiplayer, use the global returnToMenu function to notify server
+                if (window.returnToMenu) {
+                    window.returnToMenu();
+                } else {
+                    window.location.href = 'multiplayer-selection.html';
+                }
             };
             
             buttonContainer.appendChild(menuBtn);
@@ -1305,7 +1310,12 @@ class GameScene extends Phaser.Scene {
         menuBtn.style.cursor = 'pointer';
         menuBtn.onclick = () => {
             if (this.isMultiplayer) {
-                window.location.href = 'multiplayer-selection.html';
+                // In multiplayer, use the global returnToMenu function to notify server
+                if (window.returnToMenu) {
+                    window.returnToMenu();
+                } else {
+                    window.location.href = 'multiplayer-selection.html';
+                }
             } else {
                 window.location.href = 'main-menu.html';
             }

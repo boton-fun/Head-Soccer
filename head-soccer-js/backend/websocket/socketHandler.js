@@ -356,6 +356,25 @@ class SocketHandler extends EventEmitter {
     socket.on('resume_request', (data) => {
       this.handleEvent(socket, 'resume_request', data, this.handleResumeRequest.bind(this));
     });
+
+    socket.on('leave_game_request', (data) => {
+      console.log('🚪 Received leave game request:', data);
+      const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+      if (connection && data.matchId) {
+        const roomId = `match_${data.matchId}`;
+        
+        // Broadcast to all players in the match that someone is leaving
+        this.connectionManager.broadcastToRoom(roomId, 'player_left_game', {
+          playerId: data.playerId,
+          username: data.username,
+          matchId: data.matchId,
+          reason: data.reason || 'player_left',
+          timestamp: Date.now()
+        });
+        
+        console.log(`🚪 Player ${data.username} left match ${data.matchId}`);
+      }
+    });
     
     // Game end events
     socket.on('forfeit_game', (data) => {
