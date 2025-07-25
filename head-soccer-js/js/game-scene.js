@@ -900,7 +900,10 @@ class GameScene extends Phaser.Scene {
         
         // Send score update to multiplayer system for synchronization
         if (this.isMultiplayer && this.multiplayerGame) {
+            console.log('🎯 Sending score update after goal by', scoringPlayer, '- New scores:', this.score);
             this.multiplayerGame.sendScoreUpdate(this.score.player1, this.score.player2);
+        } else {
+            console.log('🎯 Not sending score update - isMultiplayer:', this.isMultiplayer, 'multiplayerGame:', !!this.multiplayerGame);
         }
         
         // Log the goal
@@ -1083,35 +1086,54 @@ class GameScene extends Phaser.Scene {
         buttonContainer.style.display = 'flex';
         buttonContainer.style.gap = '20px';
         
-        const playAgainBtn = document.createElement('button');
-        playAgainBtn.textContent = 'Play Again';
-        playAgainBtn.style.padding = '15px 30px';
-        playAgainBtn.style.fontSize = '18px';
-        playAgainBtn.style.backgroundColor = '#4CAF50';
-        playAgainBtn.style.color = 'white';
-        playAgainBtn.style.border = 'none';
-        playAgainBtn.style.borderRadius = '5px';
-        playAgainBtn.style.cursor = 'pointer';
-        playAgainBtn.onclick = () => {
-            document.body.removeChild(gameOverDiv);
-            this.resetGame();
-        };
-        
-        const menuBtn = document.createElement('button');
-        menuBtn.textContent = 'Main Menu';
-        menuBtn.style.padding = '15px 30px';
-        menuBtn.style.fontSize = '18px';
-        menuBtn.style.backgroundColor = '#2196F3';
-        menuBtn.style.color = 'white';
-        menuBtn.style.border = 'none';
-        menuBtn.style.borderRadius = '5px';
-        menuBtn.style.cursor = 'pointer';
-        menuBtn.onclick = () => {
-            window.location.href = 'main-menu.html';
-        };
-        
-        buttonContainer.appendChild(playAgainBtn);
-        buttonContainer.appendChild(menuBtn);
+        // In multiplayer mode, only show main menu button
+        if (this.isMultiplayer) {
+            const menuBtn = document.createElement('button');
+            menuBtn.textContent = 'Main Menu';
+            menuBtn.style.padding = '15px 30px';
+            menuBtn.style.fontSize = '18px';
+            menuBtn.style.backgroundColor = '#2196F3';
+            menuBtn.style.color = 'white';
+            menuBtn.style.border = 'none';
+            menuBtn.style.borderRadius = '5px';
+            menuBtn.style.cursor = 'pointer';
+            menuBtn.onclick = () => {
+                window.location.href = 'multiplayer-selection.html';
+            };
+            
+            buttonContainer.appendChild(menuBtn);
+        } else {
+            // Single player mode - show both play again and main menu
+            const playAgainBtn = document.createElement('button');
+            playAgainBtn.textContent = 'Play Again';
+            playAgainBtn.style.padding = '15px 30px';
+            playAgainBtn.style.fontSize = '18px';
+            playAgainBtn.style.backgroundColor = '#4CAF50';
+            playAgainBtn.style.color = 'white';
+            playAgainBtn.style.border = 'none';
+            playAgainBtn.style.borderRadius = '5px';
+            playAgainBtn.style.cursor = 'pointer';
+            playAgainBtn.onclick = () => {
+                document.body.removeChild(gameOverDiv);
+                this.resetGame();
+            };
+            
+            const menuBtn = document.createElement('button');
+            menuBtn.textContent = 'Main Menu';
+            menuBtn.style.padding = '15px 30px';
+            menuBtn.style.fontSize = '18px';
+            menuBtn.style.backgroundColor = '#2196F3';
+            menuBtn.style.color = 'white';
+            menuBtn.style.border = 'none';
+            menuBtn.style.borderRadius = '5px';
+            menuBtn.style.cursor = 'pointer';
+            menuBtn.onclick = () => {
+                window.location.href = 'main-menu.html';
+            };
+            
+            buttonContainer.appendChild(playAgainBtn);
+            buttonContainer.appendChild(menuBtn);
+        }
         
         gameOverDiv.appendChild(title);
         gameOverDiv.appendChild(winner);
@@ -1143,6 +1165,40 @@ class GameScene extends Phaser.Scene {
         // Update pause button if function exists
         if (window.updatePauseButton) {
             setTimeout(window.updatePauseButton, 50); // Small delay to ensure state is updated
+        }
+    }
+
+    // Force pause for multiplayer synchronization (without showing local pause screen)
+    forcePause() {
+        if (this.gameState !== 'playing') {
+            return;
+        }
+        
+        this.isPaused = true;
+        this.gameState = 'paused';
+        this.pauseTimer();
+        console.log('Game force paused by server');
+        
+        // Update pause button
+        if (window.updatePauseButton) {
+            setTimeout(window.updatePauseButton, 50);
+        }
+    }
+
+    // Force resume for multiplayer synchronization
+    forceResume() {
+        if (this.gameState !== 'paused') {
+            return;
+        }
+        
+        this.isPaused = false;
+        this.gameState = 'playing';
+        this.resumeTimer();
+        console.log('Game force resumed by server');
+        
+        // Update pause button
+        if (window.updatePauseButton) {
+            setTimeout(window.updatePauseButton, 50);
         }
     }
     
@@ -1217,19 +1273,26 @@ class GameScene extends Phaser.Scene {
             this.togglePause();
         };
         
-        const restartBtn = document.createElement('button');
-        restartBtn.textContent = 'Restart';
-        restartBtn.style.padding = '15px 30px';
-        restartBtn.style.fontSize = '18px';
-        restartBtn.style.backgroundColor = '#FF9800';
-        restartBtn.style.color = 'white';
-        restartBtn.style.border = 'none';
-        restartBtn.style.borderRadius = '5px';
-        restartBtn.style.cursor = 'pointer';
-        restartBtn.onclick = () => {
-            this.hidePauseScreen();
-            this.resetGame();
-        };
+        buttonContainer.appendChild(resumeBtn);
+        
+        // In multiplayer mode, don't show restart option
+        if (!this.isMultiplayer) {
+            const restartBtn = document.createElement('button');
+            restartBtn.textContent = 'Restart';
+            restartBtn.style.padding = '15px 30px';
+            restartBtn.style.fontSize = '18px';
+            restartBtn.style.backgroundColor = '#FF9800';
+            restartBtn.style.color = 'white';
+            restartBtn.style.border = 'none';
+            restartBtn.style.borderRadius = '5px';
+            restartBtn.style.cursor = 'pointer';
+            restartBtn.onclick = () => {
+                this.hidePauseScreen();
+                this.resetGame();
+            };
+            
+            buttonContainer.appendChild(restartBtn);
+        }
         
         const menuBtn = document.createElement('button');
         menuBtn.textContent = 'Main Menu';
@@ -1241,11 +1304,13 @@ class GameScene extends Phaser.Scene {
         menuBtn.style.borderRadius = '5px';
         menuBtn.style.cursor = 'pointer';
         menuBtn.onclick = () => {
-            window.location.href = 'main-menu.html';
+            if (this.isMultiplayer) {
+                window.location.href = 'multiplayer-selection.html';
+            } else {
+                window.location.href = 'main-menu.html';
+            }
         };
         
-        buttonContainer.appendChild(resumeBtn);
-        buttonContainer.appendChild(restartBtn);
         buttonContainer.appendChild(menuBtn);
         
         pauseDiv.appendChild(title);

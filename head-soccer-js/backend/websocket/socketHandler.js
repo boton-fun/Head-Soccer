@@ -1035,20 +1035,43 @@ class SocketHandler extends EventEmitter {
   
   async handlePauseRequest(socket, data) {
     const connection = this.connectionManager.getConnectionBySocketId(socket.id);
-    if (!connection || !connection.playerId || !connection.roomId) return;
+    if (!connection || !connection.playerId) return;
     
     try {
-      const result = await this.gameplayEvents.handlePauseRequest(connection.playerId, data);
+      console.log(`⏸️ Pause request from ${connection.playerId} (${connection.username})`);
       
-      if (!result.success) {
-        socket.emit('pause_rejected', {
-          reason: result.reason
+      // For multiplayer, broadcast pause to all players in the match
+      if (data.matchId) {
+        const roomId = `match_${data.matchId}`;
+        
+        // Broadcast pause to all players in the match
+        this.connectionManager.broadcastToRoom(roomId, 'game_paused', {
+          pausedBy: connection.username || connection.playerId,
+          playerId: connection.playerId,
+          matchId: data.matchId,
+          reason: data.reason || 'player_request',
+          timestamp: Date.now()
+        });
+        
+        console.log(`⏸️ Game paused in match ${data.matchId} by ${connection.username}`);
+        
+        socket.emit('pause_confirmed', {
+          success: true,
+          timestamp: Date.now()
         });
       } else {
-        socket.emit('pause_confirmed', {
-          timeout: result.timeout
-        });
-        console.log(`⏸️ Game paused by ${connection.playerId}: ${data.reason}`);
+        // Fallback to original GameplayEvents system for non-match games
+        const result = await this.gameplayEvents.handlePauseRequest(connection.playerId, data);
+        
+        if (!result.success) {
+          socket.emit('pause_rejected', {
+            reason: result.reason
+          });
+        } else {
+          socket.emit('pause_confirmed', {
+            timeout: result.timeout
+          });
+        }
       }
     } catch (error) {
       console.error(`Error handling pause request:`, error);
@@ -1060,18 +1083,41 @@ class SocketHandler extends EventEmitter {
   
   async handleResumeRequest(socket, data) {
     const connection = this.connectionManager.getConnectionBySocketId(socket.id);
-    if (!connection || !connection.playerId || !connection.roomId) return;
+    if (!connection || !connection.playerId) return;
     
     try {
-      const result = await this.gameplayEvents.handleResumeRequest(connection.playerId, data);
+      console.log(`▶️ Resume request from ${connection.playerId} (${connection.username})`);
       
-      if (!result.success) {
-        socket.emit('resume_rejected', {
-          reason: result.reason
+      // For multiplayer, broadcast resume to all players in the match
+      if (data.matchId) {
+        const roomId = `match_${data.matchId}`;
+        
+        // Broadcast resume to all players in the match
+        this.connectionManager.broadcastToRoom(roomId, 'game_resumed', {
+          resumedBy: connection.username || connection.playerId,
+          playerId: connection.playerId,
+          matchId: data.matchId,
+          reason: data.reason || 'player_request',
+          timestamp: Date.now()
+        });
+        
+        console.log(`▶️ Game resumed in match ${data.matchId} by ${connection.username}`);
+        
+        socket.emit('resume_confirmed', {
+          success: true,
+          timestamp: Date.now()
         });
       } else {
-        socket.emit('resume_confirmed', {});
-        console.log(`▶️ Game resumed by ${connection.playerId}`);
+        // Fallback to original GameplayEvents system for non-match games
+        const result = await this.gameplayEvents.handleResumeRequest(connection.playerId, data);
+        
+        if (!result.success) {
+          socket.emit('resume_rejected', {
+            reason: result.reason
+          });
+        } else {
+          socket.emit('resume_confirmed', {});
+        }
       }
     } catch (error) {
       console.error(`Error handling resume request:`, error);

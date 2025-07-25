@@ -705,6 +705,23 @@
                             }
                         }
                     });
+
+                    // Handle pause/resume synchronization between players
+                    this.socket.on('game_paused', (data) => {
+                        console.log('⏸️ Received game pause from server:', data);
+                        if (this.gameScene && !this.gameScene.isPaused) {
+                            this.gameScene.forcePause();
+                            this.showMultiplayerPauseMessage(data.pausedBy);
+                        }
+                    });
+
+                    this.socket.on('game_resumed', (data) => {
+                        console.log('▶️ Received game resume from server:', data);
+                        if (this.gameScene && this.gameScene.isPaused) {
+                            this.gameScene.forceResume();
+                            this.hideMultiplayerPauseMessage();
+                        }
+                    });
                     
                     // Custom score sync handlers for multiple event types
                     const handleScoreSync = (data, eventType) => {
@@ -1271,6 +1288,70 @@
                 clearInterval(this.pingInterval);
                 window.location.href = 'multiplayer-selection.html';
             }
+
+            // Multiplayer pause synchronization methods
+            sendPauseToServer() {
+                if (this.socket && this.socket.connected) {
+                    console.log('⏸️ Sending pause request to server');
+                    this.socket.emit('pause_request', {
+                        matchId: this.matchData.matchId,
+                        playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
+                        reason: 'player_request',
+                        timestamp: Date.now()
+                    });
+                }
+            }
+
+            sendResumeToServer() {
+                if (this.socket && this.socket.connected) {
+                    console.log('▶️ Sending resume request to server');
+                    this.socket.emit('resume_request', {
+                        matchId: this.matchData.matchId,
+                        playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
+                        reason: 'player_request',
+                        timestamp: Date.now()
+                    });
+                }
+            }
+
+            showMultiplayerPauseMessage(pausedBy) {
+                // Remove any existing pause message
+                this.hideMultiplayerPauseMessage();
+
+                const pauseMessage = document.createElement('div');
+                pauseMessage.id = 'multiplayer-pause-message';
+                pauseMessage.style.position = 'absolute';
+                pauseMessage.style.top = '50%';
+                pauseMessage.style.left = '50%';
+                pauseMessage.style.transform = 'translate(-50%, -50%)';
+                pauseMessage.style.backgroundColor = 'rgba(0, 0, 0, 0.9)';
+                pauseMessage.style.color = 'white';
+                pauseMessage.style.padding = '20px 40px';
+                pauseMessage.style.borderRadius = '10px';
+                pauseMessage.style.fontSize = '18px';
+                pauseMessage.style.fontWeight = 'bold';
+                pauseMessage.style.textAlign = 'center';
+                pauseMessage.style.zIndex = '3000';
+                pauseMessage.style.border = '2px solid #FFB74D';
+                pauseMessage.innerHTML = `
+                    <div>⏸️ Game Paused</div>
+                    <div style="font-size: 14px; margin-top: 10px; color: #FFB74D;">
+                        ${pausedBy ? `Paused by ${pausedBy}` : 'Paused by opponent'}
+                    </div>
+                    <div style="font-size: 12px; margin-top: 5px; color: #ccc;">
+                        Waiting for resume...
+                    </div>
+                `;
+                
+                document.body.appendChild(pauseMessage);
+            }
+
+            hideMultiplayerPauseMessage() {
+                const existingMessage = document.getElementById('multiplayer-pause-message');
+                if (existingMessage) {
+                    document.body.removeChild(existingMessage);
+                }
+            }
             
             attemptReconnection() {
                 this.hideDisconnectionOverlay();
@@ -1358,9 +1439,18 @@
             }
         }
         
-        // Global functions for UI controls (same as single-player)
+        // Global functions for UI controls - Modified for multiplayer
         window.toggleGamePause = function() {
-            if (window.gameScene) {
+            if (window.gameScene && window.multiplayerGame) {
+                // In multiplayer, send pause/resume to server for synchronization
+                if (window.gameScene.isPaused) {
+                    window.multiplayerGame.sendResumeToServer();
+                } else {
+                    window.multiplayerGame.sendPauseToServer();
+                }
+                // Local pause will be handled when server responds
+            } else if (window.gameScene) {
+                // Fallback for local mode
                 window.gameScene.togglePause();
                 updatePauseButton();
             }
