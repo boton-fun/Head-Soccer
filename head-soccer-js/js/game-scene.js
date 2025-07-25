@@ -214,7 +214,22 @@ class GameScene extends Phaser.Scene {
     }
     
     loadCharacterSelections() {
-        // Load character selections from localStorage or use defaults
+        // Check if this is a multiplayer game by looking at the page URL
+        const isMultiplayerPage = window.location.href.includes('gameplay-multiplayer.html');
+        
+        // Skip localStorage loading if this will be a multiplayer game
+        // (multiplayer selections will be set via setMultiplayerMode)
+        if (isMultiplayerPage) {
+            console.log('🎮 Multiplayer page detected - skipping localStorage character loading');
+            // Set temporary defaults that will be overridden by setMultiplayerMode
+            this.player1Head = 'Mihir';
+            this.player2Head = 'Nuwan';
+            this.player1Cleat = 8;
+            this.player2Cleat = 3;
+            return;
+        }
+        
+        // Load character selections from localStorage or use defaults (single-player only)
         const savedSettings = localStorage.getItem('headSoccerSettings');
         
         if (savedSettings) {
@@ -231,7 +246,7 @@ class GameScene extends Phaser.Scene {
             this.player2Cleat = 3;
         }
         
-        console.log('Character selections loaded:', {
+        console.log('Character selections loaded from localStorage:', {
             player1: { head: this.player1Head, cleat: this.player1Cleat },
             player2: { head: this.player2Head, cleat: this.player2Cleat }
         });
