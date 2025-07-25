@@ -29,6 +29,12 @@ class GameScene extends Phaser.Scene {
         this.gameWidth = window.innerWidth;
         this.gameHeight = window.innerHeight;
         this.bottomGap = 40; // Reduced to give more playground space
+        
+        // Initialize character selections with defaults
+        this.player1Head = 'Mihir';
+        this.player2Head = 'Nuwan';
+        this.player1Cleat = 8;
+        this.player2Cleat = 3;
     }
     
     preload() {
@@ -225,11 +231,13 @@ class GameScene extends Phaser.Scene {
         // (multiplayer selections will be set via setMultiplayerMode)
         if (isMultiplayerPage) {
             console.log('🎮 Multiplayer page detected - skipping localStorage character loading');
-            // Set temporary defaults that will be overridden by setMultiplayerMode
-            this.player1Head = 'Mihir';
-            this.player2Head = 'Nuwan';
-            this.player1Cleat = 8;
-            this.player2Cleat = 3;
+            // Don't override any values that may have been set by setMultiplayerMode
+            console.log('🎯 Current character values when skipping localStorage:', {
+                player1Head: this.player1Head,
+                player2Head: this.player2Head,
+                player1Cleat: this.player1Cleat,
+                player2Cleat: this.player2Cleat
+            });
             return;
         }
         
@@ -717,6 +725,16 @@ class GameScene extends Phaser.Scene {
     
     updateBall() {
         if (!this.ball) return;
+        
+        // Only Player 1 calculates ball physics to avoid conflicts
+        if (this.multiplayerGame && !this.multiplayerGame.matchData.isPlayer1) {
+            // Player 2 only updates sprite position, physics comes from Player 1
+            if (this.ballSprite) {
+                this.ballSprite.setPosition(this.ball.x, this.ball.y);
+                this.ballSprite.setRotation(this.ball.angle || 0);
+            }
+            return;
+        }
         
         // Apply gravity (from Ball.js)
         this.ball.velocity.y += PHYSICS_CONSTANTS.BALL.GRAVITY;
@@ -1544,20 +1562,20 @@ class GameScene extends Phaser.Scene {
             }
         }
         
-        // Apply cleat selections
+        // Apply cleat selections (convert from 0-based to 1-based indexing)
         if (multiplayerGame.matchData.player1Cleat !== undefined && multiplayerGame.matchData.player1Cleat !== 'Basic') {
             const player1Cleat = multiplayerGame.matchData.player1Cleat;
             if (!isNaN(player1Cleat)) {
-                this.player1Cleat = parseInt(player1Cleat);
-                console.log(`Applied player1 cleat: ${this.player1Cleat}`);
+                this.player1Cleat = parseInt(player1Cleat) + 1; // Convert 0-based to 1-based
+                console.log(`Applied player1 cleat: ${this.player1Cleat} (from index ${player1Cleat})`);
             }
         }
         
         if (multiplayerGame.matchData.player2Cleat !== undefined && multiplayerGame.matchData.player2Cleat !== 'Basic') {
             const player2Cleat = multiplayerGame.matchData.player2Cleat;
             if (!isNaN(player2Cleat)) {
-                this.player2Cleat = parseInt(player2Cleat);
-                console.log(`Applied player2 cleat: ${this.player2Cleat}`);
+                this.player2Cleat = parseInt(player2Cleat) + 1; // Convert 0-based to 1-based
+                console.log(`Applied player2 cleat: ${this.player2Cleat} (from index ${player2Cleat})`);
             }
         }
 

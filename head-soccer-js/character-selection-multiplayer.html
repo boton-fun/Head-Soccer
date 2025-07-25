@@ -1324,11 +1324,22 @@
                     CHARACTER_HEADS: CONFIG.CHARACTER_HEADS
                 });
                 
+                // FIX: Handle undefined opponent selections with defaults
+                const safeOpponentHead = this.opponentSelectedHead !== undefined ? this.opponentSelectedHead : 0;
+                const safeOpponentCleat = this.opponentSelectedCleat !== undefined ? this.opponentSelectedCleat : 0;
+                
+                console.log('🔧 Safe opponent values:', {
+                    originalOpponentHead: this.opponentSelectedHead,
+                    safeOpponentHead,
+                    originalOpponentCleat: this.opponentSelectedCleat,
+                    safeOpponentCleat
+                });
+                
                 // Debug: Character assignment logic
-                const player1HeadIndex = this.isPlayer1 ? this.currentPlayerSelectedHead : this.opponentSelectedHead;
-                const player2HeadIndex = this.isPlayer1 ? this.opponentSelectedHead : this.currentPlayerSelectedHead;
-                const player1CleatIndex = this.isPlayer1 ? this.currentPlayerSelectedCleat : this.opponentSelectedCleat;  
-                const player2CleatIndex = this.isPlayer1 ? this.opponentSelectedCleat : this.currentPlayerSelectedCleat;
+                const player1HeadIndex = this.isPlayer1 ? this.currentPlayerSelectedHead : safeOpponentHead;
+                const player2HeadIndex = this.isPlayer1 ? safeOpponentHead : this.currentPlayerSelectedHead;
+                const player1CleatIndex = this.isPlayer1 ? this.currentPlayerSelectedCleat : safeOpponentCleat;  
+                const player2CleatIndex = this.isPlayer1 ? safeOpponentCleat : this.currentPlayerSelectedCleat;
                 
                 console.log('🎭 Character assignment logic:', {
                     isPlayer1: this.isPlayer1,
