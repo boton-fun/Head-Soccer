@@ -113,6 +113,11 @@ class GameScene extends Phaser.Scene {
         this.lastMovementSent = 0;
         this.movementSendInterval = 50; // Send updates every 50ms (20 times per second)
         
+        // Ball sync throttling for multiplayer
+        this.lastBallSent = 0;
+        this.ballSendInterval = 30; // Send ball updates every 30ms (33 times per second)
+        this.ballAuthority = false; // Will be set based on player role
+        
         console.log('Game scene created successfully');
     }
     
@@ -502,6 +507,7 @@ class GameScene extends Phaser.Scene {
             // Send movement updates in multiplayer mode
             if (this.isMultiplayer && this.multiplayerGame) {
                 this.sendMovementUpdates();
+                this.sendBallUpdates();
             }
             
             // Update ball physics
@@ -1874,6 +1880,92 @@ class GameScene extends Phaser.Scene {
             },
             onGround: localPlayer.onGround,
             timestamp: now
+        });
+    }
+    
+    sendBallUpdates() {
+        const now = Date.now();
+        
+        // Only Player 1 has ball authority to avoid conflicts
+        if (!this.multiplayerGame.matchData.isPlayer1) {
+            return;
+        }
+        
+        // Throttle ball updates
+        if (now - this.lastBallSent < this.ballSendInterval) {
+            return;
+        }
+        
+        this.lastBallSent = now;
+        
+        if (!this.ball) return;
+        
+        // Store last ball position to avoid sending duplicates
+        if (!this.lastSentBallPosition) {
+            this.lastSentBallPosition = { x: 0, y: 0 };
+        }
+        
+        // Only send if ball position actually changed
+        const ballPositionChanged = Math.abs(this.ball.x - this.lastSentBallPosition.x) > 0.5 || 
+                                   Math.abs(this.ball.y - this.lastSentBallPosition.y) > 0.5 ||
+                                   Math.abs(this.ball.velocity.x) > 0.1 ||
+                                   Math.abs(this.ball.velocity.y) > 0.1;
+        
+        if (!ballPositionChanged) return;
+        
+        // Update last sent position
+        this.lastSentBallPosition.x = this.ball.x;
+        this.lastSentBallPosition.y = this.ball.y;
+        
+        // Send ball data to server
+        console.log('⚽ BALL DEBUG: Sending ball update:', {
+            position: { x: this.ball.x, y: this.ball.y },
+            velocity: { x: this.ball.velocity.x, y: this.ball.velocity.y },
+            angle: this.ball.angle
+        });
+        
+        this.multiplayerGame.sendBallUpdate({
+            position: {
+                x: this.ball.x,
+                y: this.ball.y
+            },
+            velocity: {
+                x: this.ball.velocity.x,
+                y: this.ball.velocity.y
+            },
+            angle: this.ball.angle || 0,
+            timestamp: now
+        });
+    }
+    
+    handleOpponentBall(ballData) {
+        // Only non-authoritative players should receive ball updates
+        if (this.multiplayerGame.matchData.isPlayer1) {
+            return; // Player 1 has authority, ignore incoming ball updates
+        }
+        
+        if (!this.ball) return;
+        
+        console.log('⚽ BALL DEBUG: Received ball update:', ballData);
+        
+        // Update ball position and velocity directly
+        this.ball.x = ballData.position.x;
+        this.ball.y = ballData.position.y;
+        this.ball.velocity.x = ballData.velocity.x;
+        this.ball.velocity.y = ballData.velocity.y;
+        this.ball.angle = ballData.angle || 0;
+        
+        // Update ball sprite position
+        if (this.ballSprite) {
+            this.ballSprite.x = this.ball.x;
+            this.ballSprite.y = this.ball.y;
+            this.ballSprite.rotation = (this.ball.angle || 0) * Math.PI / 180;
+        }
+        
+        console.log('✅ BALL DEBUG: Updated ball position to:', {
+            x: this.ball.x,
+            y: this.ball.y,
+            velocity: this.ball.velocity
         });
     }
     

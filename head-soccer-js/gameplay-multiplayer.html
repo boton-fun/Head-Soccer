@@ -732,10 +732,64 @@
 
                     // Handle opponent movement updates  
                     this.socket.on('movement_update', (data) => {
+                        console.log('🔍 MOVEMENT DEBUG: Received movement_update event:', {
+                            receivedData: data,
+                            myPlayerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
+                            isPlayer1: this.matchData.isPlayer1,
+                            matchData: this.matchData
+                        });
+                        
                         // Only process if this is from the opponent
-                        const isFromOpponent = data.playerId !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id);
+                        const myPlayerId = this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id;
+                        const isFromOpponent = data.playerId !== myPlayerId;
+                        
+                        console.log('🔍 MOVEMENT DEBUG: Processing check:', {
+                            dataPlayerId: data.playerId,
+                            myPlayerId: myPlayerId,
+                            isFromOpponent: isFromOpponent,
+                            hasGameScene: !!this.gameScene
+                        });
+                        
                         if (isFromOpponent && this.gameScene) {
+                            console.log('✅ MOVEMENT DEBUG: Forwarding to game scene');
                             this.gameScene.handleOpponentMovement(data);
+                        } else {
+                            console.log('❌ MOVEMENT DEBUG: Ignored movement update:', {
+                                reason: !isFromOpponent ? 'from self' : 'no game scene',
+                                isFromOpponent,
+                                hasGameScene: !!this.gameScene
+                            });
+                        }
+                    });
+
+                    // Handle ball updates
+                    this.socket.on('ball_update', (data) => {
+                        console.log('🔍 BALL DEBUG: Received ball_update event:', {
+                            receivedData: data,
+                            myPlayerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
+                            isPlayer1: this.matchData.isPlayer1,
+                            matchData: this.matchData
+                        });
+                        
+                        // Only process if this is from the opponent (Player 1 has ball authority)
+                        const isFromAuthority = data.playerId !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id);
+                        
+                        console.log('🔍 BALL DEBUG: Processing check:', {
+                            dataPlayerId: data.playerId,
+                            myPlayerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
+                            isFromAuthority: isFromAuthority,
+                            hasGameScene: !!this.gameScene
+                        });
+                        
+                        if (isFromAuthority && this.gameScene) {
+                            console.log('✅ BALL DEBUG: Forwarding to game scene');
+                            this.gameScene.handleOpponentBall(data);
+                        } else {
+                            console.log('❌ BALL DEBUG: Ignored ball update:', {
+                                reason: !isFromAuthority ? 'from self' : 'no game scene',
+                                isFromAuthority,
+                                hasGameScene: !!this.gameScene
+                            });
                         }
                     });
                     
@@ -1364,8 +1418,46 @@
                         playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id
                     };
                     
+                    console.log('📤 MOVEMENT DEBUG: Sending movement update:', {
+                        originalData: movementData,
+                        fullData: fullMovementData,
+                        isPlayer1: this.matchData.isPlayer1,
+                        socketConnected: this.socket.connected
+                    });
+                    
                     // Send movement update to server (no acknowledgment needed for frequent updates)
                     this.socket.emit('movement_update', fullMovementData);
+                } else {
+                    console.log('❌ MOVEMENT DEBUG: Cannot send - socket not connected:', {
+                        hasSocket: !!this.socket,
+                        connected: this.socket?.connected
+                    });
+                }
+            }
+
+            sendBallUpdate(ballData) {
+                if (this.socket && this.socket.connected) {
+                    // Add match information to ball data
+                    const fullBallData = {
+                        ...ballData,
+                        matchId: this.matchData.matchId,
+                        playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id
+                    };
+                    
+                    console.log('📤 BALL DEBUG: Sending ball update:', {
+                        originalData: ballData,
+                        fullData: fullBallData,
+                        isPlayer1: this.matchData.isPlayer1,
+                        socketConnected: this.socket.connected
+                    });
+                    
+                    // Send ball update to server
+                    this.socket.emit('ball_update', fullBallData);
+                } else {
+                    console.log('❌ BALL DEBUG: Cannot send - socket not connected:', {
+                        hasSocket: !!this.socket,
+                        connected: this.socket?.connected
+                    });
                 }
             }
 

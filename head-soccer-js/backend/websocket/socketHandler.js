@@ -349,10 +349,76 @@ class SocketHandler extends EventEmitter {
     });
 
     socket.on('movement_update', (data) => {
+      console.log('🔄 SERVER MOVEMENT DEBUG: Received movement_update:', {
+        socketId: socket.id,
+        data: data,
+        hasConnection: !!this.connectionManager.getConnectionBySocketId(socket.id)
+      });
+      
       const connection = this.connectionManager.getConnectionBySocketId(socket.id);
       if (connection && data.matchId) {
+        const roomId = `match_${data.matchId}`;
+        console.log('📡 SERVER MOVEMENT DEBUG: Broadcasting to room:', {
+          roomId: roomId,
+          playerData: {
+            playerId: data.playerId,
+            playerNumber: data.playerNumber,
+            position: data.position
+          },
+          excludingSender: socket.id
+        });
+        
         // Relay movement update to other players in the match (excluding sender)
-        this.connectionManager.broadcastToRoom(`match_${data.matchId}`, 'movement_update', data, socket.id);
+        this.connectionManager.broadcastToRoom(roomId, 'movement_update', data, socket.id);
+        
+        console.log('✅ SERVER MOVEMENT DEBUG: Movement broadcasted successfully');
+      } else {
+        console.log('❌ SERVER MOVEMENT DEBUG: Failed to broadcast:', {
+          hasConnection: !!connection,
+          hasMatchId: !!data.matchId,
+          connectionDetails: connection ? {
+            playerId: connection.playerId,
+            username: connection.username,
+            roomId: connection.roomId
+          } : null
+        });
+      }
+    });
+
+    socket.on('ball_update', (data) => {
+      console.log('⚽ SERVER BALL DEBUG: Received ball_update:', {
+        socketId: socket.id,
+        data: data,
+        hasConnection: !!this.connectionManager.getConnectionBySocketId(socket.id)
+      });
+      
+      const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+      if (connection && data.matchId) {
+        const roomId = `match_${data.matchId}`;
+        console.log('📡 SERVER BALL DEBUG: Broadcasting to room:', {
+          roomId: roomId,
+          ballData: {
+            playerId: data.playerId,
+            position: data.position,
+            velocity: data.velocity
+          },
+          excludingSender: socket.id
+        });
+        
+        // Relay ball update to other players in the match (excluding sender)
+        this.connectionManager.broadcastToRoom(roomId, 'ball_update', data, socket.id);
+        
+        console.log('✅ SERVER BALL DEBUG: Ball update broadcasted successfully');
+      } else {
+        console.log('❌ SERVER BALL DEBUG: Failed to broadcast:', {
+          hasConnection: !!connection,
+          hasMatchId: !!data.matchId,
+          connectionDetails: connection ? {
+            playerId: connection.playerId,
+            username: connection.username,
+            roomId: connection.roomId
+          } : null
+        });
       }
     });
 
