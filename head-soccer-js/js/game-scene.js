@@ -109,6 +109,10 @@ class GameScene extends Phaser.Scene {
         // Make this scene globally accessible for timer communication
         window.gameScene = this;
         
+        // Movement sync throttling for multiplayer
+        this.lastMovementSent = 0;
+        this.movementSendInterval = 50; // Send updates every 50ms (20 times per second)
+        
         console.log('Game scene created successfully');
     }
     
@@ -494,6 +498,11 @@ class GameScene extends Phaser.Scene {
             // Update player physics
             this.updatePlayer(this.player1, this.player1Sprite, 'left');
             this.updatePlayer(this.player2, this.player2Sprite, 'right');
+            
+            // Send movement updates in multiplayer mode
+            if (this.isMultiplayer && this.multiplayerGame) {
+                this.sendMovementUpdates();
+            }
             
             // Update ball physics
             this.updateBall();
@@ -1802,5 +1811,74 @@ class GameScene extends Phaser.Scene {
                 this.ai.shouldKick = Math.random() < 0.6;
             }
         }
+    }
+    
+    // ===== MULTIPLAYER MOVEMENT SYNCHRONIZATION =====
+    
+    sendMovementUpdates() {
+        const now = Date.now();
+        
+        // Throttle movement updates to reduce network spam
+        if (now - this.lastMovementSent < this.movementSendInterval) {
+            return;
+        }
+        
+        this.lastMovementSent = now;
+        
+        // Determine which player is controlled by this client
+        let localPlayer, localSprite, playerNumber;
+        if (this.multiplayerGame.matchData.isPlayer1) {
+            localPlayer = this.player2; // Player 1 controls player 2 (right side)
+            localSprite = this.player2Sprite;
+            playerNumber = 2;
+        } else {
+            localPlayer = this.player1; // Player 2 controls player 1 (left side) 
+            localSprite = this.player1Sprite;
+            playerNumber = 1;
+        }
+        
+        if (!localPlayer || !localSprite) return;
+        
+        // Send movement data to server
+        this.multiplayerGame.sendMovementUpdate({
+            playerNumber: playerNumber,
+            position: {
+                x: localPlayer.x,
+                y: localPlayer.y
+            },
+            velocity: {
+                x: localPlayer.velocity.x,
+                y: localPlayer.velocity.y
+            },
+            onGround: localPlayer.onGround,
+            timestamp: now
+        });
+    }
+    
+    handleOpponentMovement(movementData) {
+        // Determine which player is the opponent
+        let opponentPlayer, opponentSprite;
+        if (movementData.playerNumber === 1) {
+            opponentPlayer = this.player1;
+            opponentSprite = this.player1Sprite;
+        } else {
+            opponentPlayer = this.player2;
+            opponentSprite = this.player2Sprite;
+        }
+        
+        if (!opponentPlayer || !opponentSprite) return;
+        
+        // Update opponent position directly (basic version - no interpolation yet)
+        opponentPlayer.x = movementData.position.x;
+        opponentPlayer.y = movementData.position.y;
+        opponentPlayer.velocity.x = movementData.velocity.x;
+        opponentPlayer.velocity.y = movementData.velocity.y;
+        opponentPlayer.onGround = movementData.onGround;
+        
+        // Update sprite position to match
+        opponentSprite.x = opponentPlayer.x;
+        opponentSprite.y = opponentPlayer.y;
+        
+        console.log(`🏃 Updated opponent player ${movementData.playerNumber} position:`, movementData.position);
     }
 }

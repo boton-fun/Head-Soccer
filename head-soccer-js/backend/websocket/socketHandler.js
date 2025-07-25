@@ -348,6 +348,14 @@ class SocketHandler extends EventEmitter {
       }
     });
 
+    socket.on('movement_update', (data) => {
+      const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+      if (connection && data.matchId) {
+        // Relay movement update to other players in the match (excluding sender)
+        this.connectionManager.broadcastToRoom(`match_${data.matchId}`, 'movement_update', data, socket.id);
+      }
+    });
+
     // Game control events
     socket.on('pause_request', (data) => {
       this.handleEvent(socket, 'pause_request', data, this.handlePauseRequest.bind(this));

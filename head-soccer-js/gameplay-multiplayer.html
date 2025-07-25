@@ -729,6 +729,15 @@
                         // Show notification and redirect both players
                         this.handlePlayerLeftGame(data);
                     });
+
+                    // Handle opponent movement updates  
+                    this.socket.on('movement_update', (data) => {
+                        // Only process if this is from the opponent
+                        const isFromOpponent = data.playerId !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id);
+                        if (isFromOpponent && this.gameScene) {
+                            this.gameScene.handleOpponentMovement(data);
+                        }
+                    });
                     
                     // Custom score sync handlers for multiple event types
                     const handleScoreSync = (data, eventType) => {
@@ -1341,6 +1350,22 @@
                         reason: 'player_request',
                         timestamp: Date.now()
                     });
+                }
+            }
+
+            // ===== MOVEMENT SYNCHRONIZATION =====
+            
+            sendMovementUpdate(movementData) {
+                if (this.socket && this.socket.connected) {
+                    // Add match information to movement data
+                    const fullMovementData = {
+                        ...movementData,
+                        matchId: this.matchData.matchId,
+                        playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id
+                    };
+                    
+                    // Send movement update to server (no acknowledgment needed for frequent updates)
+                    this.socket.emit('movement_update', fullMovementData);
                 }
             }
 
