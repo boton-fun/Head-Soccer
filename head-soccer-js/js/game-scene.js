@@ -119,9 +119,9 @@ class GameScene extends Phaser.Scene {
         this.lastMovementSent = 0;
         this.movementSendInterval = 50; // Send updates every 50ms (20 times per second)
         
-        // Ball sync throttling for multiplayer
+        // Ball sync throttling for multiplayer - FAST sync for real-time feel
         this.lastBallSent = 0;
-        this.ballSendInterval = 30; // Send ball updates every 30ms (33 times per second)
+        this.ballSendInterval = 16; // Send ball updates every 16ms (60 times per second - matches game FPS)
         this.ballAuthority = false; // Will be set based on player role
         
         console.log('Game scene created successfully');
@@ -726,16 +726,7 @@ class GameScene extends Phaser.Scene {
     updateBall() {
         if (!this.ball) return;
         
-        // Only Player 1 calculates ball physics to avoid conflicts
-        if (this.multiplayerGame && !this.multiplayerGame.matchData.isPlayer1) {
-            // Player 2 only updates sprite position, physics comes from Player 1
-            if (this.ballSprite) {
-                this.ballSprite.setPosition(this.ball.x, this.ball.y);
-                this.ballSprite.setRotation(this.ball.angle || 0);
-            }
-            return;
-        }
-        
+        // SHARED PHYSICS: Both players calculate ball physics locally for real-time feel
         // Apply gravity (from Ball.js)
         this.ball.velocity.y += PHYSICS_CONSTANTS.BALL.GRAVITY;
         
@@ -2010,10 +2001,7 @@ class GameScene extends Phaser.Scene {
     sendBallUpdates() {
         const now = Date.now();
         
-        // Only Player 1 has ball authority to avoid conflicts
-        if (!this.multiplayerGame.matchData.isPlayer1) {
-            return;
-        }
+        // REAL-TIME SYNC: Both players send updates, but Player 1 has priority for conflicts
         
         // Throttle ball updates
         if (now - this.lastBallSent < this.ballSendInterval) {
@@ -2063,20 +2051,38 @@ class GameScene extends Phaser.Scene {
     }
     
     handleOpponentBall(ballData) {
-        // Only non-authoritative players should receive ball updates
-        if (this.multiplayerGame.matchData.isPlayer1) {
-            return; // Player 1 has authority, ignore incoming ball updates
-        }
-        
         if (!this.ball) return;
         
-        console.log('⚽ BALL DEBUG: Received ball update:', ballData);
+        // REAL-TIME SYNC: Apply corrections only if significant drift detected
+        const positionDriftX = Math.abs(this.ball.x - ballData.position.x);
+        const positionDriftY = Math.abs(this.ball.y - ballData.position.y);
+        const velocityDriftX = Math.abs(this.ball.velocity.x - ballData.velocity.x);
+        const velocityDriftY = Math.abs(this.ball.velocity.y - ballData.velocity.y);
         
-        // Update ball position and velocity directly
-        this.ball.x = ballData.position.x;
-        this.ball.y = ballData.position.y;
-        this.ball.velocity.x = ballData.velocity.x;
-        this.ball.velocity.y = ballData.velocity.y;
+        // Define drift thresholds
+        const POSITION_THRESHOLD = 20; // 20px position difference
+        const VELOCITY_THRESHOLD = 2;  // 2 units velocity difference
+        
+        // Apply corrections only if drift is significant
+        if (positionDriftX > POSITION_THRESHOLD || positionDriftY > POSITION_THRESHOLD) {
+            console.log('⚽ BALL SYNC: Correcting position drift:', {
+                localPos: { x: this.ball.x, y: this.ball.y },
+                networkPos: ballData.position,
+                drift: { x: positionDriftX, y: positionDriftY }
+            });
+            
+            // Smooth position correction (interpolate instead of snap)
+            this.ball.x = this.ball.x + (ballData.position.x - this.ball.x) * 0.3;
+            this.ball.y = this.ball.y + (ballData.position.y - this.ball.y) * 0.3;
+        }
+        
+        if (velocityDriftX > VELOCITY_THRESHOLD || velocityDriftY > VELOCITY_THRESHOLD) {
+            console.log('⚽ BALL SYNC: Correcting velocity drift');
+            this.ball.velocity.x = ballData.velocity.x;
+            this.ball.velocity.y = ballData.velocity.y;
+        }
+        
+        // Always sync angle for visual consistency
         this.ball.angle = ballData.angle || 0;
         
         // Update ball sprite position

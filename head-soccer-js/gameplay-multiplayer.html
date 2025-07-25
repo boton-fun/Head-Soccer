@@ -773,23 +773,23 @@
                             matchData: this.matchData
                         });
                         
-                        // Only process if this is from the opponent (Player 1 has ball authority)
-                        const isFromAuthority = data.playerId !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id);
+                        // REAL-TIME SYNC: Process ball updates from opponent for sync corrections
+                        const isFromOpponent = data.playerId !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id);
                         
                         console.log('🔍 BALL DEBUG: Processing check:', {
                             dataPlayerId: data.playerId,
                             myPlayerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
-                            isFromAuthority: isFromAuthority,
+                            isFromOpponent: isFromOpponent,
                             hasGameScene: !!this.gameScene
                         });
                         
-                        if (isFromAuthority && this.gameScene) {
-                            console.log('✅ BALL DEBUG: Forwarding to game scene');
+                        if (isFromOpponent && this.gameScene) {
+                            console.log('✅ BALL DEBUG: Applying sync correction from opponent');
                             this.gameScene.handleOpponentBall(data);
                         } else {
                             console.log('❌ BALL DEBUG: Ignored ball update:', {
-                                reason: !isFromAuthority ? 'from self' : 'no game scene',
-                                isFromAuthority,
+                                reason: !isFromOpponent ? 'from self' : 'no game scene',
+                                isFromOpponent,
                                 hasGameScene: !!this.gameScene
                             });
                         }
