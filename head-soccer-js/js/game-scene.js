@@ -238,6 +238,13 @@ class GameScene extends Phaser.Scene {
     }
     
     createPlayers() {
+        console.log('🏗️ createPlayers() called with character heads:', {
+            player1Head: this.player1Head,
+            player2Head: this.player2Head,
+            isMultiplayer: this.isMultiplayer,
+            multiplayerGameExists: !!this.multiplayerGame
+        });
+        
         const groundY = this.gameHeight - this.bottomGap;
         const playerStartX = this.gameWidth * 0.2; // Adjusted for fullscreen
         const playerY = groundY - PHYSICS_CONSTANTS.PLAYER.HEIGHT;
@@ -1532,11 +1539,19 @@ class GameScene extends Phaser.Scene {
             }
         }
 
-        console.log('Multiplayer character selections applied:', {
+        console.log('✅ Multiplayer character selections applied:', {
             player1Head: this.player1Head,
             player2Head: this.player2Head,
             player1Cleat: this.player1Cleat,
             player2Cleat: this.player2Cleat
+        });
+        
+        // IMMEDIATE verification - check if properties were actually set
+        console.log('🔍 Immediate verification after setMultiplayerMode:', {
+            'this.player1Head': this.player1Head,
+            'this.player2Head': this.player2Head,
+            'createPlayers already called': !!(this.player1 && this.player2),
+            'sprites already created': !!(this.player1Sprite && this.player2Sprite)
         });
         
         // Always recreate sprites to apply the new character selections
