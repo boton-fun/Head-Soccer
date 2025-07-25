@@ -253,6 +253,7 @@ class GameScene extends Phaser.Scene {
     }
     
     createPlayers() {
+        console.log('🏗️ createPlayers() CALLED at timestamp:', Date.now());
         console.log('🏗️ createPlayers() called with character heads:', {
             player1Head: this.player1Head,
             player2Head: this.player2Head,
@@ -1493,6 +1494,7 @@ class GameScene extends Phaser.Scene {
     }
     
     setMultiplayerMode(multiplayerGame) {
+        console.log('🎮 setMultiplayerMode() CALLED at timestamp:', Date.now());
         console.log('Setting multiplayer mode with data:', multiplayerGame.matchData);
         
         // Store the multiplayer game reference for later use
@@ -1532,6 +1534,7 @@ class GameScene extends Phaser.Scene {
             } else if (typeof player2Head === 'string' && characterNames.includes(player2Head)) {
                 this.player2Head = player2Head;
                 console.log(`Using player2 head name: ${this.player2Head}`);
+                console.log(`🔍 IMMEDIATE CHECK - this.player2Head is now: "${this.player2Head}"`);
             } else {
                 console.warn(`Invalid player2Head value: ${player2Head}, using default`);
             }
