@@ -556,7 +556,8 @@ class GameScene extends Phaser.Scene {
             // Send movement updates in multiplayer mode
             if (this.isMultiplayer && this.multiplayerGame) {
                 this.sendMovementUpdates();
-                this.sendBallUpdates();
+                // DISABLED: Ball sync removed for single-player physics replication
+                // this.sendBallUpdates();
             }
             
             // Update ball physics
@@ -726,11 +727,11 @@ class GameScene extends Phaser.Scene {
     updateBall() {
         if (!this.ball) return;
         
-        // SHARED PHYSICS: Both players calculate ball physics locally for real-time feel
-        // Apply gravity (from Ball.js)
+        // REPLICATE SINGLE-PLAYER PHYSICS: Manual gravity exactly like gameplay.html
+        // Apply gravity (from Ball.js) - NO network interference
         this.ball.velocity.y += PHYSICS_CONSTANTS.BALL.GRAVITY;
         
-        // Apply velocity
+        // Apply velocity - Direct control like single-player
         this.ball.x += this.ball.velocity.x;
         this.ball.y += this.ball.velocity.y;
         
@@ -2051,39 +2052,10 @@ class GameScene extends Phaser.Scene {
     }
     
     handleOpponentBall(ballData) {
-        if (!this.ball) return;
-        
-        // REAL-TIME SYNC: Apply corrections only if significant drift detected
-        const positionDriftX = Math.abs(this.ball.x - ballData.position.x);
-        const positionDriftY = Math.abs(this.ball.y - ballData.position.y);
-        const velocityDriftX = Math.abs(this.ball.velocity.x - ballData.velocity.x);
-        const velocityDriftY = Math.abs(this.ball.velocity.y - ballData.velocity.y);
-        
-        // Define drift thresholds
-        const POSITION_THRESHOLD = 20; // 20px position difference
-        const VELOCITY_THRESHOLD = 2;  // 2 units velocity difference
-        
-        // Apply corrections only if drift is significant
-        if (positionDriftX > POSITION_THRESHOLD || positionDriftY > POSITION_THRESHOLD) {
-            console.log('⚽ BALL SYNC: Correcting position drift:', {
-                localPos: { x: this.ball.x, y: this.ball.y },
-                networkPos: ballData.position,
-                drift: { x: positionDriftX, y: positionDriftY }
-            });
-            
-            // Smooth position correction (interpolate instead of snap)
-            this.ball.x = this.ball.x + (ballData.position.x - this.ball.x) * 0.3;
-            this.ball.y = this.ball.y + (ballData.position.y - this.ball.y) * 0.3;
-        }
-        
-        if (velocityDriftX > VELOCITY_THRESHOLD || velocityDriftY > VELOCITY_THRESHOLD) {
-            console.log('⚽ BALL SYNC: Correcting velocity drift');
-            this.ball.velocity.x = ballData.velocity.x;
-            this.ball.velocity.y = ballData.velocity.y;
-        }
-        
-        // Always sync angle for visual consistency
-        this.ball.angle = ballData.angle || 0;
+        // DISABLED: No ball sync - using pure single-player physics like gameplay.html
+        // Each player runs independent physics for perfect responsiveness
+        console.log('⚽ BALL SYNC: Disabled - using single-player physics mode');
+        return;
         
         // Update ball sprite position
         if (this.ballSprite) {

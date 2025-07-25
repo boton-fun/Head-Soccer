@@ -764,35 +764,11 @@
                         }
                     });
 
-                    // Handle ball updates
+                    // DISABLED: Ball sync removed for single-player physics replication
+                    // Each player runs independent ball physics like gameplay.html
                     this.socket.on('ball_update', (data) => {
-                        console.log('🔍 BALL DEBUG: Received ball_update event:', {
-                            receivedData: data,
-                            myPlayerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
-                            isPlayer1: this.matchData.isPlayer1,
-                            matchData: this.matchData
-                        });
-                        
-                        // REAL-TIME SYNC: Process ball updates from opponent for sync corrections
-                        const isFromOpponent = data.playerId !== (this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id);
-                        
-                        console.log('🔍 BALL DEBUG: Processing check:', {
-                            dataPlayerId: data.playerId,
-                            myPlayerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
-                            isFromOpponent: isFromOpponent,
-                            hasGameScene: !!this.gameScene
-                        });
-                        
-                        if (isFromOpponent && this.gameScene) {
-                            console.log('✅ BALL DEBUG: Applying sync correction from opponent');
-                            this.gameScene.handleOpponentBall(data);
-                        } else {
-                            console.log('❌ BALL DEBUG: Ignored ball update:', {
-                                reason: !isFromOpponent ? 'from self' : 'no game scene',
-                                isFromOpponent,
-                                hasGameScene: !!this.gameScene
-                            });
-                        }
+                        console.log('⚽ BALL SYNC: Disabled - using single-player physics mode');
+                        // No ball synchronization - each client runs independent physics
                     });
                     
                     // Custom score sync handlers for multiple event types
@@ -1032,7 +1008,7 @@
                     physics: {
                         default: 'arcade',
                         arcade: {
-                            gravity: { y: 0 }, // We handle gravity manually
+                            gravity: { y: 0 }, // We handle gravity manually - EXACTLY like single-player
                             debug: false
                         }
                     },
