@@ -1023,8 +1023,32 @@
                     if (!this.countdownStarted) {
                         this.countdownStarted = true;
                         console.log('🚀 Starting fallback countdown timer...');
+                        console.log('Current selections at fallback:', {
+                            currentPlayerSelectedHead: this.currentPlayerSelectedHead,
+                            opponentSelectedHead: this.opponentSelectedHead,
+                            currentPlayerSelectedCleat: this.currentPlayerSelectedCleat,
+                            opponentSelectedCleat: this.opponentSelectedCleat
+                        });
                         setTimeout(() => {
-                            this.startCountdown({});
+                            // Pass the current selection state to the countdown
+                            this.startCountdown({
+                                selections: {
+                                    player1: this.isPlayer1 ? {
+                                        selectedHead: this.currentPlayerSelectedHead,
+                                        selectedCleat: this.currentPlayerSelectedCleat
+                                    } : {
+                                        selectedHead: this.opponentSelectedHead,
+                                        selectedCleat: this.opponentSelectedCleat
+                                    },
+                                    player2: this.isPlayer1 ? {
+                                        selectedHead: this.opponentSelectedHead,
+                                        selectedCleat: this.opponentSelectedCleat
+                                    } : {
+                                        selectedHead: this.currentPlayerSelectedHead,
+                                        selectedCleat: this.currentPlayerSelectedCleat
+                                    }
+                                }
+                            });
                         }, 1000); // Give server 1 second to emit selection_complete
                     }
                 } else if (this.currentPlayerReady) {
@@ -1105,11 +1129,15 @@
                             if (data.characterType === 'head') {
                                 this.opponentSelectedHead = data.characterIndex;
                                 this.updateCharacterSelection();
-                                console.log('Opponent selected head:', data.characterData.name);
+                                console.log('Opponent selected head:', data.characterData.name, 'Index:', this.opponentSelectedHead);
+                                console.log('Current selections after opponent head update:', {
+                                    currentPlayerSelectedHead: this.currentPlayerSelectedHead,
+                                    opponentSelectedHead: this.opponentSelectedHead
+                                });
                             } else if (data.characterType === 'cleat') {
                                 this.opponentSelectedCleat = data.characterIndex;
                                 this.updateCleatSelection();
-                                console.log('Opponent selected cleat:', data.characterData.name);
+                                console.log('Opponent selected cleat:', data.characterData.name, 'Index:', this.opponentSelectedCleat);
                             }
                         } else {
                             console.log('Ignoring own selection event');
@@ -1130,7 +1158,47 @@
                     
                     // Listen for both players ready
                     this.socket.on('selection_complete', (data) => {
-                        console.log('🎯 Server emitted selection_complete, starting countdown');
+                        console.log('🎯 Server emitted selection_complete, starting countdown', data);
+                        
+                        // Update selections from server data if available
+                        if (data && data.selections) {
+                            console.log('📋 Updating selections from server data:', data.selections);
+                            
+                            // Find our player's data and the opponent's data
+                            const currentPlayerId = this.isPlayer1 ? this.player1Id : this.player2Id;
+                            const player1Data = data.selections.player1;
+                            const player2Data = data.selections.player2;
+                            
+                            if (this.isPlayer1) {
+                                // We are player 1
+                                if (player1Data) {
+                                    this.currentPlayerSelectedHead = player1Data.selectedHead !== undefined ? player1Data.selectedHead : this.currentPlayerSelectedHead;
+                                    this.currentPlayerSelectedCleat = player1Data.selectedCleat !== undefined ? player1Data.selectedCleat : this.currentPlayerSelectedCleat;
+                                }
+                                if (player2Data) {
+                                    this.opponentSelectedHead = player2Data.selectedHead !== undefined ? player2Data.selectedHead : this.opponentSelectedHead;
+                                    this.opponentSelectedCleat = player2Data.selectedCleat !== undefined ? player2Data.selectedCleat : this.opponentSelectedCleat;
+                                }
+                            } else {
+                                // We are player 2
+                                if (player2Data) {
+                                    this.currentPlayerSelectedHead = player2Data.selectedHead !== undefined ? player2Data.selectedHead : this.currentPlayerSelectedHead;
+                                    this.currentPlayerSelectedCleat = player2Data.selectedCleat !== undefined ? player2Data.selectedCleat : this.currentPlayerSelectedCleat;
+                                }
+                                if (player1Data) {
+                                    this.opponentSelectedHead = player1Data.selectedHead !== undefined ? player1Data.selectedHead : this.opponentSelectedHead;
+                                    this.opponentSelectedCleat = player1Data.selectedCleat !== undefined ? player1Data.selectedCleat : this.opponentSelectedCleat;
+                                }
+                            }
+                            
+                            console.log('📊 Updated selection state:', {
+                                currentPlayerSelectedHead: this.currentPlayerSelectedHead,
+                                opponentSelectedHead: this.opponentSelectedHead,
+                                currentPlayerSelectedCleat: this.currentPlayerSelectedCleat,
+                                opponentSelectedCleat: this.opponentSelectedCleat
+                            });
+                        }
+                        
                         if (!this.countdownStarted) {
                             this.countdownStarted = true;
                             this.startCountdown(data);
@@ -1223,6 +1291,16 @@
             }
             
             goToMultiplayerGameplay(data) {
+                // Debug: Log current selections before navigation
+                console.log('🎯 Pre-navigation selection state:', {
+                    currentPlayerSelectedHead: this.currentPlayerSelectedHead,
+                    opponentSelectedHead: this.opponentSelectedHead,
+                    currentPlayerSelectedCleat: this.currentPlayerSelectedCleat,
+                    opponentSelectedCleat: this.opponentSelectedCleat,
+                    isPlayer1: this.isPlayer1,
+                    CHARACTER_HEADS: CONFIG.CHARACTER_HEADS
+                });
+                
                 // Pass match data and selections to multiplayer gameplay
                 const params = new URLSearchParams({
                     matchId: this.matchId,
