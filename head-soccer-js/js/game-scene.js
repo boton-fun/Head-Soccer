@@ -1481,6 +1481,9 @@ class GameScene extends Phaser.Scene {
                 console.log(`Mapped player1 head index ${player1Head} to ${this.player1Head}`);
             } else if (typeof player1Head === 'string' && characterNames.includes(player1Head)) {
                 this.player1Head = player1Head;
+                console.log(`Using player1 head name: ${this.player1Head}`);
+            } else {
+                console.warn(`Invalid player1Head value: ${player1Head}, using default`);
             }
         }
         
@@ -1492,16 +1495,39 @@ class GameScene extends Phaser.Scene {
                 console.log(`Mapped player2 head index ${player2Head} to ${this.player2Head}`);
             } else if (typeof player2Head === 'string' && characterNames.includes(player2Head)) {
                 this.player2Head = player2Head;
+                console.log(`Using player2 head name: ${this.player2Head}`);
+            } else {
+                console.warn(`Invalid player2Head value: ${player2Head}, using default`);
             }
         }
         
+        // Apply cleat selections
+        if (multiplayerGame.matchData.player1Cleat !== undefined && multiplayerGame.matchData.player1Cleat !== 'Basic') {
+            const player1Cleat = multiplayerGame.matchData.player1Cleat;
+            if (!isNaN(player1Cleat)) {
+                this.player1Cleat = parseInt(player1Cleat);
+                console.log(`Applied player1 cleat: ${this.player1Cleat}`);
+            }
+        }
+        
+        if (multiplayerGame.matchData.player2Cleat !== undefined && multiplayerGame.matchData.player2Cleat !== 'Basic') {
+            const player2Cleat = multiplayerGame.matchData.player2Cleat;
+            if (!isNaN(player2Cleat)) {
+                this.player2Cleat = parseInt(player2Cleat);
+                console.log(`Applied player2 cleat: ${this.player2Cleat}`);
+            }
+        }
+
         console.log('Multiplayer character selections applied:', {
             player1Head: this.player1Head,
-            player2Head: this.player2Head
+            player2Head: this.player2Head,
+            player1Cleat: this.player1Cleat,
+            player2Cleat: this.player2Cleat
         });
         
-        // Only recreate sprites if players already exist, otherwise this will be handled in createPlayers
+        // Always recreate sprites to apply the new character selections
         if (this.player1 && this.player2) {
+            console.log('Recreating player sprites with new character selections');
             this.recreatePlayerSprites();
         } else {
             console.log('Players not yet created, character selections will be applied during createPlayers');

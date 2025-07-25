@@ -1232,9 +1232,16 @@
                     player2: this.player2Username,
                     player1Head: CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[this.isPlayer1 ? this.currentPlayerSelectedHead : this.opponentSelectedHead] : `Character${(this.isPlayer1 ? this.currentPlayerSelectedHead : this.opponentSelectedHead) + 1}`,
                     player2Head: CONFIG.CHARACTER_HEADS ? CONFIG.CHARACTER_HEADS[this.isPlayer1 ? this.opponentSelectedHead : this.currentPlayerSelectedHead] : `Character${(this.isPlayer1 ? this.opponentSelectedHead : this.currentPlayerSelectedHead) + 1}`,
-                    player1Cleat: 'Basic',
-                    player2Cleat: 'Basic',
+                    player1Cleat: this.isPlayer1 ? this.currentPlayerSelectedCleat : this.opponentSelectedCleat,
+                    player2Cleat: this.isPlayer1 ? this.opponentSelectedCleat : this.currentPlayerSelectedCleat,
                     isPlayer1: this.isPlayer1
+                });
+                
+                console.log('🚀 Navigating to gameplay with selections:', {
+                    player1Head: params.get('player1Head'),
+                    player2Head: params.get('player2Head'),
+                    player1Cleat: params.get('player1Cleat'),
+                    player2Cleat: params.get('player2Cleat')
                 });
                 
                 window.location.href = `gameplay-multiplayer.html?${params.toString()}`;
