@@ -2036,9 +2036,27 @@ class GameScene extends Phaser.Scene {
         this.lastSentPosition.y = localPlayer.y;
         
         // Send movement data to server
-        console.log(`🏃 Sending movement for player ${playerNumber}:`, {
+        // Get current input state
+        const currentInput = {
+            left: this.cursors.left.isDown,
+            right: this.cursors.right.isDown,
+            jump: this.cursors.up.isDown,
+            kick: this.cursors.down.isDown
+        };
+        
+        // Determine physics state
+        const physicsState = {
+            onGround: localPlayer.onGround,
+            touchingWall: localPlayer.x <= 0 || localPlayer.x + localPlayer.width >= this.gameWidth,
+            gravityApplied: true, // Always true in our physics
+            jumpFrame: this.cursors.up.isDown && localPlayer.onGround,
+            isKicking: localPlayer.isKicking || false
+        };
+        
+        console.log(`🏃 Sending enhanced movement for player ${playerNumber}:`, {
             position: { x: localPlayer.x, y: localPlayer.y },
-            velocity: { x: localPlayer.velocity.x, y: localPlayer.velocity.y }
+            velocity: { x: localPlayer.velocity.x, y: localPlayer.velocity.y },
+            physicsState: physicsState
         });
         
         this.multiplayerGame.sendMovementUpdate({
@@ -2051,7 +2069,13 @@ class GameScene extends Phaser.Scene {
                 x: localPlayer.velocity.x,
                 y: localPlayer.velocity.y
             },
+            acceleration: {
+                x: 0, // We don't use horizontal acceleration
+                y: PHYSICS_CONSTANTS.PLAYER.GRAVITY
+            },
             onGround: localPlayer.onGround,
+            physicsState: physicsState,
+            input: currentInput,
             timestamp: now
         });
     }

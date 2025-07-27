@@ -38,6 +38,17 @@ class SocketHandler extends EventEmitter {
     // Rate limiting storage
     this.rateLimitStore = new Map(); // socketId -> { endpoint -> { count, resetTime } }
     
+    // Sequence tracking for each player
+    this.playerSequences = new Map(); // playerId -> lastSequence
+    
+    // Message priority levels
+    this.MESSAGE_PRIORITY = {
+      CRITICAL: 0,  // Goal events, game state changes
+      HIGH: 1,      // Ball updates, collision events
+      MEDIUM: 2,    // Player movement updates
+      LOW: 3        // Non-gameplay data
+    };
+    
     // Event validation rules
     this.eventValidation = {
       'authenticate': {
@@ -369,36 +380,50 @@ class SocketHandler extends EventEmitter {
     socket.on('movement_update', (data) => {
       console.log('🔄 SERVER MOVEMENT DEBUG: Received movement_update:', {
         socketId: socket.id,
-        data: data,
+        sequence: data.sequence,
         hasConnection: !!this.connectionManager.getConnectionBySocketId(socket.id)
       });
       
       const connection = this.connectionManager.getConnectionBySocketId(socket.id);
       if (connection && data.matchId) {
+        const playerId = data.playerId;
+        
+        // Validate sequence number if provided
+        if (data.sequence !== undefined) {
+          const lastSequence = this.playerSequences.get(playerId) || -1;
+          if (data.sequence <= lastSequence) {
+            console.log('⚠️ Out of order movement update, ignoring:', {
+              playerId,
+              receivedSeq: data.sequence,
+              lastSeq: lastSequence
+            });
+            return;
+          }
+          this.playerSequences.set(playerId, data.sequence);
+        }
+        
+        // Add server timestamp
+        const enhancedData = {
+          ...data,
+          serverTimestamp: Date.now(),
+          priority: this.MESSAGE_PRIORITY.MEDIUM
+        };
+        
         const roomId = `match_${data.matchId}`;
-        console.log('📡 SERVER MOVEMENT DEBUG: Broadcasting to room:', {
+        console.log('📡 SERVER MOVEMENT DEBUG: Broadcasting enhanced data to room:', {
           roomId: roomId,
-          playerData: {
-            playerId: data.playerId,
-            playerNumber: data.playerNumber,
-            position: data.position
-          },
-          excludingSender: socket.id
+          sequence: data.sequence,
+          serverTimestamp: enhancedData.serverTimestamp
         });
         
-        // Relay movement update to other players in the match (excluding sender)
-        this.connectionManager.broadcastToRoom(roomId, 'movement_update', data, socket.id);
+        // Relay enhanced movement update to other players
+        this.connectionManager.broadcastToRoom(roomId, 'movement_update', enhancedData, socket.id);
         
-        console.log('✅ SERVER MOVEMENT DEBUG: Movement broadcasted successfully');
+        console.log('✅ SERVER MOVEMENT DEBUG: Enhanced movement broadcasted');
       } else {
         console.log('❌ SERVER MOVEMENT DEBUG: Failed to broadcast:', {
           hasConnection: !!connection,
-          hasMatchId: !!data.matchId,
-          connectionDetails: connection ? {
-            playerId: connection.playerId,
-            username: connection.username,
-            roomId: connection.roomId
-          } : null
+          hasMatchId: !!data.matchId
         });
       }
     });
@@ -406,37 +431,32 @@ class SocketHandler extends EventEmitter {
     socket.on('ball_update', (data) => {
       console.log('⚽ SERVER BALL DEBUG: Received ball_update:', {
         socketId: socket.id,
-        data: data,
+        sequence: data.sequence,
         hasConnection: !!this.connectionManager.getConnectionBySocketId(socket.id)
       });
       
       const connection = this.connectionManager.getConnectionBySocketId(socket.id);
       if (connection && data.matchId) {
+        // Add server timestamp and priority
+        const enhancedData = {
+          ...data,
+          serverTimestamp: Date.now(),
+          priority: this.MESSAGE_PRIORITY.HIGH // Ball updates are high priority
+        };
+        
         const roomId = `match_${data.matchId}`;
-        console.log('📡 SERVER BALL DEBUG: Broadcasting to room:', {
+        console.log('📡 SERVER BALL DEBUG: Broadcasting enhanced ball data:', {
           roomId: roomId,
-          ballData: {
-            playerId: data.playerId,
-            position: data.position,
-            velocity: data.velocity
-          },
-          excludingSender: socket.id
+          sequence: data.sequence,
+          serverTimestamp: enhancedData.serverTimestamp
         });
         
-        // Relay ball update to other players in the match (excluding sender)
-        this.connectionManager.broadcastToRoom(roomId, 'ball_update', data, socket.id);
+        // Relay enhanced ball update to other players
+        this.connectionManager.broadcastToRoom(roomId, 'ball_update', enhancedData, socket.id);
         
-        console.log('✅ SERVER BALL DEBUG: Ball update broadcasted successfully');
+        console.log('✅ SERVER BALL DEBUG: Enhanced ball update broadcasted');
       } else {
-        console.log('❌ SERVER BALL DEBUG: Failed to broadcast:', {
-          hasConnection: !!connection,
-          hasMatchId: !!data.matchId,
-          connectionDetails: connection ? {
-            playerId: connection.playerId,
-            username: connection.username,
-            roomId: connection.roomId
-          } : null
-        });
+        console.log('❌ SERVER BALL DEBUG: Failed to broadcast');
       }
     });
 

@@ -591,6 +591,13 @@
                 this.player2Score = 0;
                 this.gameEndSent = false; // Track if game end was sent to prevent duplicates
                 
+                // Enhanced network protocol
+                this.sequenceNumber = 0;
+                this.stateHistory = []; // Circular buffer for state snapshots
+                this.maxHistorySize = 60; // 1 second at 60fps
+                this.serverTimeOffset = 0; // Difference between server and client time
+                this.lastStateSnapshot = null;
+                
                 this.initializeUI();
                 this.connectToServer();
                 this.initializePhaser();
@@ -1430,27 +1437,43 @@
             
             sendMovementUpdate(movementData) {
                 if (this.socket && this.socket.connected) {
-                    // Add match information to movement data
+                    // Increment sequence number
+                    this.sequenceNumber++;
+                    
+                    // Add enhanced data to movement update
                     const fullMovementData = {
                         ...movementData,
                         matchId: this.matchData.matchId,
-                        playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id
+                        playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
+                        sequence: this.sequenceNumber,
+                        clientTimestamp: Date.now(),
+                        physicsState: movementData.physicsState || {
+                            onGround: movementData.onGround,
+                            touchingWall: false,
+                            gravityApplied: true,
+                            jumpFrame: false
+                        },
+                        input: movementData.input || {
+                            left: false,
+                            right: false,
+                            jump: false,
+                            kick: false
+                        }
                     };
                     
-                    console.log('📤 MOVEMENT DEBUG: Sending movement update:', {
-                        originalData: movementData,
-                        fullData: fullMovementData,
-                        isPlayer1: this.matchData.isPlayer1,
-                        socketConnected: this.socket.connected
+                    // Store state snapshot in history
+                    this.addStateSnapshot(fullMovementData);
+                    
+                    console.log('📤 MOVEMENT DEBUG: Sending enhanced update:', {
+                        sequence: this.sequenceNumber,
+                        timestamp: fullMovementData.clientTimestamp,
+                        physicsState: fullMovementData.physicsState
                     });
                     
-                    // Send movement update to server (no acknowledgment needed for frequent updates)
+                    // Send movement update to server
                     this.socket.emit('movement_update', fullMovementData);
                 } else {
-                    console.log('❌ MOVEMENT DEBUG: Cannot send - socket not connected:', {
-                        hasSocket: !!this.socket,
-                        connected: this.socket?.connected
-                    });
+                    console.log('❌ MOVEMENT DEBUG: Cannot send - socket not connected');
                 }
             }
 
@@ -1517,6 +1540,56 @@
                 if (existingMessage) {
                     document.body.removeChild(existingMessage);
                 }
+            }
+            
+            // ===== STATE HISTORY MANAGEMENT =====
+            
+            addStateSnapshot(state) {
+                // Add timestamp if not present
+                if (!state.timestamp) {
+                    state.timestamp = Date.now();
+                }
+                
+                // Add to history buffer
+                this.stateHistory.push({
+                    sequence: state.sequence,
+                    timestamp: state.timestamp,
+                    position: { ...state.position },
+                    velocity: { ...state.velocity },
+                    physicsState: { ...state.physicsState },
+                    input: { ...state.input }
+                });
+                
+                // Maintain circular buffer size
+                if (this.stateHistory.length > this.maxHistorySize) {
+                    this.stateHistory.shift();
+                }
+            }
+            
+            findStateBySequence(sequence) {
+                // Find state snapshot by sequence number
+                for (let i = this.stateHistory.length - 1; i >= 0; i--) {
+                    if (this.stateHistory[i].sequence === sequence) {
+                        return this.stateHistory[i];
+                    }
+                }
+                return null;
+            }
+            
+            getStateAtTime(timestamp) {
+                // Find the state closest to the given timestamp
+                let closestState = null;
+                let minDiff = Infinity;
+                
+                for (const state of this.stateHistory) {
+                    const diff = Math.abs(state.timestamp - timestamp);
+                    if (diff < minDiff) {
+                        minDiff = diff;
+                        closestState = state;
+                    }
+                }
+                
+                return closestState;
             }
 
             handlePlayerLeftGame(data) {
