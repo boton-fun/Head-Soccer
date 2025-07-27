@@ -590,14 +590,13 @@ class GameScene extends Phaser.Scene {
         let moveLeft, moveRight, jump, kick;
         
         if (this.isMultiplayer) {
-            // In multiplayer mode, both players use arrow keys and take turns
-            // The current player controls with arrow keys
-            const isCurrentPlayerTurn = this.multiplayerGame ? 
+            // In multiplayer mode, each player controls their own character
+            const isLocalPlayer = this.multiplayerGame ? 
                 (side === 'left' && this.multiplayerGame.matchData.isPlayer1) ||
                 (side === 'right' && !this.multiplayerGame.matchData.isPlayer1) : false;
             
-            if (isCurrentPlayerTurn) {
-                // This player uses arrow keys
+            if (isLocalPlayer) {
+                // This client controls this player directly
                 moveLeft = this.cursors.left.isDown;
                 moveRight = this.cursors.right.isDown;
                 jump = this.cursors.up.isDown;
