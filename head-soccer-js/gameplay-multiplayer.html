@@ -848,6 +848,7 @@
                         
                         if (isFromOpponent && this.gameScene) {
                             console.log('✅ MOVEMENT DEBUG: Forwarding to game scene');
+                            console.log('🔍 PHASE3 DEBUG: About to call handleOpponentMovement with:', data);
                             this.gameScene.handleOpponentMovement(data);
                         } else {
                             console.log('❌ MOVEMENT DEBUG: Ignored movement update:', {

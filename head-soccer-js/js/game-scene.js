@@ -2208,10 +2208,14 @@ class GameScene extends Phaser.Scene {
     }
     
     handleOpponentMovement(movementData) {
-        console.log(`🏃 Received opponent movement for player ${movementData.playerNumber}:`, movementData);
+        console.log(`🏃 PHASE3 DEBUG: handleOpponentMovement called for player ${movementData.playerNumber}:`, movementData);
         
         // Phase 3: Add position data to interpolation buffer instead of direct update
         const playerKey = `player${movementData.playerNumber}`;
+        console.log(`🔍 PHASE3 DEBUG: Using playerKey: ${playerKey}`);
+        console.log(`🔍 PHASE3 DEBUG: remotePlayerBuffers exists:`, !!this.remotePlayerBuffers);
+        console.log(`🔍 PHASE3 DEBUG: Buffer for ${playerKey} exists:`, !!this.remotePlayerBuffers[playerKey]);
+        
         const positionData = {
             timestamp: movementData.timestamp || Date.now(),
             position: { ...movementData.position },
@@ -2220,10 +2224,12 @@ class GameScene extends Phaser.Scene {
             physicsState: movementData.physicsState || {}
         };
         
+        console.log(`🔍 PHASE3 DEBUG: Created positionData:`, positionData);
+        
         // Add to position buffer
         this.addPositionToBuffer(playerKey, positionData);
         
-        console.log(`📥 Added position to ${playerKey} buffer. Buffer size: ${this.remotePlayerBuffers[playerKey].length}`);
+        console.log(`📥 PHASE3 DEBUG: After addPositionToBuffer - Buffer size: ${this.remotePlayerBuffers[playerKey]?.length || 'UNDEFINED'}`);
     }
     
     // ===== PHASE 2: CLIENT-SIDE PREDICTION SYSTEM =====
@@ -2391,42 +2397,63 @@ class GameScene extends Phaser.Scene {
         const now = Date.now();
         const renderTime = now - this.interpolationDelay; // 100ms behind
         
+        console.log(`🔄 PHASE3 DEBUG: updateRemotePlayerInterpolation called. Now: ${now}, RenderTime: ${renderTime}`);
+        console.log(`🔍 PHASE3 DEBUG: multiplayerGame exists:`, !!this.multiplayerGame);
+        console.log(`🔍 PHASE3 DEBUG: isPlayer1:`, this.multiplayerGame?.matchData?.isPlayer1);
+        
         // Update player 1 if it's the remote player
         if (this.multiplayerGame && !this.multiplayerGame.matchData.isPlayer1) {
+            console.log(`🎯 PHASE3 DEBUG: Player 1 is REMOTE - interpolating`);
             this.interpolateRemotePlayer('player1', this.player1, this.player1Sprite, renderTime);
+        } else {
+            console.log(`🎯 PHASE3 DEBUG: Player 1 is LOCAL - skipping interpolation`);
         }
         
         // Update player 2 if it's the remote player  
         if (this.multiplayerGame && this.multiplayerGame.matchData.isPlayer1) {
+            console.log(`🎯 PHASE3 DEBUG: Player 2 is REMOTE - interpolating`);
             this.interpolateRemotePlayer('player2', this.player2, this.player2Sprite, renderTime);
+        } else {
+            console.log(`🎯 PHASE3 DEBUG: Player 2 is LOCAL - skipping interpolation`);
         }
     }
     
     interpolateRemotePlayer(playerKey, playerObject, playerSprite, renderTime) {
         const buffer = this.remotePlayerBuffers[playerKey];
         
-        if (buffer.length === 0) return;
+        console.log(`🎮 PHASE3 DEBUG: interpolateRemotePlayer called for ${playerKey}`);
+        console.log(`🔍 PHASE3 DEBUG: Buffer length: ${buffer?.length || 'UNDEFINED'}`);
+        console.log(`🔍 PHASE3 DEBUG: PlayerObject exists:`, !!playerObject);
+        console.log(`🔍 PHASE3 DEBUG: PlayerSprite exists:`, !!playerSprite);
+        
+        if (!buffer || buffer.length === 0) {
+            console.log(`❌ PHASE3 DEBUG: No buffer data for ${playerKey} - returning early`);
+            return;
+        }
+        
+        console.log(`🔍 PHASE3 DEBUG: Buffer contents:`, buffer);
         
         // Find the two positions around our render time
         const result = this.findInterpolationTargets(buffer, renderTime);
+        console.log(`🔍 PHASE3 DEBUG: Interpolation result:`, result);
         
         if (result.interpolate) {
             // Interpolate between two positions
             const interpolatedPosition = this.lerp(result.before, result.after, result.factor);
+            console.log(`🔄 PHASE3 DEBUG: Interpolating ${playerKey} at factor ${result.factor.toFixed(3)}`);
+            console.log(`🔍 PHASE3 DEBUG: Interpolated position:`, interpolatedPosition);
             this.applyInterpolatedPosition(playerObject, playerSprite, interpolatedPosition);
-            
-            console.log(`🔄 Interpolated ${playerKey} at factor ${result.factor.toFixed(3)}`);
         } else if (result.extrapolate) {
             // Extrapolate from latest position
             const extrapolatedPosition = this.extrapolatePosition(result.latest, renderTime);
+            console.log(`📈 PHASE3 DEBUG: Extrapolating ${playerKey} by ${renderTime - result.latest.timestamp}ms`);
+            console.log(`🔍 PHASE3 DEBUG: Extrapolated position:`, extrapolatedPosition);
             this.applyInterpolatedPosition(playerObject, playerSprite, extrapolatedPosition);
-            
-            console.log(`📈 Extrapolated ${playerKey} by ${renderTime - result.latest.timestamp}ms`);
         } else {
             // Use latest available position
+            console.log(`📍 PHASE3 DEBUG: Using latest ${playerKey} position (no interpolation)`);
+            console.log(`🔍 PHASE3 DEBUG: Latest position:`, result.latest);
             this.applyInterpolatedPosition(playerObject, playerSprite, result.latest);
-            
-            console.log(`📍 Using latest ${playerKey} position (no interpolation)`);
         }
     }
     
