@@ -89,6 +89,10 @@ class GameScene extends Phaser.Scene {
         this.player1PrevKick = false;
         this.player2PrevKick = false;
         
+        // Track kick input for network updates (persistent until sent)
+        this.player1KickPressed = false;
+        this.player2KickPressed = false;
+        
         // Track last collision frame to prevent multiple rapid collisions
         this.lastCollisionFrame = { player1: -100, player2: -100 };
         this.frameCount = 0;
@@ -673,12 +677,14 @@ class GameScene extends Phaser.Scene {
             if (kick && !this.player1PrevKick) {
                 // Kick button just pressed
                 this.triggerKickAnimation('left');
+                this.player1KickPressed = true; // Mark for network update
             }
             this.player1PrevKick = kick;
         } else {
             if (kick && !this.player2PrevKick) {
                 // Kick button just pressed
                 this.triggerKickAnimation('right');
+                this.player2KickPressed = true; // Mark for network update
             }
             this.player2PrevKick = kick;
         }
@@ -2035,13 +2041,20 @@ class GameScene extends Phaser.Scene {
         this.lastSentPosition.y = localPlayer.y;
         
         // Send movement data to server
-        // Get current input state
+        // Get current input state (use persistent kick detection)
         const currentInput = {
             left: this.cursors.left.isDown,
             right: this.cursors.right.isDown,
             jump: this.cursors.up.isDown,
-            kick: this.cursors.down.isDown
+            kick: this.cursors.down.isDown || (playerNumber === 1 ? this.player1KickPressed : this.player2KickPressed)
         };
+        
+        // Clear persistent kick state after capturing it
+        if (playerNumber === 1) {
+            this.player1KickPressed = false;
+        } else {
+            this.player2KickPressed = false;
+        }
         
         // Determine physics state
         const physicsState = {
