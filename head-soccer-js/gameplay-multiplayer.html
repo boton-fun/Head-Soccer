@@ -1905,7 +1905,7 @@
         </div>
         
         <div class="debug-section">
-            <div class="debug-label">Physics State:</div>
+            <div class="debug-label">Physics State (60Hz Real-time):</div>
             <div class="debug-row">On Ground: <span class="debug-value" id="debug-on-ground">-</span></div>
             <div class="debug-row">Touching Wall: <span class="debug-value" id="debug-touching-wall">-</span></div>
             <div class="debug-row">Jump Frame: <span class="debug-value" id="debug-jump-frame">-</span></div>
@@ -1913,7 +1913,7 @@
         </div>
         
         <div class="debug-section">
-            <div class="debug-label">Input State:</div>
+            <div class="debug-label">Input State (60Hz Real-time):</div>
             <div class="debug-row">Left: <span class="debug-value" id="debug-input-left">-</span></div>
             <div class="debug-row">Right: <span class="debug-value" id="debug-input-right">-</span></div>
             <div class="debug-row">Jump: <span class="debug-value" id="debug-input-jump">-</span></div>
@@ -1990,17 +1990,36 @@
                 updatePhysicsDisplay('debug-prediction-active', gameScene.serverReconciliation);
             }
             
-            // Get latest state for physics info
-            const latestState = game.stateHistory?.slice(-1)[0];
-            if (latestState?.physicsState) {
-                updatePhysicsDisplay('debug-on-ground', latestState.physicsState.onGround);
-                updatePhysicsDisplay('debug-touching-wall', latestState.physicsState.touchingWall);
-                updatePhysicsDisplay('debug-jump-frame', latestState.physicsState.jumpFrame);
-                updatePhysicsDisplay('debug-kicking', latestState.physicsState.isKicking);
+            // Get current real-time physics state
+            if (gameScene && game.matchData) {
+                const localPlayer = game.matchData.isPlayer1 ? gameScene.player1 : gameScene.player2;
+                if (localPlayer) {
+                    updatePhysicsDisplay('debug-on-ground', localPlayer.onGround);
+                    updatePhysicsDisplay('debug-touching-wall', 
+                        localPlayer.x <= 0 || localPlayer.x + localPlayer.width >= gameScene.gameWidth);
+                    updatePhysicsDisplay('debug-jump-frame', 
+                        gameScene.cursors && gameScene.cursors.up.isDown && localPlayer.onGround);
+                    updatePhysicsDisplay('debug-kicking', localPlayer.isKicking);
+                }
+            } else {
+                // Fallback to network data if direct access not available
+                const latestState = game.stateHistory?.slice(-1)[0];
+                if (latestState?.physicsState) {
+                    updatePhysicsDisplay('debug-on-ground', latestState.physicsState.onGround);
+                    updatePhysicsDisplay('debug-touching-wall', latestState.physicsState.touchingWall);
+                    updatePhysicsDisplay('debug-jump-frame', latestState.physicsState.jumpFrame);
+                    updatePhysicsDisplay('debug-kicking', latestState.physicsState.isKicking);
+                }
             }
             
-            // Get latest input state
-            if (latestState?.input) {
+            // Get current real-time input state (60Hz) instead of network state (20Hz)
+            if (gameScene && gameScene.cursors) {
+                updatePhysicsDisplay('debug-input-left', gameScene.cursors.left.isDown);
+                updatePhysicsDisplay('debug-input-right', gameScene.cursors.right.isDown);
+                updatePhysicsDisplay('debug-input-jump', gameScene.cursors.up.isDown);
+                updatePhysicsDisplay('debug-input-kick', gameScene.cursors.down.isDown);
+            } else if (latestState?.input) {
+                // Fallback to network data if direct input not available
                 updatePhysicsDisplay('debug-input-left', latestState.input.left);
                 updatePhysicsDisplay('debug-input-right', latestState.input.right);
                 updatePhysicsDisplay('debug-input-jump', latestState.input.jump);
