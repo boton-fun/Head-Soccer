@@ -433,6 +433,93 @@
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
         }
+        
+        /* Debug Panel Styles */
+        #debug-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: 350px;
+            background: rgba(0, 0, 0, 0.95);
+            border: 2px solid #00ff00;
+            border-radius: 10px;
+            padding: 15px;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            z-index: 9999;
+            max-height: 400px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        #debug-panel h3 {
+            margin: 0 0 10px 0;
+            color: #00ff00;
+            font-size: 14px;
+            border-bottom: 1px solid #00ff00;
+            padding-bottom: 5px;
+        }
+        
+        #debug-panel .debug-section {
+            margin-bottom: 10px;
+            padding: 5px;
+            background: rgba(0, 255, 0, 0.1);
+            border-radius: 5px;
+        }
+        
+        #debug-panel .debug-label {
+            color: #ffff00;
+            font-weight: bold;
+        }
+        
+        #debug-panel .debug-value {
+            color: #ffffff;
+        }
+        
+        #debug-panel .debug-row {
+            margin: 2px 0;
+        }
+        
+        #debug-panel button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 5px 10px;
+            margin: 5px 5px 5px 0;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        #debug-panel button:hover {
+            background: #00cc00;
+        }
+        
+        .debug-physics-true {
+            color: #00ff00 !important;
+        }
+        
+        .debug-physics-false {
+            color: #ff0000 !important;
+        }
+        
+        #debug-toggle {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            z-index: 9998;
+        }
     </style>
 </head>
 <body>
@@ -1803,6 +1890,144 @@
                 clearInterval(window.multiplayerGame.pingInterval);
             }
         });
+    </script>
+    
+    <!-- Debug Panel -->
+    <button id="debug-toggle" onclick="toggleDebugPanel()">DEBUG</button>
+    <div id="debug-panel">
+        <h3>🔧 Phase 1 Debug Panel</h3>
+        
+        <div class="debug-section">
+            <div class="debug-label">Network Status:</div>
+            <div class="debug-row">Sequence: <span class="debug-value" id="debug-sequence">-</span></div>
+            <div class="debug-row">Buffer Size: <span class="debug-value" id="debug-buffer-size">-</span></div>
+            <div class="debug-row">Last Update: <span class="debug-value" id="debug-last-update">-</span></div>
+        </div>
+        
+        <div class="debug-section">
+            <div class="debug-label">Physics State:</div>
+            <div class="debug-row">On Ground: <span class="debug-value" id="debug-on-ground">-</span></div>
+            <div class="debug-row">Touching Wall: <span class="debug-value" id="debug-touching-wall">-</span></div>
+            <div class="debug-row">Jump Frame: <span class="debug-value" id="debug-jump-frame">-</span></div>
+            <div class="debug-row">Kicking: <span class="debug-value" id="debug-kicking">-</span></div>
+        </div>
+        
+        <div class="debug-section">
+            <div class="debug-label">Input State:</div>
+            <div class="debug-row">Left: <span class="debug-value" id="debug-input-left">-</span></div>
+            <div class="debug-row">Right: <span class="debug-value" id="debug-input-right">-</span></div>
+            <div class="debug-row">Jump: <span class="debug-value" id="debug-input-jump">-</span></div>
+            <div class="debug-row">Kick: <span class="debug-value" id="debug-input-kick">-</span></div>
+        </div>
+        
+        <div class="debug-section">
+            <div class="debug-label">Test Actions:</div>
+            <button onclick="showStateHistory()">View History</button>
+            <button onclick="showLatestState()">Latest State</button>
+            <button onclick="clearLogs()">Clear Logs</button>
+        </div>
+    </div>
+    
+    <script>
+        // Debug Panel Functions
+        let debugPanelVisible = false;
+        
+        function toggleDebugPanel() {
+            debugPanelVisible = !debugPanelVisible;
+            const panel = document.getElementById('debug-panel');
+            const toggle = document.getElementById('debug-toggle');
+            
+            if (debugPanelVisible) {
+                panel.style.display = 'block';
+                toggle.textContent = 'HIDE';
+                toggle.style.left = '390px'; // Move button to not overlap panel
+                startDebugUpdate();
+            } else {
+                panel.style.display = 'none';
+                toggle.textContent = 'DEBUG';
+                toggle.style.left = '20px';
+                stopDebugUpdate();
+            }
+        }
+        
+        let debugUpdateInterval;
+        
+        function startDebugUpdate() {
+            debugUpdateInterval = setInterval(updateDebugPanel, 100); // Update every 100ms
+        }
+        
+        function stopDebugUpdate() {
+            if (debugUpdateInterval) {
+                clearInterval(debugUpdateInterval);
+            }
+        }
+        
+        function updateDebugPanel() {
+            if (!window.multiplayerGame) return;
+            
+            const game = window.multiplayerGame;
+            
+            // Update sequence and buffer info
+            document.getElementById('debug-sequence').textContent = game.sequenceNumber || 'N/A';
+            document.getElementById('debug-buffer-size').textContent = game.stateHistory?.length || 'N/A';
+            document.getElementById('debug-last-update').textContent = game.lastStateSnapshot?.timestamp ? 
+                new Date(game.lastStateSnapshot.timestamp).toLocaleTimeString() : 'N/A';
+            
+            // Get latest state for physics info
+            const latestState = game.stateHistory?.slice(-1)[0];
+            if (latestState?.physicsState) {
+                updatePhysicsDisplay('debug-on-ground', latestState.physicsState.onGround);
+                updatePhysicsDisplay('debug-touching-wall', latestState.physicsState.touchingWall);
+                updatePhysicsDisplay('debug-jump-frame', latestState.physicsState.jumpFrame);
+                updatePhysicsDisplay('debug-kicking', latestState.physicsState.isKicking);
+            }
+            
+            // Get latest input state
+            if (latestState?.input) {
+                updatePhysicsDisplay('debug-input-left', latestState.input.left);
+                updatePhysicsDisplay('debug-input-right', latestState.input.right);
+                updatePhysicsDisplay('debug-input-jump', latestState.input.jump);
+                updatePhysicsDisplay('debug-input-kick', latestState.input.kick);
+            }
+        }
+        
+        function updatePhysicsDisplay(elementId, value) {
+            const element = document.getElementById(elementId);
+            element.textContent = value;
+            element.className = 'debug-value ' + (value ? 'debug-physics-true' : 'debug-physics-false');
+        }
+        
+        function showStateHistory() {
+            if (!window.multiplayerGame?.stateHistory) {
+                alert('No state history available');
+                return;
+            }
+            
+            const history = window.multiplayerGame.stateHistory;
+            console.log('=== STATE HISTORY ===');
+            console.log(`Total states: ${history.length}`);
+            console.log('Last 5 states:', history.slice(-5));
+            console.log('===================');
+            alert(`State history logged to console. Total states: ${history.length}`);
+        }
+        
+        function showLatestState() {
+            if (!window.multiplayerGame?.stateHistory?.length) {
+                alert('No states available');
+                return;
+            }
+            
+            const latest = window.multiplayerGame.stateHistory.slice(-1)[0];
+            console.log('=== LATEST STATE ===');
+            console.log(latest);
+            console.log('==================');
+            alert('Latest state logged to console');
+        }
+        
+        function clearLogs() {
+            console.clear();
+            alert('Console cleared');
+        }
     </script>
 </body>
 </html>
