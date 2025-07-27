@@ -2378,6 +2378,12 @@ class GameScene extends Phaser.Scene {
     // ===== PHASE 3: INTERPOLATION SYSTEM FOR REMOTE PLAYERS =====
     
     addPositionToBuffer(playerKey, positionData) {
+        // Ensure buffer exists for this player
+        if (!this.remotePlayerBuffers[playerKey]) {
+            console.log(`🔧 PHASE3 FIX: Creating buffer for ${playerKey}`);
+            this.remotePlayerBuffers[playerKey] = [];
+        }
+        
         // Add position to buffer
         this.remotePlayerBuffers[playerKey].push(positionData);
         
