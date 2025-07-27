@@ -99,6 +99,15 @@ class GameScene extends Phaser.Scene {
         this.serverReconciliation = false; // Enable/disable server reconciliation
         this.lastServerUpdate = 0; // Timestamp of last server update
         
+        // Phase 3: Interpolation System for Remote Players
+        this.remotePlayerBuffers = {
+            player1: [], // Position buffer for player 1
+            player2: []  // Position buffer for player 2
+        };
+        this.maxPositionHistory = 5; // Store last 5 position updates
+        this.interpolationDelay = 100; // 100ms behind latest update
+        this.extrapolationLimit = 200; // Max 200ms extrapolation
+        
         // Track last collision frame to prevent multiple rapid collisions
         this.lastCollisionFrame = { player1: -100, player2: -100 };
         this.frameCount = 0;
@@ -575,6 +584,9 @@ class GameScene extends Phaser.Scene {
                 this.sendMovementUpdates();
                 // DISABLED: Ball sync removed for single-player physics replication
                 // this.sendBallUpdates();
+                
+                // Phase 3: Update remote player interpolation
+                this.updateRemotePlayerInterpolation();
             }
             
             // Update ball physics
@@ -2198,37 +2210,20 @@ class GameScene extends Phaser.Scene {
     handleOpponentMovement(movementData) {
         console.log(`🏃 Received opponent movement for player ${movementData.playerNumber}:`, movementData);
         
-        // Determine which player is the opponent
-        let opponentPlayer, opponentSprite;
-        if (movementData.playerNumber === 1) {
-            opponentPlayer = this.player1;
-            opponentSprite = this.player1Sprite;
-        } else {
-            opponentPlayer = this.player2;
-            opponentSprite = this.player2Sprite;
-        }
+        // Phase 3: Add position data to interpolation buffer instead of direct update
+        const playerKey = `player${movementData.playerNumber}`;
+        const positionData = {
+            timestamp: movementData.timestamp || Date.now(),
+            position: { ...movementData.position },
+            velocity: { ...movementData.velocity },
+            onGround: movementData.onGround,
+            physicsState: movementData.physicsState || {}
+        };
         
-        if (!opponentPlayer || !opponentSprite) {
-            console.log(`❌ Opponent player ${movementData.playerNumber} not found!`);
-            return;
-        }
+        // Add to position buffer
+        this.addPositionToBuffer(playerKey, positionData);
         
-        // Update opponent position directly (basic version - no interpolation yet)
-        opponentPlayer.x = movementData.position.x;
-        opponentPlayer.y = movementData.position.y;
-        opponentPlayer.velocity.x = movementData.velocity.x;
-        opponentPlayer.velocity.y = movementData.velocity.y;
-        opponentPlayer.onGround = movementData.onGround;
-        
-        // Update sprite position to match
-        opponentSprite.x = opponentPlayer.x;
-        opponentSprite.y = opponentPlayer.y;
-        
-        console.log(`✅ Updated opponent player ${movementData.playerNumber} position to:`, {
-            x: opponentPlayer.x, 
-            y: opponentPlayer.y,
-            velocity: opponentPlayer.velocity
-        });
+        console.log(`📥 Added position to ${playerKey} buffer. Buffer size: ${this.remotePlayerBuffers[playerKey].length}`);
     }
     
     // ===== PHASE 2: CLIENT-SIDE PREDICTION SYSTEM =====
@@ -2372,5 +2367,159 @@ class GameScene extends Phaser.Scene {
         }
         
         console.log(`🎬 Replay complete. Final position: (${localPlayer.x.toFixed(1)}, ${localPlayer.y.toFixed(1)})`);
+    }
+    
+    // ===== PHASE 3: INTERPOLATION SYSTEM FOR REMOTE PLAYERS =====
+    
+    addPositionToBuffer(playerKey, positionData) {
+        // Add position to buffer
+        this.remotePlayerBuffers[playerKey].push(positionData);
+        
+        // Maintain circular buffer size
+        if (this.remotePlayerBuffers[playerKey].length > this.maxPositionHistory) {
+            this.remotePlayerBuffers[playerKey].shift();
+        }
+        
+        // Sort by timestamp to handle out-of-order packets
+        this.remotePlayerBuffers[playerKey].sort((a, b) => a.timestamp - b.timestamp);
+        
+        console.log(`📥 Position added to ${playerKey} buffer. Size: ${this.remotePlayerBuffers[playerKey].length}`);
+    }
+    
+    updateRemotePlayerInterpolation() {
+        // Update both remote players using interpolation
+        const now = Date.now();
+        const renderTime = now - this.interpolationDelay; // 100ms behind
+        
+        // Update player 1 if it's the remote player
+        if (this.multiplayerGame && !this.multiplayerGame.matchData.isPlayer1) {
+            this.interpolateRemotePlayer('player1', this.player1, this.player1Sprite, renderTime);
+        }
+        
+        // Update player 2 if it's the remote player  
+        if (this.multiplayerGame && this.multiplayerGame.matchData.isPlayer1) {
+            this.interpolateRemotePlayer('player2', this.player2, this.player2Sprite, renderTime);
+        }
+    }
+    
+    interpolateRemotePlayer(playerKey, playerObject, playerSprite, renderTime) {
+        const buffer = this.remotePlayerBuffers[playerKey];
+        
+        if (buffer.length === 0) return;
+        
+        // Find the two positions around our render time
+        const result = this.findInterpolationTargets(buffer, renderTime);
+        
+        if (result.interpolate) {
+            // Interpolate between two positions
+            const interpolatedPosition = this.lerp(result.before, result.after, result.factor);
+            this.applyInterpolatedPosition(playerObject, playerSprite, interpolatedPosition);
+            
+            console.log(`🔄 Interpolated ${playerKey} at factor ${result.factor.toFixed(3)}`);
+        } else if (result.extrapolate) {
+            // Extrapolate from latest position
+            const extrapolatedPosition = this.extrapolatePosition(result.latest, renderTime);
+            this.applyInterpolatedPosition(playerObject, playerSprite, extrapolatedPosition);
+            
+            console.log(`📈 Extrapolated ${playerKey} by ${renderTime - result.latest.timestamp}ms`);
+        } else {
+            // Use latest available position
+            this.applyInterpolatedPosition(playerObject, playerSprite, result.latest);
+            
+            console.log(`📍 Using latest ${playerKey} position (no interpolation)`);
+        }
+    }
+    
+    findInterpolationTargets(buffer, renderTime) {
+        // Find positions before and after render time
+        let before = null;
+        let after = null;
+        
+        for (let i = 0; i < buffer.length; i++) {
+            const pos = buffer[i];
+            
+            if (pos.timestamp <= renderTime) {
+                before = pos;
+            } else if (pos.timestamp > renderTime && !after) {
+                after = pos;
+                break;
+            }
+        }
+        
+        const latest = buffer[buffer.length - 1];
+        
+        if (before && after) {
+            // Perfect interpolation case
+            const factor = (renderTime - before.timestamp) / (after.timestamp - before.timestamp);
+            return { interpolate: true, before, after, factor: Math.max(0, Math.min(1, factor)) };
+        } else if (latest && (renderTime - latest.timestamp) <= this.extrapolationLimit) {
+            // Extrapolation case (within limit)
+            return { extrapolate: true, latest };
+        } else {
+            // Fallback to latest position
+            return { latest: latest || buffer[0] };
+        }
+    }
+    
+    lerp(pos1, pos2, factor) {
+        // Linear interpolation between two positions
+        return {
+            timestamp: pos1.timestamp + (pos2.timestamp - pos1.timestamp) * factor,
+            position: {
+                x: pos1.position.x + (pos2.position.x - pos1.position.x) * factor,
+                y: pos1.position.y + (pos2.position.y - pos1.position.y) * factor
+            },
+            velocity: {
+                x: pos1.velocity.x + (pos2.velocity.x - pos1.velocity.x) * factor,
+                y: pos1.velocity.y + (pos2.velocity.y - pos1.velocity.y) * factor
+            },
+            onGround: factor < 0.5 ? pos1.onGround : pos2.onGround, // Snap to nearest
+            physicsState: factor < 0.5 ? pos1.physicsState : pos2.physicsState
+        };
+    }
+    
+    extrapolatePosition(latestPos, renderTime) {
+        // Extrapolate position using velocity
+        const deltaTime = (renderTime - latestPos.timestamp) / 1000; // Convert to seconds
+        const decayFactor = Math.max(0, 1 - deltaTime / (this.extrapolationLimit / 1000)); // Decay over time
+        
+        return {
+            timestamp: renderTime,
+            position: {
+                x: latestPos.position.x + latestPos.velocity.x * deltaTime * decayFactor,
+                y: latestPos.position.y + latestPos.velocity.y * deltaTime * decayFactor
+            },
+            velocity: {
+                x: latestPos.velocity.x * decayFactor,
+                y: latestPos.velocity.y * decayFactor
+            },
+            onGround: latestPos.onGround,
+            physicsState: latestPos.physicsState
+        };
+    }
+    
+    applyInterpolatedPosition(playerObject, playerSprite, interpolatedData) {
+        if (!playerObject || !playerSprite || !interpolatedData) return;
+        
+        // Apply interpolated position with ground state handling
+        playerObject.x = interpolatedData.position.x;
+        playerObject.y = interpolatedData.position.y;
+        playerObject.velocity.x = interpolatedData.velocity.x;
+        playerObject.velocity.y = interpolatedData.velocity.y;
+        playerObject.onGround = interpolatedData.onGround;
+        
+        // Special ground state handling (Phase 3.4)
+        if (interpolatedData.onGround) {
+            const groundY = this.gameHeight - this.bottomGap - playerObject.height;
+            // Snap to ground if within 5 pixels
+            if (Math.abs(playerObject.y - groundY) <= 5) {
+                playerObject.y = groundY;
+                playerObject.velocity.y = 0;
+            }
+        }
+        
+        // Update sprite to match
+        playerSprite.x = playerObject.x;
+        playerSprite.y = playerObject.y;
     }
 }

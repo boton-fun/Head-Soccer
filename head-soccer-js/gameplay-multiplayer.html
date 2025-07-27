@@ -1928,9 +1928,17 @@
         </div>
         
         <div class="debug-section">
+            <div class="debug-label">Phase 3 - Interpolation:</div>
+            <div class="debug-row">Remote P1 Buffer: <span class="debug-value" id="debug-remote-p1-buffer">-</span></div>
+            <div class="debug-row">Remote P2 Buffer: <span class="debug-value" id="debug-remote-p2-buffer">-</span></div>
+            <div class="debug-row">Interpolation Delay: <span class="debug-value" id="debug-interp-delay">-</span></div>
+        </div>
+        
+        <div class="debug-section">
             <div class="debug-label">Test Actions:</div>
             <button onclick="showStateHistory()">View History</button>
             <button onclick="showInputBuffer()">Input Buffer</button>
+            <button onclick="showInterpolationBuffers()">Interp Buffers</button>
             <button onclick="togglePrediction()">Toggle Prediction</button>
             <button onclick="clearLogs()">Clear Logs</button>
         </div>
@@ -1988,6 +1996,11 @@
                 document.getElementById('debug-reconciliation').textContent = gameScene.lastServerUpdate ? 
                     new Date(gameScene.lastServerUpdate).toLocaleTimeString() : 'Never';
                 updatePhysicsDisplay('debug-prediction-active', gameScene.serverReconciliation);
+                
+                // Phase 3: Update interpolation info
+                document.getElementById('debug-remote-p1-buffer').textContent = gameScene.remotePlayerBuffers?.player1?.length || '0';
+                document.getElementById('debug-remote-p2-buffer').textContent = gameScene.remotePlayerBuffers?.player2?.length || '0';
+                document.getElementById('debug-interp-delay').textContent = gameScene.interpolationDelay + 'ms';
             }
             
             // Get current real-time physics state
@@ -2072,6 +2085,24 @@
             console.log('Last 5 inputs:', buffer.slice(-5));
             console.log('============================');
             alert(`Input buffer logged to console. Total inputs: ${buffer.length}`);
+        }
+        
+        function showInterpolationBuffers() {
+            if (!window.gameScene?.remotePlayerBuffers) {
+                alert('No interpolation buffers available');
+                return;
+            }
+            
+            const buffers = window.gameScene.remotePlayerBuffers;
+            console.log('=== INTERPOLATION BUFFERS (Phase 3) ===');
+            console.log(`Player 1 buffer size: ${buffers.player1.length}`);
+            console.log('Player 1 last 3 positions:', buffers.player1.slice(-3));
+            console.log(`Player 2 buffer size: ${buffers.player2.length}`);
+            console.log('Player 2 last 3 positions:', buffers.player2.slice(-3));
+            console.log(`Interpolation delay: ${window.gameScene.interpolationDelay}ms`);
+            console.log(`Extrapolation limit: ${window.gameScene.extrapolationLimit}ms`);
+            console.log('=====================================');
+            alert(`Interpolation buffers logged to console. P1: ${buffers.player1.length}, P2: ${buffers.player2.length}`);
         }
         
         function togglePrediction() {
