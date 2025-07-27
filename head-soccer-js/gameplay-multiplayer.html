@@ -1921,9 +1921,17 @@
         </div>
         
         <div class="debug-section">
+            <div class="debug-label">Phase 2 - Prediction:</div>
+            <div class="debug-row">Input Buffer: <span class="debug-value" id="debug-input-buffer">-</span></div>
+            <div class="debug-row">Last Reconciliation: <span class="debug-value" id="debug-reconciliation">-</span></div>
+            <div class="debug-row">Prediction Active: <span class="debug-value" id="debug-prediction-active">-</span></div>
+        </div>
+        
+        <div class="debug-section">
             <div class="debug-label">Test Actions:</div>
             <button onclick="showStateHistory()">View History</button>
-            <button onclick="showLatestState()">Latest State</button>
+            <button onclick="showInputBuffer()">Input Buffer</button>
+            <button onclick="togglePrediction()">Toggle Prediction</button>
             <button onclick="clearLogs()">Clear Logs</button>
         </div>
     </div>
@@ -1966,12 +1974,21 @@
             if (!window.multiplayerGame) return;
             
             const game = window.multiplayerGame;
+            const gameScene = window.gameScene;
             
             // Update sequence and buffer info
             document.getElementById('debug-sequence').textContent = game.sequenceNumber || 'N/A';
             document.getElementById('debug-buffer-size').textContent = game.stateHistory?.length || 'N/A';
             document.getElementById('debug-last-update').textContent = game.lastStateSnapshot?.timestamp ? 
                 new Date(game.lastStateSnapshot.timestamp).toLocaleTimeString() : 'N/A';
+            
+            // Phase 2: Update prediction info
+            if (gameScene) {
+                document.getElementById('debug-input-buffer').textContent = gameScene.inputBuffer?.length || '0';
+                document.getElementById('debug-reconciliation').textContent = gameScene.lastServerUpdate ? 
+                    new Date(gameScene.lastServerUpdate).toLocaleTimeString() : 'Never';
+                updatePhysicsDisplay('debug-prediction-active', gameScene.serverReconciliation);
+            }
             
             // Get latest state for physics info
             const latestState = game.stateHistory?.slice(-1)[0];
@@ -2022,6 +2039,32 @@
             console.log(latest);
             console.log('==================');
             alert('Latest state logged to console');
+        }
+        
+        function showInputBuffer() {
+            if (!window.gameScene?.inputBuffer) {
+                alert('No input buffer available');
+                return;
+            }
+            
+            const buffer = window.gameScene.inputBuffer;
+            console.log('=== INPUT BUFFER (Phase 2) ===');
+            console.log(`Total inputs: ${buffer.length}`);
+            console.log('Last 5 inputs:', buffer.slice(-5));
+            console.log('============================');
+            alert(`Input buffer logged to console. Total inputs: ${buffer.length}`);
+        }
+        
+        function togglePrediction() {
+            if (!window.gameScene) {
+                alert('Game scene not available');
+                return;
+            }
+            
+            window.gameScene.serverReconciliation = !window.gameScene.serverReconciliation;
+            const status = window.gameScene.serverReconciliation ? 'ENABLED' : 'DISABLED';
+            console.log(`🔄 Client-side prediction ${status}`);
+            alert(`Client-side prediction ${status}`);
         }
         
         function clearLogs() {

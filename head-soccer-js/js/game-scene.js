@@ -93,6 +93,12 @@ class GameScene extends Phaser.Scene {
         this.player1KickPressed = false;
         this.player2KickPressed = false;
         
+        // Phase 2: Client-Side Prediction System
+        this.inputBuffer = []; // Store inputs with timestamps for prediction
+        this.maxInputHistory = 60; // 1 second at 60fps
+        this.serverReconciliation = false; // Enable/disable server reconciliation
+        this.lastServerUpdate = 0; // Timestamp of last server update
+        
         // Track last collision frame to prevent multiple rapid collisions
         this.lastCollisionFrame = { player1: -100, player2: -100 };
         this.frameCount = 0;
@@ -654,21 +660,46 @@ class GameScene extends Phaser.Scene {
         // Store kick state on player for collision detection
         player.isKicking = kick;
         
-        // Send input to multiplayer system if enabled
+        // Phase 2: Client-Side Prediction - Capture input for local player
         if (this.isMultiplayer && this.multiplayerGame) {
-            const isCurrentPlayer = (side === 'left' && this.multiplayerGame.matchData.isPlayer1) ||
-                                  (side === 'right' && !this.multiplayerGame.matchData.isPlayer1);
+            const isLocalPlayer = (side === 'left' && this.multiplayerGame.matchData.isPlayer1) ||
+                                (side === 'right' && !this.multiplayerGame.matchData.isPlayer1);
             
-            if (isCurrentPlayer && (moveLeft || moveRight || jump || kick)) {
-                // Send input data to server
-                this.multiplayerGame.sendPlayerInput({
+            if (isLocalPlayer) {
+                // Capture input with timestamp for prediction
+                const inputData = {
+                    timestamp: Date.now(),
+                    frameNumber: this.frameCount,
                     moveLeft,
                     moveRight,
                     jump,
                     kick,
                     side,
-                    timestamp: Date.now()
-                });
+                    // Store current state before applying input
+                    stateBefore: {
+                        x: player.x,
+                        y: player.y,
+                        velocityX: player.velocity.x,
+                        velocityY: player.velocity.y,
+                        onGround: player.onGround
+                    }
+                };
+                
+                // Add to input buffer
+                this.addInputToBuffer(inputData);
+                
+                // Send input data to server (if any input is active)
+                if (moveLeft || moveRight || jump || kick) {
+                    this.multiplayerGame.sendPlayerInput({
+                        moveLeft,
+                        moveRight,
+                        jump,
+                        kick,
+                        side,
+                        timestamp: inputData.timestamp,
+                        frameNumber: inputData.frameNumber
+                    });
+                }
             }
         }
         
@@ -2198,5 +2229,148 @@ class GameScene extends Phaser.Scene {
             y: opponentPlayer.y,
             velocity: opponentPlayer.velocity
         });
+    }
+    
+    // ===== PHASE 2: CLIENT-SIDE PREDICTION SYSTEM =====
+    
+    addInputToBuffer(inputData) {
+        // Add input to buffer
+        this.inputBuffer.push(inputData);
+        
+        // Maintain circular buffer size
+        if (this.inputBuffer.length > this.maxInputHistory) {
+            this.inputBuffer.shift();
+        }
+        
+        console.log(`📥 Input added to buffer. Frame: ${inputData.frameNumber}, Buffer size: ${this.inputBuffer.length}`);
+    }
+    
+    predictNextPosition(player, input, deltaTime) {
+        // Create predicted state based on current input
+        const predicted = {
+            x: player.x,
+            y: player.y,
+            velocityX: player.velocity.x,
+            velocityY: player.velocity.y,
+            onGround: player.onGround
+        };
+        
+        // Apply physics prediction (simplified version of updatePlayer physics)
+        // Gravity
+        predicted.velocityY += PHYSICS_CONSTANTS.PLAYER.GRAVITY * deltaTime;
+        
+        // Horizontal movement
+        if (input.moveLeft) {
+            predicted.velocityX = -PHYSICS_CONSTANTS.PLAYER.MOVE_SPEED;
+        } else if (input.moveRight) {
+            predicted.velocityX = PHYSICS_CONSTANTS.PLAYER.MOVE_SPEED;
+        } else {
+            // Apply friction
+            predicted.velocityX *= PHYSICS_CONSTANTS.PLAYER.FRICTION;
+        }
+        
+        // Jump
+        if (input.jump && predicted.onGround) {
+            predicted.velocityY = -PHYSICS_CONSTANTS.PLAYER.JUMP_FORCE;
+            predicted.onGround = false;
+        }
+        
+        // Update position
+        predicted.x += predicted.velocityX * deltaTime;
+        predicted.y += predicted.velocityY * deltaTime;
+        
+        // Basic collision prediction (simplified)
+        if (predicted.x < 0) {
+            predicted.x = 0;
+            predicted.velocityX = 0;
+        }
+        if (predicted.x + player.width > this.gameWidth) {
+            predicted.x = this.gameWidth - player.width;
+            predicted.velocityX = 0;
+        }
+        
+        // Ground collision
+        const groundY = this.gameHeight - this.bottomGap - player.height;
+        if (predicted.y >= groundY) {
+            predicted.y = groundY;
+            predicted.velocityY = 0;
+            predicted.onGround = true;
+        }
+        
+        return predicted;
+    }
+    
+    handleServerReconciliation(serverState) {
+        if (!this.serverReconciliation) return;
+        
+        const serverTimestamp = serverState.timestamp;
+        const serverFrameNumber = serverState.frameNumber;
+        
+        console.log(`🔄 Server reconciliation - Frame: ${serverFrameNumber}, Timestamp: ${serverTimestamp}`);
+        
+        // Find the input that corresponds to this server state
+        const matchingInput = this.inputBuffer.find(input => input.frameNumber === serverFrameNumber);
+        
+        if (!matchingInput) {
+            console.log(`⚠️ No matching input found for server frame ${serverFrameNumber}`);
+            return;
+        }
+        
+        // Check if there's a significant difference between client prediction and server state
+        const positionDiff = Math.sqrt(
+            Math.pow(matchingInput.stateBefore.x - serverState.x, 2) +
+            Math.pow(matchingInput.stateBefore.y - serverState.y, 2)
+        );
+        
+        const RECONCILIATION_THRESHOLD = 50; // pixels
+        
+        if (positionDiff > RECONCILIATION_THRESHOLD) {
+            console.log(`🚨 Reconciliation needed! Diff: ${positionDiff.toFixed(1)}px`);
+            
+            // Find the local player
+            const localPlayer = this.multiplayerGame.matchData.isPlayer1 ? this.player1 : this.player2;
+            
+            // Rollback to server state
+            localPlayer.x = serverState.x;
+            localPlayer.y = serverState.y;
+            localPlayer.velocity.x = serverState.velocityX;
+            localPlayer.velocity.y = serverState.velocityY;
+            localPlayer.onGround = serverState.onGround;
+            
+            // Replay inputs from the reconciliation point
+            this.replayInputsFromFrame(serverFrameNumber);
+            
+            console.log(`✅ Reconciliation complete. New position: (${localPlayer.x.toFixed(1)}, ${localPlayer.y.toFixed(1)})`);
+        } else {
+            console.log(`✅ No reconciliation needed. Diff: ${positionDiff.toFixed(1)}px`);
+        }
+        
+        this.lastServerUpdate = Date.now();
+    }
+    
+    replayInputsFromFrame(fromFrame) {
+        // Find all inputs after the reconciliation frame
+        const inputsToReplay = this.inputBuffer.filter(input => input.frameNumber > fromFrame);
+        
+        if (inputsToReplay.length === 0) return;
+        
+        console.log(`🎬 Replaying ${inputsToReplay.length} inputs from frame ${fromFrame}`);
+        
+        const localPlayer = this.multiplayerGame.matchData.isPlayer1 ? this.player1 : this.player2;
+        const deltaTime = 1/60; // Assume 60fps
+        
+        // Replay each input
+        for (const input of inputsToReplay) {
+            const predicted = this.predictNextPosition(localPlayer, input, deltaTime);
+            
+            // Apply predicted state
+            localPlayer.x = predicted.x;
+            localPlayer.y = predicted.y;
+            localPlayer.velocity.x = predicted.velocityX;
+            localPlayer.velocity.y = predicted.velocityY;
+            localPlayer.onGround = predicted.onGround;
+        }
+        
+        console.log(`🎬 Replay complete. Final position: (${localPlayer.x.toFixed(1)}, ${localPlayer.y.toFixed(1)})`);
     }
 }
