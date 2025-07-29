@@ -25,10 +25,16 @@ class GameScene extends Phaser.Scene {
         this.player1Sprite = null;
         this.player2Sprite = null;
         
-        // Game state - fullscreen
-        this.gameWidth = window.innerWidth;
-        this.gameHeight = window.innerHeight;
+        // Game state - Fixed canvas size for consistent multiplayer sync
+        this.gameWidth = PHYSICS_CONSTANTS.FIELD.WIDTH;   // 1600px - same for all clients
+        this.gameHeight = PHYSICS_CONSTANTS.FIELD.HEIGHT; // 900px - same for all clients  
         this.bottomGap = 40; // Reduced to give more playground space
+        
+        console.log('🎯 Fixed canvas size:', { 
+            width: this.gameWidth, 
+            height: this.gameHeight,
+            matches_phaser_config: true 
+        });
         
         // Initialize character selections with defaults
         this.player1Head = 'Mihir';
@@ -202,11 +208,13 @@ class GameScene extends Phaser.Scene {
         // Phase 3.5: Calculate unified ground position
         // Ground Y is where player's feet touch the ground (player.y is top-left corner)
         this.GROUND_Y = this.gameHeight - this.bottomGap - PHYSICS_CONSTANTS.PLAYER.HEIGHT;
-        console.log('🎯 Phase 3.5: GROUND_Y calculated:', {
+        console.log('🎯 Phase 3.5: GROUND_Y calculated with FIXED canvas:', {
+            gameWidth: this.gameWidth,
             gameHeight: this.gameHeight,
             bottomGap: this.bottomGap,
             playerHeight: PHYSICS_CONSTANTS.PLAYER.HEIGHT,
-            GROUND_Y: this.GROUND_Y
+            GROUND_Y: this.GROUND_Y,
+            note: 'Same for ALL clients regardless of screen size!'
         });
         const groundY = this.gameHeight - this.bottomGap;
         graphics.fillGradientStyle(0x2a2a4a, 0x2a2a4a, 0x1a1a3a, 0x1a1a3a, 1);
