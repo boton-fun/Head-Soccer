@@ -692,10 +692,10 @@ class GameScene extends Phaser.Scene {
         let moveLeft, moveRight, jump, kick;
         
         if (this.isMultiplayer) {
-            // In multiplayer mode, each player controls their own character
+            // In multiplayer mode, each player controls their own character (use unified playerNumber)
             const isLocalPlayer = this.multiplayerGame ? 
-                (side === 'left' && this.multiplayerGame.matchData.isPlayer1) ||
-                (side === 'right' && !this.multiplayerGame.matchData.isPlayer1) : false;
+                (side === 'left' && this.playerNumber === 1) ||
+                (side === 'right' && this.playerNumber === 2) : false;
             
             if (isLocalPlayer) {
                 // This client controls this player directly
@@ -754,8 +754,8 @@ class GameScene extends Phaser.Scene {
         
         // Phase 2: Client-Side Prediction - Capture input for local player
         if (this.isMultiplayer && this.multiplayerGame) {
-            const isLocalPlayer = (side === 'left' && this.multiplayerGame.matchData.isPlayer1) ||
-                                (side === 'right' && !this.multiplayerGame.matchData.isPlayer1);
+            const isLocalPlayer = (side === 'left' && this.playerNumber === 1) ||
+                                (side === 'right' && this.playerNumber === 2);
             
             if (isLocalPlayer) {
                 // Capture input with timestamp for prediction
@@ -2228,16 +2228,19 @@ class GameScene extends Phaser.Scene {
         
         this.lastMovementSent = now;
         
-        // Determine which player is controlled by this client
+        // Determine which player is controlled by this client (use unified playerNumber)
         let localPlayer, localSprite, playerNumber;
-        if (this.multiplayerGame.matchData.isPlayer1) {
+        if (this.playerNumber === 1) {
             localPlayer = this.player1; // Player 1 controls player 1 (left side)
             localSprite = this.player1Sprite;
             playerNumber = 1;
-        } else {
+        } else if (this.playerNumber === 2) {
             localPlayer = this.player2; // Player 2 controls player 2 (right side) 
             localSprite = this.player2Sprite;
             playerNumber = 2;
+        } else {
+            console.error('⚠️ sendMovementUpdates: playerNumber not set!', this.playerNumber);
+            return;
         }
         
         if (!localPlayer || !localSprite) return;
@@ -2625,7 +2628,7 @@ class GameScene extends Phaser.Scene {
             console.log(`🚨 Reconciliation needed! Diff: ${positionDiff.toFixed(1)}px`);
             
             // Find the local player
-            const localPlayer = this.multiplayerGame.matchData.isPlayer1 ? this.player1 : this.player2;
+            const localPlayer = this.playerNumber === 1 ? this.player1 : this.player2;
             
             // Rollback to server state
             localPlayer.x = serverState.x;
@@ -2653,7 +2656,7 @@ class GameScene extends Phaser.Scene {
         
         console.log(`🎬 Replaying ${inputsToReplay.length} inputs from frame ${fromFrame}`);
         
-        const localPlayer = this.multiplayerGame.matchData.isPlayer1 ? this.player1 : this.player2;
+        const localPlayer = this.playerNumber === 1 ? this.player1 : this.player2;
         const deltaTime = 1/60; // Assume 60fps
         
         // Replay each input
