@@ -150,14 +150,15 @@ class GameScene extends Phaser.Scene {
         this.ballSendInterval = 16; // Send ball updates every 16ms (60 times per second - matches game FPS)
         this.ballAuthority = false; // Will be set based on player role
         
-        // Phase 3.5: Unified ground calculation
-        this.GROUND_Y = null; // Will be calculated after field dimensions are set
-        
         console.log('Game scene created successfully');
     }
     
     // Phase 3.5: Unified ground calculation helper
     getGroundY() {
+        if (this.GROUND_Y === null || this.GROUND_Y === undefined) {
+            console.error('GROUND_Y not initialized! Using fallback calculation');
+            return this.gameHeight - this.bottomGap - PHYSICS_CONSTANTS.PLAYER.HEIGHT;
+        }
         return this.GROUND_Y;
     }
     
@@ -189,7 +190,14 @@ class GameScene extends Phaser.Scene {
         
         // Space platform/ground
         // Phase 3.5: Calculate unified ground position
+        // Ground Y is where player's feet touch the ground (player.y is top-left corner)
         this.GROUND_Y = this.gameHeight - this.bottomGap - PHYSICS_CONSTANTS.PLAYER.HEIGHT;
+        console.log('🎯 Phase 3.5: GROUND_Y calculated:', {
+            gameHeight: this.gameHeight,
+            bottomGap: this.bottomGap,
+            playerHeight: PHYSICS_CONSTANTS.PLAYER.HEIGHT,
+            GROUND_Y: this.GROUND_Y
+        });
         const groundY = this.gameHeight - this.bottomGap;
         graphics.fillGradientStyle(0x2a2a4a, 0x2a2a4a, 0x1a1a3a, 0x1a1a3a, 1);
         graphics.fillRect(0, groundY, this.gameWidth, this.bottomGap);
