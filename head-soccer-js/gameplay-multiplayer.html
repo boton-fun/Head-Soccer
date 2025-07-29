@@ -866,6 +866,14 @@
                         // No ball synchronization - each client runs independent physics
                     });
                     
+                    // Phase 4: Ball Authority System - new ball update format
+                    this.socket.on('ballUpdate', (data) => {
+                        if (this.scene && this.scene.handleOpponentBall) {
+                            console.log('⚽ PHASE4 CLIENT: Received ballUpdate from server');
+                            this.scene.handleOpponentBall(data);
+                        }
+                    });
+                    
                     // Custom score sync handlers for multiple event types
                     const handleScoreSync = (data, eventType) => {
                         console.log(`🎯 ===== ${eventType.toUpperCase()} RECEIVED =====`);

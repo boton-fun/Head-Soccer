@@ -160,6 +160,11 @@ class GameScene extends Phaser.Scene {
         this.ballSendInterval = 16; // Send ball updates every 16ms (60 times per second - matches game FPS)
         this.ballAuthority = false; // Will be set based on player role
         
+        // Phase 4: Ball interpolation buffer for non-authority player
+        this.ballBuffer = []; // Store received ball updates
+        this.maxBallHistory = 5; // Keep last 5 ball updates
+        this.ballInterpolationDelay = 100; // 100ms behind latest update
+        
         console.log('Game scene created successfully');
     }
     
@@ -640,6 +645,9 @@ class GameScene extends Phaser.Scene {
                 
                 // Phase 3: Update remote player interpolation
                 this.updateRemotePlayerInterpolation();
+                
+                // Phase 4: Update ball interpolation for non-authority player
+                this.updateBallInterpolation();
             }
             
             // Update ball physics
@@ -855,6 +863,16 @@ class GameScene extends Phaser.Scene {
     updateBall() {
         if (!this.ball) return;
         
+        // Phase 4: Only authority player runs full ball physics
+        if (this.isMultiplayer && !this.ballAuthority) {
+            // Non-authority player: Only update sprite position (physics handled by interpolation)
+            this.ballSprite.x = this.ball.x + this.ball.radius;
+            this.ballSprite.y = this.ball.y + this.ball.radius;
+            this.ballSprite.angle = this.ball.angle || 0;
+            return;
+        }
+        
+        // Authority player or single-player: Run full ball physics
         // REPLICATE SINGLE-PLAYER PHYSICS: Manual gravity exactly like gameplay.html
         // Apply gravity (from Ball.js) - NO network interference
         this.ball.velocity.y += PHYSICS_CONSTANTS.BALL.GRAVITY;
@@ -875,6 +893,11 @@ class GameScene extends Phaser.Scene {
         this.ballSprite.x = this.ball.x + this.ball.radius;
         this.ballSprite.y = this.ball.y + this.ball.radius;
         this.ballSprite.angle = this.ball.angle;
+        
+        // Phase 4: Send ball updates to other player if we have authority
+        if (this.isMultiplayer && this.ballAuthority) {
+            this.sendBallUpdate();
+        }
     }
     
     constrainPlayerToGameArea(player) {
@@ -923,7 +946,20 @@ class GameScene extends Phaser.Scene {
     }
     
     checkCollisions() {
-        // Check ball-player collisions
+        // Phase 4: Only authority player processes ball collisions in multiplayer
+        if (this.isMultiplayer && !this.ballAuthority) {
+            // Non-authority player: detect collisions but don't modify ball
+            if (PHYSICS_CONSTANTS.UTILS.isCollide(this.ball, this.player1)) {
+                this.sendCollisionEvent(this.player1, 'left', 1);
+            }
+            
+            if (PHYSICS_CONSTANTS.UTILS.isCollide(this.ball, this.player2)) {
+                this.sendCollisionEvent(this.player2, 'right', 2);
+            }
+            return;
+        }
+        
+        // Authority player or single-player: process ball collisions normally
         if (PHYSICS_CONSTANTS.UTILS.isCollide(this.ball, this.player1)) {
             this.handleBallPlayerCollision(this.player1, 'left');
         }
@@ -1688,6 +1724,16 @@ class GameScene extends Phaser.Scene {
         this.playerNumber = multiplayerGame.matchData.isPlayer1 ? 1 : 2;
         console.log('🎯 This client controls player:', this.playerNumber);
         
+        // Phase 4: Determine ball authority (Player 1 has authority)
+        this.ballAuthority = (this.playerNumber === 1);
+        console.log('⚽ Ball authority assigned:', this.ballAuthority ? 'THIS CLIENT' : 'REMOTE CLIENT');
+        
+        // Phase 4: Initialize ball network transmission for authority player
+        if (this.ballAuthority) {
+            this.lastBallSendTime = 0;
+            console.log('📡 Ball transmission initialized for authority player');
+        }
+        
         // Mark multiplayer as fully initialized
         this.multiplayerInitialized = true;
         console.log('✅ Multiplayer initialization complete');
@@ -2289,24 +2335,129 @@ class GameScene extends Phaser.Scene {
         });
     }
     
+    // Phase 4: Handle incoming ball updates from authority player
     handleOpponentBall(ballData) {
-        // DISABLED: No ball sync - using pure single-player physics like gameplay.html
-        // Each player runs independent physics for perfect responsiveness
-        console.log('⚽ BALL SYNC: Disabled - using single-player physics mode');
-        return;
-        
-        // Update ball sprite position
-        if (this.ballSprite) {
-            this.ballSprite.x = this.ball.x;
-            this.ballSprite.y = this.ball.y;
-            this.ballSprite.rotation = (this.ball.angle || 0) * Math.PI / 180;
+        // Only non-authority players should process received ball updates
+        if (!this.isMultiplayer || this.ballAuthority) {
+            console.log('⚽ PHASE4: Ignoring ball update - this client has authority');
+            return;
         }
         
-        console.log('✅ BALL DEBUG: Updated ball position to:', {
-            x: this.ball.x,
-            y: this.ball.y,
-            velocity: this.ball.velocity
-        });
+        console.log(`⚽ PHASE4: Received ball update - pos:(${Math.round(ballData.position.x)},${Math.round(ballData.position.y)}) vel:(${Math.round(ballData.velocity.x)},${Math.round(ballData.velocity.y)})`);
+        
+        // Add to ball buffer for interpolation
+        this.addBallUpdateToBuffer(ballData);
+    }
+    
+    // Phase 4: Add ball update to interpolation buffer
+    addBallUpdateToBuffer(ballData) {
+        if (!this.ballBuffer) this.ballBuffer = [];
+        
+        const ballUpdate = {
+            timestamp: ballData.timestamp || Date.now(),
+            position: { ...ballData.position },
+            velocity: { ...ballData.velocity },
+            angle: ballData.angle || 0,
+            active: ballData.active || false
+        };
+        
+        // Add to buffer
+        this.ballBuffer.push(ballUpdate);
+        
+        // Sort by timestamp to handle out-of-order updates
+        this.ballBuffer.sort((a, b) => a.timestamp - b.timestamp);
+        
+        // Keep only the most recent updates
+        if (this.ballBuffer.length > this.maxBallHistory) {
+            this.ballBuffer.shift();
+        }
+        
+        console.log(`📥 PHASE4: Ball update added to buffer. Size: ${this.ballBuffer.length}`);
+    }
+    
+    // Phase 4: Update ball interpolation for non-authority player
+    updateBallInterpolation() {
+        // Only non-authority players need ball interpolation
+        if (!this.isMultiplayer || this.ballAuthority || !this.ballBuffer || this.ballBuffer.length === 0) {
+            return;
+        }
+        
+        const now = Date.now();
+        const renderTime = now - this.ballInterpolationDelay; // 100ms behind
+        
+        // Find the two updates to interpolate between
+        const interpolatedData = this.interpolateBallPosition(renderTime);
+        
+        if (interpolatedData) {
+            // Apply interpolated ball position
+            this.ball.x = interpolatedData.position.x;
+            this.ball.y = interpolatedData.position.y;
+            this.ball.velocity.x = interpolatedData.velocity.x;
+            this.ball.velocity.y = interpolatedData.velocity.y;
+            this.ball.angle = interpolatedData.angle;
+            
+            console.log(`🎯 PHASE4: Ball interpolated to pos:(${Math.round(this.ball.x)},${Math.round(this.ball.y)})`);
+        }
+    }
+    
+    // Phase 4: Interpolate ball position between two updates
+    interpolateBallPosition(renderTime) {
+        if (!this.ballBuffer || this.ballBuffer.length === 0) return null;
+        
+        // Find surrounding positions
+        let beforePos = null;
+        let afterPos = null;
+        
+        for (let i = 0; i < this.ballBuffer.length - 1; i++) {
+            if (this.ballBuffer[i].timestamp <= renderTime && this.ballBuffer[i + 1].timestamp >= renderTime) {
+                beforePos = this.ballBuffer[i];
+                afterPos = this.ballBuffer[i + 1];
+                break;
+            }
+        }
+        
+        // If no interpolation pair found, use latest or extrapolate
+        if (!beforePos || !afterPos) {
+            const latestPos = this.ballBuffer[this.ballBuffer.length - 1];
+            
+            if (latestPos.timestamp <= renderTime) {
+                // Extrapolate forward using velocity (limited to 200ms)
+                const deltaTime = Math.min((renderTime - latestPos.timestamp) / 1000, 0.2);
+                const decayFactor = Math.max(0, 1 - deltaTime / 0.2);
+                
+                return {
+                    position: {
+                        x: latestPos.position.x + latestPos.velocity.x * deltaTime * decayFactor,
+                        y: latestPos.position.y + latestPos.velocity.y * deltaTime * decayFactor
+                    },
+                    velocity: {
+                        x: latestPos.velocity.x * decayFactor,
+                        y: latestPos.velocity.y * decayFactor
+                    },
+                    angle: latestPos.angle
+                };
+            } else {
+                // Use latest position if render time is in the future
+                return latestPos;
+            }
+        }
+        
+        // Linear interpolation between two positions
+        const timeDelta = afterPos.timestamp - beforePos.timestamp;
+        const factor = timeDelta > 0 ? (renderTime - beforePos.timestamp) / timeDelta : 0;
+        const clampedFactor = Math.max(0, Math.min(1, factor));
+        
+        return {
+            position: {
+                x: beforePos.position.x + (afterPos.position.x - beforePos.position.x) * clampedFactor,
+                y: beforePos.position.y + (afterPos.position.y - beforePos.position.y) * clampedFactor
+            },
+            velocity: {
+                x: beforePos.velocity.x + (afterPos.velocity.x - beforePos.velocity.x) * clampedFactor,
+                y: beforePos.velocity.y + (afterPos.velocity.y - beforePos.velocity.y) * clampedFactor
+            },
+            angle: beforePos.angle + (afterPos.angle - beforePos.angle) * clampedFactor
+        };
     }
     
     handleOpponentMovement(movementData) {
@@ -2516,16 +2667,16 @@ class GameScene extends Phaser.Scene {
         console.log(`🔍 PHASE3 DEBUG: multiplayerGame exists:`, !!this.multiplayerGame);
         console.log(`🔍 PHASE3 DEBUG: isPlayer1:`, this.multiplayerGame?.matchData?.isPlayer1);
         
-        // Update player 1 if it's the remote player
-        if (this.multiplayerGame && !this.multiplayerGame.matchData.isPlayer1) {
+        // Update player 1 if it's the remote player (use unified detection logic)
+        if (this.isRemotePlayer(1)) {
             console.log(`🎯 PHASE3 DEBUG: Player 1 is REMOTE - interpolating`);
             this.interpolateRemotePlayer('player1', this.player1, this.player1Sprite, renderTime);
         } else {
             console.log(`🎯 PHASE3 DEBUG: Player 1 is LOCAL - skipping interpolation`);
         }
         
-        // Update player 2 if it's the remote player  
-        if (this.multiplayerGame && this.multiplayerGame.matchData.isPlayer1) {
+        // Update player 2 if it's the remote player (use unified detection logic)
+        if (this.isRemotePlayer(2)) {
             console.log(`🎯 PHASE3 DEBUG: Player 2 is REMOTE - interpolating`);
             this.interpolateRemotePlayer('player2', this.player2, this.player2Sprite, renderTime);
         } else {
@@ -2664,5 +2815,72 @@ class GameScene extends Phaser.Scene {
         // Update sprite to match
         playerSprite.x = playerObject.x;
         playerSprite.y = playerObject.y;
+    }
+    
+    // Phase 4: Send ball updates to other player (only authority player calls this)
+    sendBallUpdate() {
+        if (!this.multiplayerGame || !this.ballAuthority) return;
+        
+        const now = Date.now();
+        
+        // Send at 30Hz when ball is active (every ~33ms)
+        if (now - this.lastBallSendTime < 33) return;
+        
+        // Check if ball is moving (active) or stationary
+        const ballSpeed = Math.abs(this.ball.velocity.x) + Math.abs(this.ball.velocity.y);
+        const isActive = ballSpeed > 0.5; // Threshold for "active" ball
+        
+        // Send more frequent updates when ball is active
+        const updateInterval = isActive ? 33 : 100; // 30Hz active, 10Hz idle
+        
+        if (now - this.lastBallSendTime < updateInterval) return;
+        
+        const ballUpdate = {
+            type: 'ballUpdate',
+            timestamp: now,
+            position: {
+                x: this.ball.x,
+                y: this.ball.y
+            },
+            velocity: {
+                x: this.ball.velocity.x,
+                y: this.ball.velocity.y
+            },
+            angle: this.ball.angle || 0,
+            active: isActive
+        };
+        
+        console.log(`⚽ PHASE4: Sending ball update - pos:(${Math.round(this.ball.x)},${Math.round(this.ball.y)}) vel:(${Math.round(this.ball.velocity.x)},${Math.round(this.ball.velocity.y)}) active:${isActive}`);
+        
+        this.multiplayerGame.socket.emit('ballUpdate', ballUpdate);
+        this.lastBallSendTime = now;
+    }
+    
+    // Phase 4: Send collision event for server validation
+    sendCollisionEvent(player, side, playerNumber) {
+        if (!this.multiplayerGame) return;
+        
+        // Throttle collision events to prevent spam
+        const now = Date.now();
+        const collisionKey = `collision_${playerNumber}`;
+        
+        if (!this.lastCollisionSent) this.lastCollisionSent = {};
+        if (now - (this.lastCollisionSent[collisionKey] || 0) < 100) return; // Max 10 per second
+        
+        const collisionData = {
+            type: 'collision',
+            playerNumber: playerNumber,
+            timestamp: now,
+            ballPosition: { x: this.ball.x, y: this.ball.y },
+            ballVelocity: { x: this.ball.velocity.x, y: this.ball.velocity.y },
+            playerPosition: { x: player.x, y: player.y },
+            playerVelocity: { x: player.velocity.x, y: player.velocity.y },
+            isKicking: player.isKicking || false,
+            side: side
+        };
+        
+        console.log(`⚽ PHASE4: Sending collision event for player ${playerNumber} (${side})`);
+        this.multiplayerGame.socket.emit('collisionEvent', collisionData);
+        this.lastCollisionSent[collisionKey] = now;
     }
 }

@@ -294,6 +294,16 @@ class SocketHandler extends EventEmitter {
       this.handleEvent(socket, 'ball_update', data, this.handleBallUpdate.bind(this), 'movement');
     });
     
+    // Phase 4: Ball Authority System - new ball update format
+    socket.on('ballUpdate', (data) => {
+      this.handleEvent(socket, 'ballUpdate', data, this.handlePhase4BallUpdate.bind(this), 'movement');
+    });
+    
+    // Phase 4: Collision validation system
+    socket.on('collisionEvent', (data) => {
+      this.handleEvent(socket, 'collisionEvent', data, this.handleCollisionEvent.bind(this), 'movement');
+    });
+    
     socket.on('goal_attempt', (data) => {
       this.handleEvent(socket, 'goal_attempt', data, this.handleGoalAttempt.bind(this));
     });
@@ -1020,6 +1030,101 @@ class SocketHandler extends EventEmitter {
     } catch (error) {
       console.error(`Error handling ball update:`, error);
       socket.emit('ball_update_rejected', {
+        reason: 'Internal server error'
+      });
+    }
+  }
+  
+  /**
+   * Phase 4: Handle ball update from authority player
+   * @param {Socket} socket - Socket.IO socket
+   * @param {Object} data - Ball update data
+   */
+  async handlePhase4BallUpdate(socket, data) {
+    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+    if (!connection || !connection.playerId || !connection.roomId) return;
+    
+    try {
+      // Validate ball update data
+      if (!data || typeof data.position !== 'object' || typeof data.velocity !== 'object') {
+        socket.emit('ballUpdateRejected', { reason: 'Invalid ball data format' });
+        return;
+      }
+      
+      // Basic validation of position and velocity values
+      const { position, velocity } = data;
+      if (typeof position.x !== 'number' || typeof position.y !== 'number' ||
+          typeof velocity.x !== 'number' || typeof velocity.y !== 'number') {
+        socket.emit('ballUpdateRejected', { reason: 'Invalid position/velocity values' });
+        return;
+      }
+      
+      // Add server timestamp and sequence
+      const enhancedData = {
+        ...data,
+        serverTimestamp: Date.now(),
+        playerId: connection.playerId,
+        roomId: connection.roomId
+      };
+      
+      console.log(`⚽ PHASE4 SERVER: Ball update from player ${connection.playerId} - pos:(${Math.round(position.x)},${Math.round(position.y)}) vel:(${Math.round(velocity.x)},${Math.round(velocity.y)})`);
+      
+      // Broadcast to other players in the room (excluding sender)
+      this.connectionManager.broadcastToRoom(connection.roomId, 'ballUpdate', enhancedData, socket.id);
+      
+      // Send acknowledgment to authority player
+      socket.emit('ballUpdateAck', { 
+        timestamp: enhancedData.serverTimestamp,
+        sequence: data.sequence || 0
+      });
+      
+    } catch (error) {
+      console.error(`Error handling Phase 4 ball update:`, error);
+      socket.emit('ballUpdateRejected', {
+        reason: 'Internal server error'
+      });
+    }
+  }
+  
+  /**
+   * Phase 4: Handle collision event for validation
+   * @param {Socket} socket - Socket.IO socket
+   * @param {Object} data - Collision event data
+   */
+  async handleCollisionEvent(socket, data) {
+    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+    if (!connection || !connection.playerId || !connection.roomId) return;
+    
+    try {
+      // Validate collision data
+      if (!data || typeof data.playerNumber !== 'number' || !data.ballPosition || !data.playerPosition) {
+        socket.emit('collisionRejected', { reason: 'Invalid collision data format' });
+        return;
+      }
+      
+      console.log(`⚽ PHASE4 SERVER: Collision event from player ${connection.playerId} - player${data.playerNumber} hit ball`);
+      
+      // For now, simply relay collision events to all players for debugging
+      // In future versions, this would include validation logic
+      const enhancedData = {
+        ...data,
+        serverTimestamp: Date.now(),
+        reportingPlayerId: connection.playerId,
+        roomId: connection.roomId
+      };
+      
+      // Broadcast collision event to all players in room
+      this.connectionManager.broadcastToRoom(connection.roomId, 'collisionEvent', enhancedData);
+      
+      // Send acknowledgment
+      socket.emit('collisionAck', { 
+        timestamp: enhancedData.serverTimestamp,
+        playerNumber: data.playerNumber
+      });
+      
+    } catch (error) {
+      console.error(`Error handling collision event:`, error);
+      socket.emit('collisionRejected', {
         reason: 'Internal server error'
       });
     }
