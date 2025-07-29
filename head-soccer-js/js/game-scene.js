@@ -39,6 +39,10 @@ class GameScene extends Phaser.Scene {
         // Goal state tracking to prevent multiple goals
         this.goalCooldown = 0;
         this.goalCooldownDuration = 120; // 2 seconds at 60fps
+        
+        // Phase 3.5: Multiplayer initialization tracking
+        this.multiplayerInitialized = false;
+        this.pendingNetworkUpdates = []; // Queue for updates received before initialization
     }
     
     preload() {
@@ -579,6 +583,13 @@ class GameScene extends Phaser.Scene {
         // Phase 3.5: Delta time normalization
         const targetDelta = 1000 / 60; // 16.67ms for 60fps
         const deltaRatio = Math.min(delta / targetDelta, 2); // Cap at 2x to prevent huge jumps
+        
+        // Phase 3.5: Skip physics updates until multiplayer is fully initialized
+        if (this.isMultiplayer && !this.multiplayerInitialized) {
+            // Only update visuals, skip physics
+            this.updateRemotePlayerInterpolation();
+            return;
+        }
         
         // Update FPS counter
         document.getElementById('fps').textContent = Math.round(this.game.loop.actualFps);
@@ -1649,6 +1660,12 @@ class GameScene extends Phaser.Scene {
         console.log('🎮 setMultiplayerMode() CALLED at timestamp:', Date.now());
         console.log('Setting multiplayer mode with data:', multiplayerGame.matchData);
         
+        // Prevent multiple initialization
+        if (this.multiplayerInitialized) {
+            console.log('⚠️ Multiplayer already initialized, skipping duplicate call');
+            return;
+        }
+        
         // Store the multiplayer game reference for later use
         this.multiplayerGame = multiplayerGame;
         
@@ -1662,6 +1679,19 @@ class GameScene extends Phaser.Scene {
         // Set which player this client controls
         this.playerNumber = multiplayerGame.matchData.isPlayer1 ? 1 : 2;
         console.log('🎯 This client controls player:', this.playerNumber);
+        
+        // Mark multiplayer as fully initialized
+        this.multiplayerInitialized = true;
+        console.log('✅ Multiplayer initialization complete');
+        
+        // Process any queued network updates
+        if (this.pendingNetworkUpdates.length > 0) {
+            console.log(`📦 Processing ${this.pendingNetworkUpdates.length} queued network updates`);
+            for (const update of this.pendingNetworkUpdates) {
+                this.handleOpponentMovement(update);
+            }
+            this.pendingNetworkUpdates = []; // Clear queue
+        }
         
         // Map character indices to names if needed
         const characterNames = ['Nuwan', 'Mihir', 'Dad'];
@@ -2273,6 +2303,13 @@ class GameScene extends Phaser.Scene {
     
     handleOpponentMovement(movementData) {
         console.log(`🏃 PHASE3 DEBUG: handleOpponentMovement called for player ${movementData.playerNumber}:`, movementData);
+        
+        // Phase 3.5: Queue updates if multiplayer not fully initialized
+        if (this.isMultiplayer && !this.multiplayerInitialized) {
+            console.log('📦 Queueing movement data until multiplayer initialization complete');
+            this.pendingNetworkUpdates.push(movementData);
+            return;
+        }
         
         // Phase 3: Add position data to interpolation buffer instead of direct update
         const playerKey = `player${movementData.playerNumber}`;
