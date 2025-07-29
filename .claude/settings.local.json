@@ -53,7 +53,8 @@
       "Bash(PORT=3003 timeout 10s node server.js)",
       "Bash(git checkout:*)",
       "Bash(vercel:*)",
-      "Bash(head:*)"
+      "Bash(head:*)",
+      "WebFetch(domain:docs.anthropic.com)"
     ],
     "deny": []
   }

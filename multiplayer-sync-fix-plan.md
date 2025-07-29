@@ -1,9 +1,13 @@
 # Multiplayer Synchronization Fix Plan
 
 ## 🎯 Overview
-This document provides a detailed, step-by-step plan to fix the two critical multiplayer synchronization issues:
+This document provides a detailed, step-by-step plan to fix the critical multiplayer synchronization issues:
 1. **Movement Lag/Jerkiness**: Players teleporting instead of smooth movement
 2. **Flying Players Bug**: Players appearing to float/fly when moving on ground
+3. **Goal Scoring Discrepancies**: Different scores on each client
+4. **Game State Desync**: Pause/resume/timer synchronization issues
+5. **Kick Timing Unfairness**: High-latency players at disadvantage
+6. **Disconnection Handling**: No recovery from connection loss
 
 ## 🔍 Root Cause Analysis
 
@@ -99,7 +103,7 @@ When server update arrives:
    - Replay all inputs since that point
    - Smooth correction over next 100ms
 
-### Phase 3: Interpolation System for Remote Players (1 hour)
+### Phase 3: Interpolation System for Remote Players (1.5 hours)
 
 #### Step 3.1: Position Buffer Implementation
 - Store last 5 position updates from network
@@ -127,7 +131,14 @@ Special interpolation for ground state:
 - Snap Y position to ground if within 5 pixels
 - Smooth transition when leaving ground
 
-### Phase 4: Ball Authority System (45 minutes)
+#### Step 3.5: Remote Player Physics Separation (30 minutes)
+Fix physics conflicts between interpolation and local simulation:
+- **Unified Ground Calculation**: Single source of truth for ground Y position
+- **Physics Override System**: Skip gravity/velocity for remote players
+- **Delta Time Normalization**: Consistent physics across different browsers
+- **Ground Snap Tolerance**: Prevent floating due to small precision errors
+
+### Phase 4: Ball Authority System (1 hour)
 
 #### Step 4.1: Determine Ball Authority
 - Player 1 (left side) is primary ball authority
@@ -153,7 +164,14 @@ Special interpolation for ground state:
 - Server validates and broadcasts result
 - Rollback if collision was invalid
 
-### Phase 5: Lag Compensation System (45 minutes)
+#### Step 4.4: Goal Authority System (20 minutes)
+Ensure consistent goal scoring across clients:
+- **Server-Only Goal Validation**: Only server determines valid goals
+- **Goal Event Sequence**: Include goal ID and timestamp
+- **Score Reconciliation**: Client adjusts if server score differs
+- **Goal Replay Buffer**: Store last 2 seconds for validation
+
+### Phase 5: Lag Compensation System (1 hour)
 
 #### Step 5.1: Time Synchronization
 - Implement server time sync on connection
@@ -175,13 +193,20 @@ Special interpolation for ground state:
   processInput(gameState, input)
   ```
 
-#### Step 5.4: Visual Lag Hiding
+#### Step 5.4: Kick Lag Compensation (20 minutes)
+Special handling for time-critical kick actions:
+- **Kick Timestamp**: Record exact kick initiation time
+- **Server Rewind**: Validate kick at historical ball position
+- **Kick Priority**: Process kicks before movement in same frame
+- **Fair Window**: Allow kicks within RTT/2 + 50ms tolerance
+
+#### Step 5.5: Visual Lag Hiding
 - Show local player immediately
 - Add particle effects to mask corrections
 - Smooth camera during reconciliation
 - Display connection quality indicator
 
-### Phase 6: Server-Side Improvements (1 hour)
+### Phase 6: Server-Side Improvements (1.5 hours)
 
 #### Step 6.1: State Validation
 Server validates:
@@ -207,6 +232,21 @@ Server validates:
 - Increase rate for good connections
 - Reduce rate for poor connections
 - Prioritize important updates
+
+#### Step 6.5: Game State Synchronization (20 minutes)
+Ensure consistent game flow across clients:
+- **Pause/Resume Authority**: Only host can pause/resume
+- **Timer Synchronization**: Server controls match timer
+- **State Change Events**: Broadcast with sequence numbers
+- **Game End Validation**: Server determines match end
+
+#### Step 6.6: Disconnection Recovery System (25 minutes)
+Handle connection loss gracefully:
+- **Grace Period**: 10-second window for reconnection
+- **State Preservation**: Server maintains player state
+- **Auto-Pause**: Game pauses on disconnect
+- **Rejoin Protocol**: Restore position and score on return
+- **Timeout Handling**: End match if no reconnection
 
 ### Phase 7: Testing and Tuning (1 hour)
 

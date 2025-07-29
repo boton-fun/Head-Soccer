@@ -150,7 +150,22 @@ class GameScene extends Phaser.Scene {
         this.ballSendInterval = 16; // Send ball updates every 16ms (60 times per second - matches game FPS)
         this.ballAuthority = false; // Will be set based on player role
         
+        // Phase 3.5: Unified ground calculation
+        this.GROUND_Y = null; // Will be calculated after field dimensions are set
+        
         console.log('Game scene created successfully');
+    }
+    
+    // Phase 3.5: Unified ground calculation helper
+    getGroundY() {
+        return this.GROUND_Y;
+    }
+    
+    // Phase 3.5: Check if player is remote (not controlled by this client)
+    isRemotePlayer(playerNumber) {
+        if (!this.isMultiplayer) return false;
+        return (this.playerNumber === 1 && playerNumber === 2) || 
+               (this.playerNumber === 2 && playerNumber === 1);
     }
     
     createFieldVisuals() {
@@ -173,6 +188,8 @@ class GameScene extends Phaser.Scene {
         }
         
         // Space platform/ground
+        // Phase 3.5: Calculate unified ground position
+        this.GROUND_Y = this.gameHeight - this.bottomGap - PHYSICS_CONSTANTS.PLAYER.HEIGHT;
         const groundY = this.gameHeight - this.bottomGap;
         graphics.fillGradientStyle(0x2a2a4a, 0x2a2a4a, 0x1a1a3a, 0x1a1a3a, 1);
         graphics.fillRect(0, groundY, this.gameWidth, this.bottomGap);
@@ -299,9 +316,8 @@ class GameScene extends Phaser.Scene {
             multiplayerGameExists: !!this.multiplayerGame
         });
         
-        const groundY = this.gameHeight - this.bottomGap;
         const playerStartX = this.gameWidth * 0.2; // Adjusted for fullscreen
-        const playerY = groundY - PHYSICS_CONSTANTS.PLAYER.HEIGHT;
+        const playerY = this.getGroundY(); // Phase 3.5: Use unified ground calculation
         
         // Create Player 1 (left side, blue)
         this.player1 = {
@@ -546,6 +562,10 @@ class GameScene extends Phaser.Scene {
     update(time, delta) {
         this.frameCount++;
         
+        // Phase 3.5: Delta time normalization
+        const targetDelta = 1000 / 60; // 16.67ms for 60fps
+        const deltaRatio = Math.min(delta / targetDelta, 2); // Cap at 2x to prevent huge jumps
+        
         // Update FPS counter
         document.getElementById('fps').textContent = Math.round(this.game.loop.actualFps);
         
@@ -576,8 +596,8 @@ class GameScene extends Phaser.Scene {
             }
             
             // Update player physics
-            this.updatePlayer(this.player1, this.player1Sprite, 'left');
-            this.updatePlayer(this.player2, this.player2Sprite, 'right');
+            this.updatePlayer(this.player1, this.player1Sprite, 'left', deltaRatio);
+            this.updatePlayer(this.player2, this.player2Sprite, 'right', deltaRatio);
             
             // Send movement updates in multiplayer mode
             if (this.isMultiplayer && this.multiplayerGame) {
@@ -605,8 +625,27 @@ class GameScene extends Phaser.Scene {
         }
     }
     
-    updatePlayer(player, sprite, side) {
+    updatePlayer(player, sprite, side, deltaRatio = 1) {
         if (!player) return;
+        
+        // Phase 3.5: Check if this is a remote player
+        const playerNumber = side === 'left' ? 1 : 2;
+        const isRemote = this.isRemotePlayer(playerNumber);
+        
+        // Skip physics for remote players - they are controlled by interpolation
+        if (isRemote) {
+            // Only update sprite position for remote players
+            sprite.x = player.x + player.width / 2;
+            sprite.y = player.y + player.height / 4;
+            
+            // Update foot position
+            if (side === 'left' && this.player1Foot) {
+                this.updateCleatPosition(this.player1Foot, player, this.player1KickAnimation, 'left');
+            } else if (side === 'right' && this.player2Foot) {
+                this.updateCleatPosition(this.player2Foot, player, this.player2KickAnimation, 'right');
+            }
+            return; // Exit early for remote players
+        }
         
         // Get input based on player side
         let moveLeft, moveRight, jump, kick;
@@ -733,6 +772,7 @@ class GameScene extends Phaser.Scene {
         }
         
         // Apply gravity (from Character.js)
+        // Phase 3.5: Use delta ratio for consistent physics across browsers
         player.velocity.y += PHYSICS_CONSTANTS.PLAYER.GRAVITY;
         
         // Horizontal movement (from Character.js)
@@ -746,8 +786,8 @@ class GameScene extends Phaser.Scene {
         }
         
         // Check if on ground
-        const groundY = this.gameHeight - this.bottomGap;
-        player.onGround = player.y + player.height >= groundY - PHYSICS_CONSTANTS.PLAYER.GROUND_THRESHOLD;
+        // Phase 3.5: Use unified ground calculation
+        player.onGround = player.y >= this.getGroundY() - PHYSICS_CONSTANTS.PLAYER.GROUND_THRESHOLD;
         
         // Jump (from Character.js)
         if (jump && player.onGround) {
@@ -805,8 +845,6 @@ class GameScene extends Phaser.Scene {
     }
     
     constrainPlayerToGameArea(player) {
-        const groundY = this.gameHeight - this.bottomGap;
-        
         // Horizontal bounds
         if (player.x < 0) {
             player.x = 0;
@@ -817,8 +855,17 @@ class GameScene extends Phaser.Scene {
         }
         
         // Ground collision
-        if (player.y + player.height > groundY) {
-            player.y = groundY - player.height;
+        // Phase 3.5: Use unified ground calculation with snap tolerance
+        const groundY = this.getGroundY();
+        
+        // If within 10 pixels of ground and moving down, snap to ground
+        if (Math.abs(player.y - groundY) < 10 && player.velocity.y > 0) {
+            player.y = groundY;
+            player.velocity.y = 0;
+            player.onGround = true;
+        } else if (player.y > groundY) {
+            // Force to ground if below it
+            player.y = groundY;
             player.velocity.y = 0;
             player.onGround = true;
         }
@@ -1519,9 +1566,8 @@ class GameScene extends Phaser.Scene {
     }
     
     resetPositions() {
-        const groundY = this.gameHeight - this.bottomGap;
         const playerStartX = this.gameWidth * 0.2; // Adjusted for fullscreen
-        const playerY = groundY - PHYSICS_CONSTANTS.PLAYER.HEIGHT;
+        const playerY = this.getGroundY(); // Phase 3.5: Use unified ground calculation
         
         // Reset players
         if (this.player1) {
@@ -2543,9 +2589,10 @@ class GameScene extends Phaser.Scene {
         
         // Special ground state handling (Phase 3.4)
         if (interpolatedData.onGround) {
-            const groundY = this.gameHeight - this.bottomGap - playerObject.height;
-            // Snap to ground if within 5 pixels
-            if (Math.abs(playerObject.y - groundY) <= 5) {
+            // Phase 3.5: Use unified ground calculation with snap tolerance
+            const groundY = this.getGroundY();
+            // Snap to ground if within 10 pixels (increased tolerance)
+            if (Math.abs(playerObject.y - groundY) <= 10) {
                 playerObject.y = groundY;
                 playerObject.velocity.y = 0;
             }
