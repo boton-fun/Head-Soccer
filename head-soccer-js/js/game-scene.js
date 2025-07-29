@@ -165,8 +165,14 @@ class GameScene extends Phaser.Scene {
     // Phase 3.5: Check if player is remote (not controlled by this client)
     isRemotePlayer(playerNumber) {
         if (!this.isMultiplayer) return false;
-        return (this.playerNumber === 1 && playerNumber === 2) || 
-               (this.playerNumber === 2 && playerNumber === 1);
+        if (this.playerNumber === undefined) {
+            console.log(`⚠️ playerNumber not set yet, treating all as local players`);
+            return false; // Treat as local until multiplayer is fully initialized
+        }
+        const isRemote = (this.playerNumber === 1 && playerNumber === 2) || 
+                        (this.playerNumber === 2 && playerNumber === 1);
+        console.log(`🔍 isRemotePlayer check: player${playerNumber}, thisClient=${this.playerNumber}, isRemote=${isRemote}`);
+        return isRemote;
     }
     
     createFieldVisuals() {
@@ -1652,6 +1658,10 @@ class GameScene extends Phaser.Scene {
         
         // Set multiplayer flag
         this.isMultiplayer = true;
+        
+        // Set which player this client controls
+        this.playerNumber = multiplayerGame.matchData.isPlayer1 ? 1 : 2;
+        console.log('🎯 This client controls player:', this.playerNumber);
         
         // Map character indices to names if needed
         const characterNames = ['Nuwan', 'Mihir', 'Dad'];
