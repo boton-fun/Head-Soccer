@@ -963,26 +963,37 @@ class GameScene extends Phaser.Scene {
     }
     
     checkCollisions() {
-        // Phase 4: Only authority player processes ball collisions in multiplayer
-        if (this.isMultiplayer && !this.ballAuthority) {
-            // Non-authority player: detect collisions but don't modify ball
-            if (PHYSICS_CONSTANTS.UTILS.isCollide(this.ball, this.player1)) {
-                this.sendCollisionEvent(this.player1, 'left', 1);
-            }
-            
-            if (PHYSICS_CONSTANTS.UTILS.isCollide(this.ball, this.player2)) {
-                this.sendCollisionEvent(this.player2, 'right', 2);
-            }
-            return;
-        }
+        // Phase 4: All players process ball collisions for immediate feedback
+        // Authority player's updates will override non-authority changes via interpolation
         
-        // Authority player or single-player: process ball collisions normally
         if (PHYSICS_CONSTANTS.UTILS.isCollide(this.ball, this.player1)) {
             this.handleBallPlayerCollision(this.player1, 'left');
+            
+            // Mark local collision timestamp to pause interpolation briefly
+            if (this.isMultiplayer && !this.ballAuthority) {
+                this.lastLocalBallCollision = Date.now();
+                console.log(`⚽ PHASE4: Local collision detected, pausing interpolation`);
+            }
+            
+            // Send collision event for validation/synchronization
+            if (this.isMultiplayer) {
+                this.sendCollisionEvent(this.player1, 'left', 1);
+            }
         }
         
         if (PHYSICS_CONSTANTS.UTILS.isCollide(this.ball, this.player2)) {
             this.handleBallPlayerCollision(this.player2, 'right');
+            
+            // Mark local collision timestamp to pause interpolation briefly
+            if (this.isMultiplayer && !this.ballAuthority) {
+                this.lastLocalBallCollision = Date.now();
+                console.log(`⚽ PHASE4: Local collision detected, pausing interpolation`);
+            }
+            
+            // Send collision event for validation/synchronization  
+            if (this.isMultiplayer) {
+                this.sendCollisionEvent(this.player2, 'right', 2);
+            }
         }
     }
     
@@ -2400,20 +2411,28 @@ class GameScene extends Phaser.Scene {
         }
         
         const now = Date.now();
+        
+        // Pause interpolation briefly after local collision to allow immediate feedback
+        if (this.lastLocalBallCollision && (now - this.lastLocalBallCollision) < 300) {
+            console.log(`⏸️ PHASE4: Pausing interpolation after local collision`);
+            return;
+        }
+        
         const renderTime = now - this.ballInterpolationDelay; // 100ms behind
         
         // Find the two updates to interpolate between
         const interpolatedData = this.interpolateBallPosition(renderTime);
         
         if (interpolatedData) {
-            // Apply interpolated ball position
-            this.ball.x = interpolatedData.position.x;
-            this.ball.y = interpolatedData.position.y;
-            this.ball.velocity.x = interpolatedData.velocity.x;
-            this.ball.velocity.y = interpolatedData.velocity.y;
+            // Apply interpolated ball position with smoothing to avoid jarring changes
+            const smoothFactor = 0.1; // Smooth transition
+            this.ball.x = this.ball.x * (1 - smoothFactor) + interpolatedData.position.x * smoothFactor;
+            this.ball.y = this.ball.y * (1 - smoothFactor) + interpolatedData.position.y * smoothFactor;
+            this.ball.velocity.x = this.ball.velocity.x * (1 - smoothFactor) + interpolatedData.velocity.x * smoothFactor;
+            this.ball.velocity.y = this.ball.velocity.y * (1 - smoothFactor) + interpolatedData.velocity.y * smoothFactor;
             this.ball.angle = interpolatedData.angle;
             
-            console.log(`🎯 PHASE4: Ball interpolated to pos:(${Math.round(this.ball.x)},${Math.round(this.ball.y)})`);
+            console.log(`🎯 PHASE4: Ball interpolated (smooth) to pos:(${Math.round(this.ball.x)},${Math.round(this.ball.y)})`);
         }
     }
     
