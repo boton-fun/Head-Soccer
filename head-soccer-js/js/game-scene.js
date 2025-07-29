@@ -865,7 +865,24 @@ class GameScene extends Phaser.Scene {
         
         // Phase 4: Only authority player runs full ball physics
         if (this.isMultiplayer && !this.ballAuthority) {
-            // Non-authority player: Only update sprite position (physics handled by interpolation)
+            // Non-authority player: Apply fallback physics if no recent updates
+            const now = Date.now();
+            const lastUpdateTime = this.ballBuffer && this.ballBuffer.length > 0 
+                ? this.ballBuffer[this.ballBuffer.length - 1].timestamp 
+                : 0;
+            
+            // If no updates for more than 500ms, apply basic gravity to prevent floating
+            if (now - lastUpdateTime > 500) {
+                console.log('⚽ PHASE4: No ball updates received, applying fallback gravity');
+                this.ball.velocity.y += PHYSICS_CONSTANTS.BALL.GRAVITY;
+                this.ball.x += this.ball.velocity.x;
+                this.ball.y += this.ball.velocity.y;
+            }
+            
+            // Always apply constraints to prevent floating/out-of-bounds
+            this.constrainBallToGameArea();
+            
+            // Update sprite position (physics handled by interpolation)
             this.ballSprite.x = this.ball.x + this.ball.radius;
             this.ballSprite.y = this.ball.y + this.ball.radius;
             this.ballSprite.angle = this.ball.angle || 0;
