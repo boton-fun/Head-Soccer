@@ -163,7 +163,7 @@ class GameScene extends Phaser.Scene {
         // Phase 4: Ball interpolation buffer for non-authority player
         this.ballBuffer = []; // Store received ball updates
         this.maxBallHistory = 5; // Keep last 5 ball updates
-        this.ballInterpolationDelay = 100; // 100ms behind latest update
+        this.ballInterpolationDelay = 50; // Phase 1 Quick Win: 50ms behind (reduced from 100ms)
         
         console.log('Game scene created successfully');
     }
@@ -971,8 +971,11 @@ class GameScene extends Phaser.Scene {
             
             // Mark local collision timestamp to pause interpolation briefly
             if (this.isMultiplayer && !this.ballAuthority) {
-                this.lastLocalBallCollision = Date.now();
-                console.log(`⚽ PHASE4: Local collision detected, pausing interpolation`);
+                this.lastLocalBallCollision = {
+                    time: Date.now(),
+                    isKick: this.player1.isKicking || false
+                };
+                console.log(`⚽ PHASE4: Local ${this.player1.isKicking ? 'kick' : 'collision'} detected, pausing interpolation`);
             }
             
             // Send collision event for validation/synchronization
@@ -986,8 +989,11 @@ class GameScene extends Phaser.Scene {
             
             // Mark local collision timestamp to pause interpolation briefly
             if (this.isMultiplayer && !this.ballAuthority) {
-                this.lastLocalBallCollision = Date.now();
-                console.log(`⚽ PHASE4: Local collision detected, pausing interpolation`);
+                this.lastLocalBallCollision = {
+                    time: Date.now(),
+                    isKick: this.player2.isKicking || false
+                };
+                console.log(`⚽ PHASE4: Local ${this.player2.isKicking ? 'kick' : 'collision'} detected, pausing interpolation`);
             }
             
             // Send collision event for validation/synchronization  
@@ -2415,10 +2421,15 @@ class GameScene extends Phaser.Scene {
         
         const now = Date.now();
         
-        // Pause interpolation briefly after local collision to allow immediate feedback
-        if (this.lastLocalBallCollision && (now - this.lastLocalBallCollision) < 300) {
-            console.log(`⏸️ PHASE4: Pausing interpolation after local collision`);
-            return;
+        // Phase 1 Quick Win: Optimized collision pause based on collision strength
+        if (this.lastLocalBallCollision) {
+            const collisionAge = now - this.lastLocalBallCollision.time;
+            const pauseDuration = this.lastLocalBallCollision.isKick ? 100 : 150; // Kicks: 100ms, Normal: 150ms
+            
+            if (collisionAge < pauseDuration) {
+                console.log(`⏸️ PHASE4: Pausing interpolation after ${this.lastLocalBallCollision.isKick ? 'kick' : 'collision'} (${collisionAge}ms/${pauseDuration}ms)`);
+                return;
+            }
         }
         
         const renderTime = now - this.ballInterpolationDelay; // 100ms behind
@@ -2427,15 +2438,23 @@ class GameScene extends Phaser.Scene {
         const interpolatedData = this.interpolateBallPosition(renderTime);
         
         if (interpolatedData) {
-            // Apply interpolated ball position with smoothing to avoid jarring changes
-            const smoothFactor = 0.1; // Smooth transition
+            // Phase 1 Quick Win: Dynamic blend factor based on ball speed
+            const ballSpeed = Math.abs(this.ball.velocity.x) + Math.abs(this.ball.velocity.y);
+            
+            // Fast ball: quick blend (30-50%), Slow ball: smooth blend (10%)
+            const smoothFactor = ballSpeed > 10 ? 0.5 :     // Very fast: 50% blend
+                               ballSpeed > 5 ? 0.3 :      // Fast: 30% blend
+                               ballSpeed > 2 ? 0.2 :      // Medium: 20% blend
+                               0.1;                       // Slow/idle: 10% blend
+            
+            // Apply interpolated ball position with dynamic smoothing
             this.ball.x = this.ball.x * (1 - smoothFactor) + interpolatedData.position.x * smoothFactor;
             this.ball.y = this.ball.y * (1 - smoothFactor) + interpolatedData.position.y * smoothFactor;
             this.ball.velocity.x = this.ball.velocity.x * (1 - smoothFactor) + interpolatedData.velocity.x * smoothFactor;
             this.ball.velocity.y = this.ball.velocity.y * (1 - smoothFactor) + interpolatedData.velocity.y * smoothFactor;
             this.ball.angle = interpolatedData.angle;
             
-            console.log(`🎯 PHASE4: Ball interpolated (smooth) to pos:(${Math.round(this.ball.x)},${Math.round(this.ball.y)})`);
+            console.log(`🎯 PHASE4: Ball interpolated (${(smoothFactor*100).toFixed(0)}% blend) to pos:(${Math.round(this.ball.x)},${Math.round(this.ball.y)}) speed:${ballSpeed.toFixed(1)}`);
         }
     }
     
@@ -2862,15 +2881,13 @@ class GameScene extends Phaser.Scene {
         
         const now = Date.now();
         
-        // Send at 30Hz when ball is active (every ~33ms)
-        if (now - this.lastBallSendTime < 33) return;
-        
         // Check if ball is moving (active) or stationary
         const ballSpeed = Math.abs(this.ball.velocity.x) + Math.abs(this.ball.velocity.y);
         const isActive = ballSpeed > 0.5; // Threshold for "active" ball
         
-        // Send more frequent updates when ball is active
-        const updateInterval = isActive ? 33 : 100; // 30Hz active, 10Hz idle
+        // Phase 1 Quick Win: Send more frequent updates for better sync
+        // 60Hz when active (matches game framerate), 20Hz when idle
+        const updateInterval = isActive ? 16 : 50; // 60Hz active, 20Hz idle
         
         if (now - this.lastBallSendTime < updateInterval) return;
         
