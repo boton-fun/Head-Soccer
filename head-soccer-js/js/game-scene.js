@@ -639,6 +639,15 @@ class GameScene extends Phaser.Scene {
             
             // Send movement updates in multiplayer mode
             if (this.isMultiplayer && this.multiplayerGame) {
+                // Safety check: Ensure playerNumber is set
+                if (this.playerNumber === undefined) {
+                    console.warn('⚠️ UPDATE: playerNumber not set yet in multiplayer mode!');
+                    // Try to set it from multiplayerGame data
+                    if (this.multiplayerGame.matchData) {
+                        this.playerNumber = this.multiplayerGame.matchData.isPlayer1 ? 1 : 2;
+                        console.log('🔧 UPDATE: Set playerNumber to', this.playerNumber);
+                    }
+                }
                 this.sendMovementUpdates();
                 // DISABLED: Ball sync removed for single-player physics replication
                 // this.sendBallUpdates();
@@ -1746,6 +1755,15 @@ class GameScene extends Phaser.Scene {
         console.log('🎮 setMultiplayerMode() CALLED at timestamp:', Date.now());
         console.log('Setting multiplayer mode with data:', multiplayerGame.matchData);
         
+        // Debug: Log current state
+        console.log('🔍 INIT DEBUG - Current state:', {
+            isMultiplayer: this.isMultiplayer,
+            playerNumber: this.playerNumber,
+            multiplayerInitialized: this.multiplayerInitialized,
+            gameStarted: this.gameStarted,
+            physicsRunning: !!this.player1 && !!this.player2
+        });
+        
         // Prevent multiple initialization
         if (this.multiplayerInitialized) {
             console.log('⚠️ Multiplayer already initialized, skipping duplicate call');
@@ -2242,6 +2260,18 @@ class GameScene extends Phaser.Scene {
         
         this.lastMovementSent = now;
         
+        // Debug: Log sync state
+        if (!this.lastSyncDebugLog || now - this.lastSyncDebugLog > 5000) {
+            console.log('🔍 SYNC DEBUG:', {
+                playerNumber: this.playerNumber,
+                isMultiplayer: this.isMultiplayer,
+                multiplayerInitialized: this.multiplayerInitialized,
+                multiplayerGame: !!this.multiplayerGame,
+                socket: !!this.multiplayerGame?.socket
+            });
+            this.lastSyncDebugLog = now;
+        }
+        
         // Determine which player is controlled by this client (use unified playerNumber)
         let localPlayer, localSprite, playerNumber;
         if (this.playerNumber === 1) {
@@ -2254,6 +2284,11 @@ class GameScene extends Phaser.Scene {
             playerNumber = 2;
         } else {
             console.error('⚠️ sendMovementUpdates: playerNumber not set!', this.playerNumber);
+            console.error('Full state:', {
+                isMultiplayer: this.isMultiplayer,
+                multiplayerInitialized: this.multiplayerInitialized,
+                multiplayerGame: !!this.multiplayerGame
+            });
             return;
         }
         
