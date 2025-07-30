@@ -1473,6 +1473,17 @@
             }
             
             returnToMenu() {
+                // Clean up game state before leaving
+                if (this.gameScene && this.gameScene.cleanupMultiplayerState) {
+                    console.log('🧹 Cleaning up game state before leaving');
+                    this.gameScene.cleanupMultiplayerState();
+                }
+                
+                // Clean up scene reference
+                if (this.scene) {
+                    this.scene = null;
+                }
+                
                 // In multiplayer, notify server that player is leaving
                 if (this.socket && this.socket.connected) {
                     this.sendLeaveGameToServer();
@@ -1481,12 +1492,30 @@
                         this.socket.disconnect();
                         clearInterval(this.timerInterval);
                         clearInterval(this.pingInterval);
+                        
+                        // Destroy Phaser game instance to ensure clean state
+                        if (this.game) {
+                            console.log('🎮 Destroying Phaser game instance');
+                            this.game.destroy(true);
+                            this.game = null;
+                            this.gameScene = null;
+                        }
+                        
                         window.location.href = 'multiplayer-selection.html';
                     }, 100);
                 } else {
                     // If not connected, just leave immediately
                     clearInterval(this.timerInterval);
                     clearInterval(this.pingInterval);
+                    
+                    // Destroy Phaser game instance to ensure clean state
+                    if (this.game) {
+                        console.log('🎮 Destroying Phaser game instance');
+                        this.game.destroy(true);
+                        this.game = null;
+                        this.gameScene = null;
+                    }
+                    
                     window.location.href = 'multiplayer-selection.html';
                 }
             }

@@ -1764,10 +1764,10 @@ class GameScene extends Phaser.Scene {
             physicsRunning: !!this.player1 && !!this.player2
         });
         
-        // Prevent multiple initialization
+        // FIX: Always clean up old state before setting new multiplayer mode
         if (this.multiplayerInitialized) {
-            console.log('⚠️ Multiplayer already initialized, skipping duplicate call');
-            return;
+            console.log('⚠️ Previous multiplayer state detected, cleaning up first');
+            this.cleanupMultiplayerState();
         }
         
         // Store the multiplayer game reference for later use
@@ -3010,5 +3010,53 @@ class GameScene extends Phaser.Scene {
         console.log(`⚽ PHASE2: Sending KICK event - force: ${forceMagnitude.toFixed(1)}, result velocity: (${this.ball.velocity.x.toFixed(1)}, ${this.ball.velocity.y.toFixed(1)})`);
         
         this.multiplayerGame.socket.emit('kickEvent', kickData);
+    }
+    
+    // Clean up multiplayer state between matches
+    cleanupMultiplayerState() {
+        console.log('🧹 Cleaning up multiplayer state for new match');
+        
+        // Reset all multiplayer flags
+        this.isMultiplayer = false;
+        this.multiplayerInitialized = false;
+        this.playerNumber = undefined;
+        this.ballAuthority = false;
+        
+        // Clear multiplayer game reference
+        this.multiplayerGame = null;
+        
+        // Reset network message queues
+        this.pendingNetworkUpdates = [];
+        this.lastCollisionSent = {};
+        
+        // Reset interpolation buffers
+        this.remotePlayerBuffers = {
+            player1: [],
+            player2: []
+        };
+        this.ballBuffer = [];
+        
+        // Reset timing variables
+        this.lastMovementSent = 0;
+        this.lastBallSendTime = 0;
+        this.lastLocalBallCollision = null;
+        this.lastSyncDebugLog = 0;
+        
+        // Clear input history
+        this.inputHistory = [];
+        this.lastProcessedInput = 0;
+        
+        console.log('✅ Multiplayer state cleaned up');
+    }
+    
+    // Phaser lifecycle method - called when scene shuts down
+    shutdown() {
+        console.log('🎮 GameScene shutdown called');
+        this.cleanupMultiplayerState();
+        
+        // Call parent shutdown if exists
+        if (super.shutdown) {
+            super.shutdown();
+        }
     }
 }
