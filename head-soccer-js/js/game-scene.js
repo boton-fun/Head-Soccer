@@ -1040,10 +1040,13 @@ class GameScene extends Phaser.Scene {
         
         if (player.isKicking) {
             // ACTIVE KICK - Ball flies high
-            const forceMagnitude = PHYSICS_CONSTANTS.UTILS.random(
-                PHYSICS_CONSTANTS.KICK.FORCE_MIN, 
-                PHYSICS_CONSTANTS.KICK.FORCE_MAX
-            );
+            // Phase 2: Enhanced kick force prediction for better sync
+            const playerSpeed = Math.sqrt(player.velocity.x * player.velocity.x + player.velocity.y * player.velocity.y);
+            const speedBonus = Math.min(playerSpeed * 0.5, 5); // Speed adds up to 5 force
+            
+            // Use deterministic force calculation for better sync (no random)
+            const baseForceMagnitude = (PHYSICS_CONSTANTS.KICK.FORCE_MIN + PHYSICS_CONSTANTS.KICK.FORCE_MAX) / 2;
+            const forceMagnitude = baseForceMagnitude + speedBonus;
             
             // Apply strong force with very high upward component
             this.ball.velocity.x = normalizedX * forceMagnitude * 0.8;
@@ -1054,6 +1057,11 @@ class GameScene extends Phaser.Scene {
             this.ball.velocity.y += player.velocity.y * 0.3;
             
             console.log(`Ball KICKED by ${side} player with force ${forceMagnitude.toFixed(1)} - velocity:`, {x: this.ball.velocity.x.toFixed(1), y: this.ball.velocity.y.toFixed(1)});
+            
+            // Phase 2: Send detailed kick event for better sync
+            if (this.isMultiplayer) {
+                this.sendKickEvent(player, side, forceMagnitude);
+            }
         } else if (isJumping || isMovingFast) {
             // DYNAMIC COLLISION - Player has momentum
             const momentumForce = Math.min(playerSpeedX + playerSpeedY, 15);
@@ -2923,20 +2931,49 @@ class GameScene extends Phaser.Scene {
         if (!this.lastCollisionSent) this.lastCollisionSent = {};
         if (now - (this.lastCollisionSent[collisionKey] || 0) < 100) return; // Max 10 per second
         
+        // Phase 2: Enhanced collision event with kick details
+        const playerSpeed = Math.sqrt(player.velocity.x * player.velocity.x + player.velocity.y * player.velocity.y);
+        const ballSpeed = Math.sqrt(this.ball.velocity.x * this.ball.velocity.x + this.ball.velocity.y * this.ball.velocity.y);
+        
         const collisionData = {
             type: 'collision',
             playerNumber: playerNumber,
             timestamp: now,
+            frameNumber: this.frameCount,  // Phase 2: Add frame number for precise timing
             ballPosition: { x: this.ball.x, y: this.ball.y },
             ballVelocity: { x: this.ball.velocity.x, y: this.ball.velocity.y },
+            ballSpeed: ballSpeed,  // Phase 2: Add ball speed after collision
             playerPosition: { x: player.x, y: player.y },
             playerVelocity: { x: player.velocity.x, y: player.velocity.y },
+            playerSpeed: playerSpeed,  // Phase 2: Add player speed at collision
             isKicking: player.isKicking || false,
+            kickCooldown: player.kickCooldown || 0,  // Phase 2: Add cooldown state
             side: side
         };
         
         console.log(`⚽ PHASE4: Sending collision event for player ${playerNumber} (${side})`);
         this.multiplayerGame.socket.emit('collisionEvent', collisionData);
         this.lastCollisionSent[collisionKey] = now;
+    }
+    
+    // Phase 2: Send detailed kick event for better synchronization
+    sendKickEvent(player, side, forceMagnitude) {
+        if (!this.multiplayerGame) return;
+        
+        const kickData = {
+            type: 'kick',
+            playerNumber: side === 'left' ? 1 : 2,
+            timestamp: Date.now(),
+            frameNumber: this.frameCount,
+            kickForce: forceMagnitude,
+            ballResultVelocity: { x: this.ball.velocity.x, y: this.ball.velocity.y },
+            ballPosition: { x: this.ball.x, y: this.ball.y },
+            playerPosition: { x: player.x, y: player.y },
+            playerVelocity: { x: player.velocity.x, y: player.velocity.y }
+        };
+        
+        console.log(`⚽ PHASE2: Sending KICK event - force: ${forceMagnitude.toFixed(1)}, result velocity: (${this.ball.velocity.x.toFixed(1)}, ${this.ball.velocity.y.toFixed(1)})`);
+        
+        this.multiplayerGame.socket.emit('kickEvent', kickData);
     }
 }
