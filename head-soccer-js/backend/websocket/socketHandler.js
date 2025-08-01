@@ -27,10 +27,10 @@ class SocketHandler extends EventEmitter {
     this.activePlayers = new Map(); // playerId -> Player object
     this.activeRooms = new Map(); // roomId -> GameRoom object
     
-    // Rate limiting configuration
+    // Rate limiting configuration - Updated for 240 FPS input
     this.rateLimits = {
       general: { maxRequests: 60, windowMs: 60000 }, // 60 requests per minute
-      movement: { maxRequests: 120, windowMs: 60000 }, // 120 movement updates per minute
+      movement: { maxRequests: 3600, windowMs: 60000 }, // 3600 input updates per minute (60/sec)
       chat: { maxRequests: 10, windowMs: 60000 }, // 10 chat messages per minute
       matchmaking: { maxRequests: 5, windowMs: 60000 } // 5 matchmaking requests per minute
     };
@@ -285,27 +285,25 @@ class SocketHandler extends EventEmitter {
       this.handleEvent(socket, 'start_game', data, this.handleStartGame.bind(this));
     });
     
-    // Gameplay events
-    socket.on('player_movement', (data) => {
-      this.handleEvent(socket, 'player_movement', data, this.handlePlayerMovement.bind(this), 'movement');
+    // 240 FPS Input Events - SIMPLIFIED
+    socket.on('input', (data) => {
+      this.handleEvent(socket, 'input', data, this.handlePlayerInput.bind(this), 'movement');
     });
     
-    socket.on('ball_update', (data) => {
-      this.handleEvent(socket, 'ball_update', data, this.handleBallUpdate.bind(this), 'movement');
-    });
-    
-    // Phase 4: Ball Authority System - new ball update format
-    socket.on('ballUpdate', (data) => {
-      this.handleEvent(socket, 'ballUpdate', data, this.handlePhase4BallUpdate.bind(this), 'movement');
-    });
-    
-    // Phase 4: Collision validation system
-    socket.on('collisionEvent', (data) => {
-      this.handleEvent(socket, 'collisionEvent', data, this.handleCollisionEvent.bind(this), 'movement');
-    });
-    
+    // Keep existing goal attempt for compatibility
     socket.on('goal_attempt', (data) => {
       this.handleEvent(socket, 'goal_attempt', data, this.handleGoalAttempt.bind(this));
+    });
+    
+    // DEPRECATED - Old complex movement events (kept for rollback)
+    socket.on('player_movement', (data) => {
+      // Route to new input system for now
+      this.handleEvent(socket, 'input', {
+        left: data.direction === 'left',
+        right: data.direction === 'right',
+        up: data.jump || false,
+        kick: data.kick || false
+      }, this.handlePlayerInput.bind(this), 'movement');
     });
     
     // Communication events
@@ -967,7 +965,30 @@ class SocketHandler extends EventEmitter {
   }
   
   /**
-   * Handle player movement
+   * Handle player input - SIMPLIFIED for 240 FPS system
+   * @param {Socket} socket - The socket connection  
+   * @param {Object} data - Input data (left, right, up, kick)
+   */
+  async handlePlayerInput(socket, data) {
+    const connection = this.connectionManager.getConnectionBySocketId(socket.id);
+    if (!connection || !connection.playerId) return;
+    
+    try {
+      const result = await this.gameplayEvents.handlePlayerInput(connection.playerId, data);
+      
+      if (!result.success) {
+        socket.emit('input_rejected', {
+          reason: result.reason
+        });
+      }
+      // No acknowledgment needed for 240 FPS - state is broadcast continuously
+    } catch (error) {
+      console.error(`Error handling player input:`, error);
+    }
+  }
+
+  /**
+   * Handle player movement (DEPRECATED - kept for rollback)
    * @param {Socket} socket - Socket.IO socket
    * @param {Object} data - Movement data
    */

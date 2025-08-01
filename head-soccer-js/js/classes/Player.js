@@ -73,6 +73,15 @@ class Player {
     }
     
     update() {
+        // Skip physics in 240 FPS multiplayer mode - server handles it
+        if (window.isMultiplayer240FPS) {
+            // Only update visual elements
+            this.updateAnimation();
+            this.updateKickCooldownVisual();
+            return;
+        }
+        
+        // Original single-player physics
         // Handle input
         this.handleInput();
         
@@ -99,6 +108,13 @@ class Player {
         
         // Check for ball collision/kicking
         this.checkBallInteraction();
+    }
+    
+    updateKickCooldownVisual() {
+        // Update kick cooldown for visual effects only
+        if (this.kickCooldown > 0) {
+            this.kickCooldown -= CONFIG.DT * 1000;
+        }
     }
     
     handleInput() {

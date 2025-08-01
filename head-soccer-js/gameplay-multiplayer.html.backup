@@ -758,17 +758,6 @@
                         console.log('🎮 Joined gameplay room:', data);
                         this.isConnected = true;
                     });
-
-                    // 240 FPS CLIENT SYSTEM - New state-based rendering
-                    this.socket.on('gameState', (state) => {
-                        this.handle240FPSGameState(state);
-                    });
-
-                    this.socket.on('gameStarted', (data) => {
-                        console.log('🎮 Game started with 240 FPS physics:', data);
-                        this.isMultiplayer240FPS = true;
-                        this.initializeStateRenderer();
-                    });
                     
                     this.socket.on('player_input', (data) => {
                         if (this.gameScene) {
@@ -1262,142 +1251,13 @@
             
             sendPlayerInput(inputData) {
                 if (this.socket && this.socket.connected) {
-                    // NEW 240 FPS Input System - Simple input state
-                    if (this.isMultiplayer240FPS) {
-                        this.socket.emit('input', {
-                            left: inputData.left || false,
-                            right: inputData.right || false,
-                            up: inputData.up || false,
-                            kick: inputData.kick || false
-                        });
-                    } else {
-                        // Original complex system (for rollback)
-                        this.socket.emit('player_input', {
-                            matchId: this.matchData.matchId,
-                            playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
-                            input: inputData,
-                            timestamp: Date.now()
-                        });
-                    }
+                    this.socket.emit('player_input', {
+                        matchId: this.matchData.matchId,
+                        playerId: this.matchData.isPlayer1 ? this.matchData.player1Id : this.matchData.player2Id,
+                        input: inputData,
+                        timestamp: Date.now()
+                    });
                 }
-            }
-
-            // 240 FPS STATE HANDLING METHODS
-            
-            handle240FPSGameState(state) {
-                if (!this.isMultiplayer240FPS || !this.gameScene) return;
-                
-                try {
-                    // Update players
-                    if (state.players && Array.isArray(state.players)) {
-                        state.players.forEach(playerData => {
-                            this.updatePlayerFromState(playerData);
-                        });
-                    }
-                    
-                    // Update ball
-                    if (state.ball) {
-                        this.updateBallFromState(state.ball);
-                    }
-                    
-                    // Update score
-                    if (state.score) {
-                        this.updateScore(state.score.left, state.score.right);
-                    }
-                    
-                    // Update game time
-                    if (state.gameTime !== undefined) {
-                        this.updateGameTimer(state.gameTime);
-                    }
-                    
-                } catch (error) {
-                    console.error('Error handling 240 FPS game state:', error);
-                }
-            }
-            
-            updatePlayerFromState(playerData) {
-                if (!this.gameScene.player1 && !this.gameScene.player2) return;
-                
-                // Find the correct player object
-                let player = null;
-                if (playerData.playerNumber === 1) {
-                    player = this.gameScene.player1;
-                } else if (playerData.playerNumber === 2) {
-                    player = this.gameScene.player2;
-                }
-                
-                if (player) {
-                    // Update position
-                    player.x = playerData.x;
-                    player.y = playerData.y;
-                    
-                    // Update visual properties
-                    player.facing = playerData.facing;
-                    player.kicking = playerData.kicking;
-                    player.onGround = playerData.onGround;
-                    
-                    // Update velocities for visual effects only
-                    player.vx = playerData.vx;
-                    player.vy = playerData.vy;
-                }
-            }
-            
-            updateBallFromState(ballData) {
-                if (!this.gameScene.ball) return;
-                
-                const ball = this.gameScene.ball;
-                
-                // Update position
-                ball.x = ballData.x;
-                ball.y = ballData.y;
-                
-                // Update velocities for visual effects
-                ball.vx = ballData.vx;
-                ball.vy = ballData.vy;
-                
-                // Update rotation
-                ball.rotation = ballData.rotation;
-                
-                // Update trail if provided
-                if (ballData.trail && Array.isArray(ballData.trail)) {
-                    ball.trail = ballData.trail;
-                }
-            }
-            
-            initializeStateRenderer() {
-                console.log('🎮 Initializing 240 FPS state renderer');
-                
-                // Disable local physics for multiplayer
-                if (this.gameScene) {
-                    this.gameScene.isMultiplayer240FPS = true;
-                }
-                
-                // Start input loop at 60 Hz (not 240 Hz to save bandwidth)
-                this.startInputLoop();
-            }
-            
-            startInputLoop() {
-                if (this.inputInterval) {
-                    clearInterval(this.inputInterval);
-                }
-                
-                this.inputInterval = setInterval(() => {
-                    this.sendCurrentInputState();
-                }, 1000 / 60); // 60 Hz input rate
-            }
-            
-            sendCurrentInputState() {
-                if (!this.gameScene || !this.isMultiplayer240FPS) return;
-                
-                // Get current input state from game scene
-                const keys = this.gameScene.keys || this.gameScene.cursors || {};
-                
-                this.sendPlayerInput({
-                    left: keys.left?.isDown || keys.A?.isDown || false,
-                    right: keys.right?.isDown || keys.D?.isDown || false,  
-                    up: keys.up?.isDown || keys.W?.isDown || false,
-                    kick: keys.space?.isDown || keys.S?.isDown || false
-                });
             }
             
             sendScoreUpdate(player1Score, player2Score) {

@@ -25,6 +25,14 @@ class Ball {
     }
     
     update() {
+        // Skip physics in 240 FPS multiplayer mode - server handles it
+        if (window.isMultiplayer240FPS) {
+            // Only update visual effects
+            this.updateVisualEffects();
+            return;
+        }
+        
+        // Original single-player physics
         // Apply gravity
         this.vy += this.gravity * CONFIG.DT;
         
@@ -48,6 +56,20 @@ class Ball {
         
         // Boundary collisions
         this.handleBoundaryCollisions();
+    }
+    
+    updateVisualEffects() {
+        // Update rotation based on velocity (for visual smoothness)
+        this.rotationSpeed = this.vx * 0.01;
+        this.rotation += this.rotationSpeed;
+        
+        // Update trail (if not provided by server)
+        if (!this.trail || this.trail.length === 0) {
+            this.trail.push({ x: this.x, y: this.y });
+            if (this.trail.length > this.maxTrailLength) {
+                this.trail.shift();
+            }
+        }
     }
     
     handleBoundaryCollisions() {
