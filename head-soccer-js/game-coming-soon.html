@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Head Soccer - Coming Soon</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', cursive, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Animated background elements */
+        .bg-element {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .bg-element:nth-child(1) {
+            width: 80px;
+            height: 80px;
+            left: 10%;
+            top: 20%;
+            animation-delay: 0s;
+        }
+
+        .bg-element:nth-child(2) {
+            width: 120px;
+            height: 120px;
+            right: 20%;
+            top: 50%;
+            animation-delay: 3s;
+        }
+
+        .bg-element:nth-child(3) {
+            width: 60px;
+            height: 60px;
+            left: 50%;
+            bottom: 20%;
+            animation-delay: 7s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-20px) rotate(90deg); }
+            50% { transform: translateY(0) rotate(180deg); }
+            75% { transform: translateY(20px) rotate(270deg); }
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+            max-width: 600px;
+            margin: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .soccer-ball {
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 30px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><circle cx="50" cy="50" r="45" fill="white" stroke="black" stroke-width="2"/><path d="M50,5 L65,25 L60,45 L40,45 L35,25 Z" fill="black"/><path d="M35,25 L20,30 L15,50 L25,65 L40,45 Z" fill="black"/><path d="M65,25 L80,30 L85,50 L75,65 L60,45 Z" fill="black"/><path d="M40,45 L25,65 L35,80 L50,75 L60,45 Z" fill="black"/><path d="M60,45 L50,75 L65,80 L75,65 Z" fill="black"/></svg>') no-repeat center;
+            background-size: contain;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        h1 {
+            color: #764ba2;
+            font-size: 3em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .subtitle {
+            color: #667eea;
+            font-size: 1.5em;
+            margin-bottom: 30px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        .message {
+            color: #666;
+            font-size: 1.1em;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .selected-info {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin: 30px 0;
+        }
+
+        .selected-info h3 {
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .selection-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 10px;
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .selection-item strong {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+            transform: translateY(-2px);
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 65%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            animation: progressPulse 2s infinite;
+        }
+
+        @keyframes progressPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .feature {
+            text-align: center;
+        }
+
+        .feature-icon {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .feature-text {
+            color: #666;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-element"></div>
+    <div class="bg-element"></div>
+    <div class="bg-element"></div>
+
+    <div class="container">
+        <div class="soccer-ball"></div>
+        
+        <h1>Game Coming Soon!</h1>
+        <div class="subtitle">We're working on something amazing!</div>
+        
+        <div class="message">
+            Our multiplayer gameplay is currently under development. 
+            We're adding exciting features to make your gaming experience unforgettable!
+        </div>
+
+        <div class="selected-info" id="selectionInfo">
+            <h3>Your Selection</h3>
+            <div class="selection-grid" id="selectionGrid">
+                <!-- Will be populated by JavaScript -->
+            </div>
+        </div>
+
+        <div class="progress-bar">
+            <div class="progress-fill">65% Complete</div>
+        </div>
+
+        <div class="features">
+            <div class="feature">
+                <div class="feature-icon">⚽</div>
+                <div class="feature-text">Physics Engine</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🎮</div>
+                <div class="feature-text">Smooth Controls</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🏆</div>
+                <div class="feature-text">Tournaments</div>
+            </div>
+            <div class="feature">
+                <div class="feature-icon">🌟</div>
+                <div class="feature-text">Power-ups</div>
+            </div>
+        </div>
+
+        <div class="button-group">
+            <a href="character-selection-multiplayer.html" class="btn btn-secondary">Back to Selection</a>
+            <a href="index.html" class="btn btn-primary">Main Menu</a>
+        </div>
+    </div>
+
+    <script>
+        // Parse URL parameters to show selected character info
+        const urlParams = new URLSearchParams(window.location.search);
+        const selectionGrid = document.getElementById('selectionGrid');
+        const selectionInfo = document.getElementById('selectionInfo');
+        
+        // Display selection info if available
+        const params = {
+            'Match ID': urlParams.get('matchId'),
+            'Player': urlParams.get('username'),
+            'Character': urlParams.get('character'),
+            'Head': urlParams.get('selectedHead'),
+            'Cleat': urlParams.get('selectedCleat'),
+            'Room': urlParams.get('roomId')
+        };
+
+        let hasParams = false;
+        for (const [key, value] of Object.entries(params)) {
+            if (value && value !== 'null') {
+                hasParams = true;
+                const item = document.createElement('div');
+                item.className = 'selection-item';
+                item.innerHTML = `<strong>${key}:</strong> ${value}`;
+                selectionGrid.appendChild(item);
+            }
+        }
+
+        if (!hasParams) {
+            selectionInfo.style.display = 'none';
+        }
+
+        // Add some interactive elements
+        document.querySelector('.soccer-ball').addEventListener('click', function() {
+            this.style.animation = 'none';
+            setTimeout(() => {
+                this.style.animation = 'bounce 2s infinite';
+            }, 10);
+        });
+
+        // Simulate progress update
+        let progress = 65;
+        setInterval(() => {
+            progress = 65 + Math.sin(Date.now() / 1000) * 5;
+            document.querySelector('.progress-fill').style.width = progress + '%';
+        }, 100);
+    </script>
+</body>
+</html>

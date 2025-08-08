@@ -10,6 +10,9 @@ class GameplayEvents extends EventEmitter {
   constructor(connectionManager, gameEventSystem, gameStateValidator, options = {}) {
     super();
     
+    // GAMEPLAY DISABLED - Redirecting to coming soon page
+    this.disabled = true;
+    
     this.connectionManager = connectionManager;
     this.gameEventSystem = gameEventSystem;
     this.gameStateValidator = gameStateValidator;
@@ -100,6 +103,11 @@ class GameplayEvents extends EventEmitter {
    * Handle player movement with lag compensation
    */
   async handlePlayerMovement(playerId, movementData) {
+    // Check if gameplay is disabled
+    if (this.disabled) {
+      return { success: false, reason: 'Gameplay is currently disabled - coming soon!' };
+    }
+    
     try {
       const connection = this.connectionManager.getConnectionByPlayerId(playerId);
       if (!connection || !connection.roomId) {

@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Coming Soon Flow</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .test-links {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .test-link {
+            padding: 15px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            text-align: center;
+            transition: transform 0.2s;
+        }
+        .test-link:hover {
+            transform: translateY(-2px);
+        }
+        .status {
+            margin-top: 30px;
+            padding: 20px;
+            background: #e8f5e9;
+            border-radius: 8px;
+            border-left: 4px solid #4caf50;
+        }
+        .status h3 {
+            margin-top: 0;
+            color: #2e7d32;
+        }
+        .status-item {
+            margin: 10px 0;
+            padding: 5px 0;
+        }
+        .check {
+            color: #4caf50;
+            font-weight: bold;
+        }
+        .cross {
+            color: #f44336;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>Test Coming Soon Flow</h1>
+        
+        <div class="status">
+            <h3>Changes Summary:</h3>
+            <div class="status-item">
+                <span class="check">✓</span> Created game-coming-soon.html page
+            </div>
+            <div class="status-item">
+                <span class="check">✓</span> Updated character-selection-multiplayer.html to redirect to coming soon page
+            </div>
+            <div class="status-item">
+                <span class="check">✓</span> Renamed gameplay-multiplayer.html to .backup
+            </div>
+            <div class="status-item">
+                <span class="check">✓</span> Disabled gameplay events in backend
+            </div>
+        </div>
+
+        <div class="test-links">
+            <a href="character-selection-multiplayer.html" class="test-link">
+                Test Full Flow: Character Selection → Coming Soon
+            </a>
+            
+            <a href="game-coming-soon.html?matchId=test123&username=TestPlayer&character=player1&selectedHead=1&selectedCleat=2" class="test-link">
+                Test Coming Soon Page Directly (with params)
+            </a>
+            
+            <a href="game-coming-soon.html" class="test-link">
+                Test Coming Soon Page (no params)
+            </a>
+        </div>
+
+        <div style="margin-top: 30px; padding: 20px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+            <h3 style="margin-top: 0; color: #856404;">Flow Description:</h3>
+            <ol style="color: #856404;">
+                <li>User goes to character selection page</li>
+                <li>User selects character, head, and cleats</li>
+                <li>User clicks "Start Game" or both players are ready</li>
+                <li>Instead of gameplay, user is redirected to the "Coming Soon" page</li>
+                <li>Coming Soon page shows their selection and progress status</li>
+                <li>User can go back to selection or main menu</li>
+            </ol>
+        </div>
+    </div>
+</body>
+</html>
