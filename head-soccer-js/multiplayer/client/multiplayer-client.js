@@ -26,8 +26,11 @@ class MultiplayerClient {
         // Character customization from URL
         this.characterData = null;
         
-        // Asset cache
+        // Asset cache - preloaded images
         this.sprites = {};
+        this.assetsLoaded = false;
+        this.assetsToLoad = 0;
+        this.assetsLoadedCount = 0;
         
         this.init();
     }
@@ -35,10 +38,13 @@ class MultiplayerClient {
     init() {
         this.setupCanvas();
         this.parseUrlParams();
-        this.connectToServer();
-        this.setupInputHandlers();
-        this.setupUI();
-        this.startRenderLoop();
+        this.preloadAssets(() => {
+            // Only start everything after assets are loaded
+            this.connectToServer();
+            this.setupInputHandlers();
+            this.setupUI();
+            this.startRenderLoop();
+        });
     }
     
     setupCanvas() {
@@ -79,6 +85,56 @@ class MultiplayerClient {
         
         console.log('Character data:', this.characterData);
         console.log('Is Player 1:', this.isPlayer1);
+    }
+    
+    preloadAssets(callback) {
+        console.log('Preloading assets...');
+        
+        // List of assets to preload - using same names as 1P version
+        const assetsToLoad = [
+            { key: 'ball', path: '../../assets/Ball 01.png' },
+            { key: 'goalSide', path: '../../assets/Goal - Side.png' },
+            { key: 'player1Head', path: `../../assets/${this.characterData.player1.head}_Head.png` },
+            { key: 'player2Head', path: `../../assets/${this.characterData.player2.head}_Head.png` }
+        ];
+        
+        this.assetsToLoad = assetsToLoad.length;
+        this.assetsLoadedCount = 0;
+        
+        // Load each asset
+        assetsToLoad.forEach(asset => {
+            const img = new Image();
+            
+            img.onload = () => {
+                this.sprites[asset.key] = img;
+                this.assetsLoadedCount++;
+                console.log(`✅ Loaded: ${asset.key} (${this.assetsLoadedCount}/${this.assetsToLoad})`);
+                
+                // Check if all assets are loaded
+                if (this.assetsLoadedCount === this.assetsToLoad) {
+                    this.assetsLoaded = true;
+                    console.log('🎯 All assets preloaded successfully!');
+                    callback();
+                }
+            };
+            
+            img.onerror = () => {
+                console.error(`❌ Failed to load: ${asset.key} from ${asset.path}`);
+                // Create fallback sprite
+                this.sprites[asset.key] = null;
+                this.assetsLoadedCount++;
+                
+                // Continue even with failed assets
+                if (this.assetsLoadedCount === this.assetsToLoad) {
+                    this.assetsLoaded = true;
+                    console.log('⚠️ Asset loading completed with some errors');
+                    callback();
+                }
+            };
+            
+            img.src = asset.path;
+            console.log(`📦 Loading: ${asset.key} from ${asset.path}`);
+        });
     }
     
     generateRoomCode() {
@@ -471,9 +527,9 @@ class MultiplayerClient {
         const goalHeight = 250 * scaleY;
         const goalY = (900 - 250 - 20) * scaleY; // 650 scaled
         
-        // Try to load goal image
-        const goalImg = new Image();
-        goalImg.onload = () => {
+        // Use preloaded goal image
+        const goalImg = this.sprites.goalSide;
+        if (goalImg) {
             // Draw left goal
             this.ctx.drawImage(goalImg, 0, goalY, goalWidth, goalHeight);
             
@@ -482,8 +538,7 @@ class MultiplayerClient {
             this.ctx.scale(-1, 1);
             this.ctx.drawImage(goalImg, -this.canvas.width, goalY, goalWidth, goalHeight);
             this.ctx.restore();
-        };
-        goalImg.onerror = () => {
+        } else {
             // Fallback to white rectangles
             this.ctx.strokeStyle = '#ffffff';
             this.ctx.lineWidth = 3;
@@ -494,8 +549,7 @@ class MultiplayerClient {
             this.ctx.beginPath();
             this.ctx.rect(this.canvas.width - goalWidth, goalY, goalWidth, goalHeight);
             this.ctx.stroke();
-        };
-        goalImg.src = '../../assets/Goal - Side.png';
+        }
     }
     
     drawBall() {
@@ -570,7 +624,7 @@ class MultiplayerClient {
     }
     
     drawStaticBall() {
-        // Draw ball in center using Soccer Ball.png asset
+        // Draw ball in center using preloaded Ball 01.png asset
         const scaleX = this.canvas.width / 1600;
         const scaleY = this.canvas.height / 900;
         const x = this.canvas.width / 2;
@@ -578,12 +632,11 @@ class MultiplayerClient {
         const ballRadius = 25 * Math.min(scaleX, scaleY);
         const y = groundY - ballRadius;
         
-        // Try to load and draw soccer ball image
-        const ballImg = new Image();
-        ballImg.onload = () => {
+        // Use preloaded ball image
+        const ballImg = this.sprites.ball;
+        if (ballImg) {
             this.ctx.drawImage(ballImg, x - ballRadius, y - ballRadius, ballRadius * 2, ballRadius * 2);
-        };
-        ballImg.onerror = () => {
+        } else {
             // Fallback to white circle
             this.ctx.shadowBlur = 15;
             this.ctx.shadowColor = '#ffffff';
@@ -592,8 +645,7 @@ class MultiplayerClient {
             this.ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
             this.ctx.fill();
             this.ctx.shadowBlur = 0;
-        };
-        ballImg.src = '../../assets/Soccer Ball.png';
+        }
     }
     
     drawStaticPlayers() {
@@ -630,19 +682,19 @@ class MultiplayerClient {
         const scaleY = this.canvas.height / 900;
         const headSize = 60 * Math.min(scaleX, scaleY);
         
-        // Try to load character head
-        const headImg = new Image();
-        headImg.onload = () => {
+        // Use preloaded character head
+        const playerIndex = playerName === this.characterData.player1.name ? 1 : 2;
+        const headImg = this.sprites[`player${playerIndex}Head`];
+        
+        if (headImg) {
             this.ctx.drawImage(headImg, x - headSize/2, y - headSize/2, headSize, headSize);
-        };
-        headImg.onerror = () => {
+        } else {
             // Fallback to colored circle
             this.ctx.fillStyle = color;
             this.ctx.beginPath();
             this.ctx.arc(x, y, headSize/2, 0, Math.PI * 2);
             this.ctx.fill();
-        };
-        headImg.src = `../../assets/${headName}_Head.png`;
+        }
         
         // Draw player name
         this.ctx.fillStyle = color;
