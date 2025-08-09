@@ -53,25 +53,32 @@ class MultiplayerClient {
     parseUrlParams() {
         const urlParams = new URLSearchParams(window.location.search);
         
-        // Get room code or generate one
-        this.roomCode = urlParams.get('roomCode') || this.generateRoomCode();
+        // Get match data
+        this.matchId = urlParams.get('matchId') || this.generateRoomCode();
+        this.roomCode = this.matchId;
         document.getElementById('room-code-display').textContent = this.roomCode;
         
-        // Parse character selections
+        // Parse player data
+        this.player1Name = urlParams.get('player1') || 'Player 1';
+        this.player2Name = urlParams.get('player2') || 'Player 2';
+        this.isPlayer1 = urlParams.get('isPlayer1') === 'true';
+        
+        // Parse character selections (using the actual URL format)
         this.characterData = {
             player1: {
-                character: urlParams.get('p1_char') || 'player1',
-                head: urlParams.get('p1_head') || 'head1',
-                cleat: urlParams.get('p1_cleat') || 'cleat1'
+                name: this.player1Name,
+                head: urlParams.get('player1Head') || 'Dad',
+                cleat: urlParams.get('player1Cleat') || '1'
             },
             player2: {
-                character: urlParams.get('p2_char') || 'player2',
-                head: urlParams.get('p2_head') || 'head2',
-                cleat: urlParams.get('p2_cleat') || 'cleat2'
+                name: this.player2Name,
+                head: urlParams.get('player2Head') || 'Mihir', 
+                cleat: urlParams.get('player2Cleat') || '2'
             }
         };
         
         console.log('Character data:', this.characterData);
+        console.log('Is Player 1:', this.isPlayer1);
     }
     
     generateRoomCode() {
@@ -299,6 +306,10 @@ class MultiplayerClient {
     }
     
     setupUI() {
+        // Set player names immediately
+        document.getElementById('player1-name').textContent = this.player1Name;
+        document.getElementById('player2-name').textContent = this.player2Name;
+        
         this.showGameStatus('Waiting for players...', 'Share the room code with a friend!');
     }
     
@@ -328,9 +339,9 @@ class MultiplayerClient {
         document.getElementById('timer-display').textContent = 
             `${minutes}:${seconds.toString().padStart(2, '0')}`;
         
-        // Update scores and player names
-        document.getElementById('player1-name').textContent = state.players[0].name || 'Player 1';
-        document.getElementById('player2-name').textContent = state.players[1].name || 'Player 2';
+        // Update scores and player names  
+        document.getElementById('player1-name').textContent = this.player1Name;
+        document.getElementById('player2-name').textContent = this.player2Name;
         document.getElementById('player1-score').textContent = state.players[0].score;
         document.getElementById('player2-score').textContent = state.players[1].score;
         
@@ -388,13 +399,19 @@ class MultiplayerClient {
     }
     
     render() {
-        if (!this.gameState) return;
-        
         this.clearCanvas();
         this.drawField();
         this.drawGoals();
-        this.drawBall();
-        this.drawPlayers();
+        
+        if (this.gameState) {
+            // Draw live game state
+            this.drawBall();
+            this.drawPlayers();
+        } else {
+            // Draw static preview while waiting
+            this.drawStaticBall();
+            this.drawStaticPlayers();
+        }
     }
     
     clearCanvas() {
@@ -431,6 +448,18 @@ class MultiplayerClient {
         this.ctx.moveTo(this.canvas.width / 2, 0);
         this.ctx.lineTo(this.canvas.width / 2, groundY);
         this.ctx.stroke();
+        
+        // Center circle (like in target image)
+        const centerX = this.canvas.width / 2;
+        const centerY = groundY - 100 * scaleY; // Above ground
+        const circleRadius = 80 * Math.min(scaleX, scaleY);
+        
+        this.ctx.strokeStyle = '#00ffff';
+        this.ctx.lineWidth = 3;
+        this.ctx.beginPath();
+        this.ctx.arc(centerX, centerY, circleRadius, 0, Math.PI * 2);
+        this.ctx.stroke();
+        
         this.ctx.globalAlpha = 1;
     }
     
@@ -442,17 +471,31 @@ class MultiplayerClient {
         const goalHeight = 250 * scaleY;
         const goalY = (900 - 250 - 20) * scaleY; // 650 scaled
         
-        // Left goal
-        this.ctx.strokeStyle = '#ffffff';
-        this.ctx.lineWidth = 3;
-        this.ctx.beginPath();
-        this.ctx.rect(0, goalY, goalWidth, goalHeight);
-        this.ctx.stroke();
-        
-        // Right goal
-        this.ctx.beginPath();
-        this.ctx.rect(this.canvas.width - goalWidth, goalY, goalWidth, goalHeight);
-        this.ctx.stroke();
+        // Try to load goal image
+        const goalImg = new Image();
+        goalImg.onload = () => {
+            // Draw left goal
+            this.ctx.drawImage(goalImg, 0, goalY, goalWidth, goalHeight);
+            
+            // Draw right goal (flipped)
+            this.ctx.save();
+            this.ctx.scale(-1, 1);
+            this.ctx.drawImage(goalImg, -this.canvas.width, goalY, goalWidth, goalHeight);
+            this.ctx.restore();
+        };
+        goalImg.onerror = () => {
+            // Fallback to white rectangles
+            this.ctx.strokeStyle = '#ffffff';
+            this.ctx.lineWidth = 3;
+            this.ctx.beginPath();
+            this.ctx.rect(0, goalY, goalWidth, goalHeight);
+            this.ctx.stroke();
+            
+            this.ctx.beginPath();
+            this.ctx.rect(this.canvas.width - goalWidth, goalY, goalWidth, goalHeight);
+            this.ctx.stroke();
+        };
+        goalImg.src = '../../assets/Goal - Side.png';
     }
     
     drawBall() {
@@ -524,6 +567,88 @@ class MultiplayerClient {
             this.ctx.arc(x, y, width/2 + 10, 0, Math.PI * 2);
             this.ctx.stroke();
         }
+    }
+    
+    drawStaticBall() {
+        // Draw ball in center using Soccer Ball.png asset
+        const scaleX = this.canvas.width / 1600;
+        const scaleY = this.canvas.height / 900;
+        const x = this.canvas.width / 2;
+        const groundY = (900 - 20) * scaleY;
+        const ballRadius = 25 * Math.min(scaleX, scaleY);
+        const y = groundY - ballRadius;
+        
+        // Try to load and draw soccer ball image
+        const ballImg = new Image();
+        ballImg.onload = () => {
+            this.ctx.drawImage(ballImg, x - ballRadius, y - ballRadius, ballRadius * 2, ballRadius * 2);
+        };
+        ballImg.onerror = () => {
+            // Fallback to white circle
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = '#ffffff';
+            this.ctx.fillStyle = 'white';
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, ballRadius, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.shadowBlur = 0;
+        };
+        ballImg.src = '../../assets/Soccer Ball.png';
+    }
+    
+    drawStaticPlayers() {
+        const scaleX = this.canvas.width / 1600;
+        const scaleY = this.canvas.height / 900;
+        
+        // Player positions
+        const player1X = 400 * scaleX;
+        const player2X = 1200 * scaleX; 
+        const groundY = (900 - 20) * scaleY;
+        const playerY = groundY - 40 * scaleY; // On ground
+        
+        // Draw Player 1
+        this.drawStaticPlayer(
+            player1X, 
+            playerY, 
+            this.characterData.player1.head, 
+            this.characterData.player1.name,
+            '#2196F3'
+        );
+        
+        // Draw Player 2  
+        this.drawStaticPlayer(
+            player2X, 
+            playerY,
+            this.characterData.player2.head,
+            this.characterData.player2.name, 
+            '#F44336'
+        );
+    }
+    
+    drawStaticPlayer(x, y, headName, playerName, color) {
+        const scaleX = this.canvas.width / 1600;
+        const scaleY = this.canvas.height / 900;
+        const headSize = 60 * Math.min(scaleX, scaleY);
+        
+        // Try to load character head
+        const headImg = new Image();
+        headImg.onload = () => {
+            this.ctx.drawImage(headImg, x - headSize/2, y - headSize/2, headSize, headSize);
+        };
+        headImg.onerror = () => {
+            // Fallback to colored circle
+            this.ctx.fillStyle = color;
+            this.ctx.beginPath();
+            this.ctx.arc(x, y, headSize/2, 0, Math.PI * 2);
+            this.ctx.fill();
+        };
+        headImg.src = `../../assets/${headName}_Head.png`;
+        
+        // Draw player name
+        this.ctx.fillStyle = color;
+        this.ctx.font = 'bold 14px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(playerName, x, y + headSize/2 + 20);
     }
 }
 
