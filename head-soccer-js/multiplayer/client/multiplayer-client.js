@@ -495,7 +495,7 @@ class MultiplayerClient {
             this.ctx.rect(this.canvas.width - goalWidth, goalY, goalWidth, goalHeight);
             this.ctx.stroke();
         };
-        goalImg.src = '../../assets/Goal - Side.png';
+        goalImg.src = '../../../assets/Goal - Side.png';
     }
     
     drawBall() {
@@ -593,7 +593,7 @@ class MultiplayerClient {
             this.ctx.fill();
             this.ctx.shadowBlur = 0;
         };
-        ballImg.src = '../../assets/Soccer Ball.png';
+        ballImg.src = '../../../assets/Soccer Ball.png';
     }
     
     drawStaticPlayers() {
@@ -642,7 +642,7 @@ class MultiplayerClient {
             this.ctx.arc(x, y, headSize/2, 0, Math.PI * 2);
             this.ctx.fill();
         };
-        headImg.src = `../../assets/${headName}_Head.png`;
+        headImg.src = `../../../assets/${headName}_Head.png`;
         
         // Draw player name
         this.ctx.fillStyle = color;
