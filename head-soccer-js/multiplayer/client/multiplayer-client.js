@@ -160,7 +160,8 @@ class MultiplayerClient {
     }
     
     connectToServer() {
-        const serverUrl = window.location.origin;
+        // Connect to Railway server instead of Vercel (static files)
+        const serverUrl = 'https://head-soccer-production.up.railway.app';
         console.log('🔌 Attempting to connect to server at:', serverUrl);
         console.log('🌍 Current page URL:', window.location.href);
         
