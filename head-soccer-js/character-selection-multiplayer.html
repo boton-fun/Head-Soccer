@@ -1372,8 +1372,8 @@
                     player2Cleat: params.get('player2Cleat')
                 });
                 
-                // Redirect to coming soon page instead of gameplay
-                window.location.href = `game-coming-soon.html?${params.toString()}`;
+                // Redirect to multiplayer gameplay
+                window.location.href = `multiplayer/client/multiplayer-gameplay.html?${params.toString()}`;
             }
             
             initializeBackground() {

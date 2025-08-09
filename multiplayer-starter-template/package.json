@@ -1,0 +1,20 @@
+{
+  "name": "multiplayer-game-server",
+  "version": "1.0.0",
+  "description": "Multiplayer game server template",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "client": "python3 -m http.server 8080 -d client"
+  },
+  "dependencies": {
+    "socket.io": "^4.5.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

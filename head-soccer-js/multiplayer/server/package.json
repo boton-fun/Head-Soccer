@@ -1,0 +1,30 @@
+{
+  "name": "head-soccer-multiplayer-server",
+  "version": "1.0.0",
+  "description": "Real-time multiplayer server for Head Soccer game",
+  "main": "head-soccer-server.js",
+  "scripts": {
+    "start": "node head-soccer-server.js",
+    "dev": "nodemon head-soccer-server.js",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "keywords": [
+    "multiplayer",
+    "socket.io",
+    "head-soccer",
+    "game",
+    "real-time"
+  ],
+  "author": "Boton Games",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
