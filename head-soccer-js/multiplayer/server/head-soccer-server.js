@@ -326,16 +326,31 @@ function endGame(state) {
 // Start game function (from template)
 function startGame(roomCode) {
   const game = games.get(roomCode);
-  if (!game || game.interval) return;
+  
+  console.log(`🎮 startGame called for room ${roomCode}`);
+  console.log(`  Game exists: ${!!game}`);
+  console.log(`  Game interval exists: ${!!game?.interval}`);
+  
+  if (!game) {
+    console.error(`❌ No game found for room ${roomCode}`);
+    return;
+  }
+  
+  if (game.interval) {
+    console.log(`⚠️ Game loop already running for room ${roomCode}`);
+    return;
+  }
   
   game.state.gameStarted = true;
-  console.log(`🎮 Game started in room ${roomCode}`);
+  console.log(`✅ Game started in room ${roomCode}`);
   
   // Emit gameStart event to hide waiting screen
+  console.log(`📡 Emitting 'gameStart' to room ${roomCode}`);
   io.to(roomCode).emit('gameStart');
   
   // Start game loop at 60 FPS
   const TICK_INTERVAL = 1000 / PHYSICS.FPS; // 16.67ms
+  console.log(`🔄 Starting game loop at ${PHYSICS.FPS} FPS (${TICK_INTERVAL}ms interval)`);
   
   game.interval = setInterval(() => {
     if (!game.state.gameOver) {
@@ -345,6 +360,7 @@ function startGame(roomCode) {
       // Clean up game loop when game over
       clearInterval(game.interval);
       game.interval = null;
+      console.log(`🏁 Game over in room ${roomCode}, stopping loop`);
     }
   }, TICK_INTERVAL);
 }
@@ -390,13 +406,23 @@ io.on('connection', (socket) => {
       
       console.log(`Player ${playerName} joined room ${roomCode} as Player ${playerIndex + 1}`);
       
+      // Debug: Check player states
+      const connectedPlayers = game.state.players.filter(p => p.id).length;
+      console.log(`Players in room ${roomCode}: ${connectedPlayers}/2`);
+      game.state.players.forEach((p, i) => {
+        console.log(`  Player ${i + 1}: ${p.id ? 'Connected' : 'Empty'} (${p.name})`);
+      });
+      
       // Send initial state
       io.to(roomCode).emit('gameState', game.state);
       io.to(roomCode).emit('playerJoined', { playerIndex, playerName });
       
       // Start game if both players connected
       if (game.state.players.every(p => p.id)) {
+        console.log(`🎯 Both players connected in room ${roomCode}, starting game...`);
         startGame(roomCode);
+      } else {
+        console.log(`⏳ Waiting for more players in room ${roomCode}`);
       }
       
     } else {

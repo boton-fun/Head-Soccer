@@ -59,6 +59,12 @@ class MultiplayerClient {
     parseUrlParams() {
         const urlParams = new URLSearchParams(window.location.search);
         
+        // Debug: Log all URL parameters
+        console.log('All URL parameters:');
+        for (const [key, value] of urlParams.entries()) {
+            console.log(`  ${key}: ${value}`);
+        }
+        
         // Get match data
         this.matchId = urlParams.get('matchId') || this.generateRoomCode();
         this.roomCode = this.matchId;
@@ -68,6 +74,13 @@ class MultiplayerClient {
         this.player1Name = urlParams.get('player1') || 'Player 1';
         this.player2Name = urlParams.get('player2') || 'Player 2';
         this.isPlayer1 = urlParams.get('isPlayer1') === 'true';
+        
+        // Debug individual parameter values
+        console.log('Raw URL parameters:');
+        console.log('  player1:', urlParams.get('player1'));
+        console.log('  player2:', urlParams.get('player2'));
+        console.log('  player1Head:', urlParams.get('player1Head'));
+        console.log('  player2Head:', urlParams.get('player2Head'));
         
         // Parse character selections (using the actual URL format)
         this.characterData = {
@@ -91,11 +104,16 @@ class MultiplayerClient {
         console.log('Preloading assets...');
         
         // List of assets to preload - using same names as 1P version
+        const player1Head = this.characterData.player1.head || 'Dad'; // Default fallback
+        const player2Head = this.characterData.player2.head || 'Mihir'; // Default fallback
+        
+        console.log('Loading player heads:', { player1Head, player2Head });
+        
         const assetsToLoad = [
             { key: 'ball', path: '../../assets/Ball 01.png' },
             { key: 'goalSide', path: '../../assets/Goal - Side.png' },
-            { key: 'player1Head', path: `../../assets/${this.characterData.player1.head}_Head.png` },
-            { key: 'player2Head', path: `../../assets/${this.characterData.player2.head}_Head.png` }
+            { key: 'player1Head', path: `../../assets/${player1Head}_Head.png` },
+            { key: 'player2Head', path: `../../assets/${player2Head}_Head.png` }
         ];
         
         this.assetsToLoad = assetsToLoad.length;
