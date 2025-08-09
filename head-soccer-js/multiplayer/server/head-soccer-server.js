@@ -323,6 +323,32 @@ function endGame(state) {
   state.gameStarted = false;
 }
 
+// Start game function (from template)
+function startGame(roomCode) {
+  const game = games.get(roomCode);
+  if (!game || game.interval) return;
+  
+  game.state.gameStarted = true;
+  console.log(`🎮 Game started in room ${roomCode}`);
+  
+  // Emit gameStart event to hide waiting screen
+  io.to(roomCode).emit('gameStart');
+  
+  // Start game loop at 60 FPS
+  const TICK_INTERVAL = 1000 / PHYSICS.FPS; // 16.67ms
+  
+  game.interval = setInterval(() => {
+    if (!game.state.gameOver) {
+      updateGameState(game.state);
+      io.to(roomCode).emit('gameState', game.state);
+    } else {
+      // Clean up game loop when game over
+      clearInterval(game.interval);
+      game.interval = null;
+    }
+  }, TICK_INTERVAL);
+}
+
 // Socket handling
 io.on('connection', (socket) => {
   console.log('Player connected:', socket.id);
@@ -364,15 +390,14 @@ io.on('connection', (socket) => {
       
       console.log(`Player ${playerName} joined room ${roomCode} as Player ${playerIndex + 1}`);
       
-      // Start game if both players connected
-      if (game.state.players.every(p => p.id)) {
-        game.state.gameStarted = true;
-        console.log(`Game started in room ${roomCode}`);
-      }
-      
       // Send initial state
       io.to(roomCode).emit('gameState', game.state);
       io.to(roomCode).emit('playerJoined', { playerIndex, playerName });
+      
+      // Start game if both players connected
+      if (game.state.players.every(p => p.id)) {
+        startGame(roomCode);
+      }
       
     } else {
       socket.emit('roomFull');

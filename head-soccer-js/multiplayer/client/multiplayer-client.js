@@ -168,11 +168,13 @@ class MultiplayerClient {
             this.updateUI(state);
         });
         
+        this.socket.on('gameStart', () => {
+            console.log('🎮 Game started! Hiding waiting screen...');
+            this.hideGameStatus();
+        });
+        
         this.socket.on('playerJoined', (data) => {
             console.log(`Player joined: ${data.playerName}`);
-            if (this.gameState && this.gameState.players.every(p => p.id)) {
-                this.hideGameStatus();
-            }
         });
         
         this.socket.on('playerDisconnected', (playerIndex) => {
