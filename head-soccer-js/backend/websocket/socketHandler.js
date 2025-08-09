@@ -541,6 +541,25 @@ class SocketHandler extends EventEmitter {
       this.handleEvent(socket, 'challenge_response', data, this.handleChallengeResponse.bind(this));
     });
     
+    // Head Soccer Multiplayer Gameplay Events
+    socket.on('joinGame', (data) => {
+      console.log('🔍 DEBUG: joinGame event received on socket:', socket.id, 'data:', data);
+      if (this.gameplayEvents.disabled) {
+        socket.emit('gameplayDisabled', { message: 'Gameplay is currently disabled' });
+        return;
+      }
+      this.handleEvent(socket, 'joinGame', data, (socket, data) => {
+        this.gameplayEvents.joinGame(socket, data);
+      });
+    });
+    
+    socket.on('input', (data) => {
+      if (this.gameplayEvents.disabled) return;
+      this.handleEvent(socket, 'input', data, (socket, data) => {
+        this.gameplayEvents.handlePlayerInput(socket, data);
+      });
+    });
+    
     console.log('✅ Challenge event handlers registered for socket:', socket.id);
   }
   

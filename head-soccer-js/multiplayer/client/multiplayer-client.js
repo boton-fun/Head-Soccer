@@ -161,10 +161,13 @@ class MultiplayerClient {
     
     connectToServer() {
         const serverUrl = window.location.origin;
+        console.log('🔌 Attempting to connect to server at:', serverUrl);
+        console.log('🌍 Current page URL:', window.location.href);
+        
         this.socket = io(serverUrl);
         
         this.socket.on('connect', () => {
-            console.log('Connected to server');
+            console.log('✅ Connected to server');
             this.updateConnectionStatus('connected', 'Connected');
             
             // Join game with character data
